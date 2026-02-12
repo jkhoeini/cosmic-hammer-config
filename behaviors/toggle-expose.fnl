@@ -3,9 +3,8 @@
 ;; Exports behavior data (pure, no registry dependency)
 
 (local {: make-behavior} (require :lib.behavior-registry))
-
-
-(local expose (hs.expose.new))
+(local {: invoke-command!} (require :lib.command-registry))
+(local {: command-registry} (require :commands))
 
 
 (local toggle-expose-behavior
@@ -14,7 +13,7 @@
    "Toggle the Hammerspoon Expose window picker"
    [:event.kind.hotkey/pressed]
    (fn [event]
-     (expose:toggleShow))))
+     (invoke-command! command-registry :expose.commands/toggle-show {}))))
 
 
 {: toggle-expose-behavior}

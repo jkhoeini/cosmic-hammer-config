@@ -18,6 +18,7 @@
 ;; Load events first (creates registry), then event sources, then behaviors
 (local {: event-registry} (require :events))
 (require :event_sources)
+(require :commands)
 (require :behaviors)
 (local {: subscription-registry} (require :subscriptions))
 

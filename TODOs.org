@@ -27,15 +27,16 @@ The system should be:
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [0/6]
+*** NOW Milestone 3: Sheaf Core [1/6]
 Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
 Built incrementally — each step is independently functional.
 
-**** NEXT Define command concept :architecture:
+**** DONE Define command concept :architecture:
      - lib/command-registry.fnl: make-command-registry, make-command, add-command!, invoke-command!
      - commands/init.fnl: create registry, wire into core.fnl
      - Command = {name, description, schema, fn}
-     - Standalone values (not yet owned by components)
+     - Naming convention: :namespace.commands/action-name
+     - First command: :expose.commands/toggle-show
 
 **** NEXT Update behaviors to receive send-cmd! :architecture:
      - Behavior handler signature: (fn [event send-cmd!] ...)
