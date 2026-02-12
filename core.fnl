@@ -26,7 +26,8 @@
 (local {: start-dispatcher!} (require :lib.dispatcher))
 (local {: make-event-loop : start-event-loop!} (require :lib.event-loop))
 
-(start-dispatcher! subscription-registry)
+(local {: command-registry} (require :commands))
+(start-dispatcher! subscription-registry command-registry)
 (local event-loop (make-event-loop event-registry))
 (start-event-loop! event-loop)
 

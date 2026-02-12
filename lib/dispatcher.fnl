@@ -9,6 +9,7 @@
 (local {: behavior-responds-to? : get-behavior} (require :lib.behavior-registry))
 (local {: get-subscribed-behaviors} (require :lib.subscription-registry))
 (local {: source-instance-exists?} (require :lib.source-registry))
+(local {: invoke-command!} (require :lib.command-registry))
 
 
 (fn get-behaviors-for-event [subscription-registry event]
@@ -37,16 +38,19 @@
             (or (seq valid-names) [])))))
 
 
-(fn start-dispatcher! [subscription-registry]
+(fn start-dispatcher! [subscription-registry command-registry]
   "Register behavior routing handlers on the event registry.
-   subscription-registry must contain :event-registry, :behavior-registry, and :source-registry."
-  (let [event-registry subscription-registry.event-registry]
+   subscription-registry must contain :event-registry, :behavior-registry, and :source-registry.
+   command-registry is used to create the send-cmd! closure passed to behaviors."
+  (let [event-registry subscription-registry.event-registry
+        send-cmd! (fn [cmd-name params]
+                    (invoke-command! command-registry cmd-name params))]
     (add-event-handler! event-registry :dispatcher/behavior-router
                         (fn [event]
                           (let [bs (get-behaviors-for-event subscription-registry event)]
                             (each [_ behavior (pairs bs)]
                               (when behavior
-                                ((. behavior :fn) event))))))
+                                ((. behavior :fn) event send-cmd!))))))
 
     (add-event-handler! event-registry :dispatcher/debug-handler
                         (fn [event]

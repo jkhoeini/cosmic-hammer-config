@@ -10,7 +10,7 @@
 ;;   {:name :my-behavior
 ;;    :description "Human-readable description"
 ;;    :respond-to [:event.kind/something]
-;;    :fn (fn [event] ...)}
+;;    :fn (fn [event send-cmd!] ...)}
 
 (local {: some} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :lib.event-registry))
@@ -36,7 +36,7 @@
    name: unique identifier (e.g. :reload-hammerspoon.behaviors/reload)
    description: human-readable description
    event-selectors: list of event-names or event-kinds this behavior responds to
-   handler-fn: (fn [event] ...) - called when matching event occurs
+    handler-fn: (fn [event send-cmd!] ...) - called when matching event occurs
    Returns: {:name :description :respond-to :fn}"
   {:name name
    :description description
