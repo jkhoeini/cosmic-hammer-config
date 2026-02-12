@@ -22,59 +22,95 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [8/43]
-** PROJ Configuration as Data [6/19]
+* Projects [0/38]
+** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** DONE Milestone 1: Multiple Instances of the Same Source Type [2/2]
-User can create multiple instances of the same event-source type (e.g., two file-watchers watching different directories), each with its own config.
+*** NOW Milestone 3: Sheaf Core [0/6]
+Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
+Built incrementally — each step is independently functional.
 
-**** DONE Separate event-source class/instance concepts               :refactor:
+**** NEXT Define command concept :architecture:
+     - lib/command-registry.fnl: make-command-registry, make-command, add-command!, invoke-command!
+     - commands/init.fnl: create registry, wire into core.fnl
+     - Command = {name, description, schema, fn}
+     - Standalone values (not yet owned by components)
 
-**** DONE Event-sources can specify what they can emit :feature:
+**** NEXT Update behaviors to receive send-cmd! :architecture:
+     - Behavior handler signature: (fn [event send-cmd!] ...)
+     - Dispatcher passes send-cmd! closure that calls invoke-command!
+     - Backward compatible: existing behaviors ignore extra arg
 
-*** NOW Milestone 2: Serializable Config [3/6]
-Entire automation config can be represented as a single data structure, serialized to a file, and loaded back.
+**** NEXT Add target-selector to subscriptions :architecture:
+     - Subscriptions gain optional :target-selector field
+     - Data model expansion only — not enforced until components exist
+     - Prepares subscription shape for component wiring
 
-**** DONE Migrate registry/global APIs to datastructure/local APIs :architecture:
-     - [X] event-registry (lib/event-registry.fnl)
-     - [X] behaviors-register (lib/behavior-registry.fnl)
-     - [X] subscriptions-register (lib/subscription-registry.fnl)
-     - [X] subscriptions-index (lib/subscription-registry.fnl)
-     - [X] lib/dispatcher.fnl
-     - [X] source-types-register (lib/source-registry.fnl)
-     - [X] source-instances-register (lib/source-registry.fnl)
-     - [X] event-loop
-
-**** DONE Remove external requires from lib/ modules :architecture:
-     lib/ modules should have no dependencies on application modules
-     (events/, event_sources/, behaviors/).
-
-**** DONE Expand subscription data model :architecture:
-     - name: unique identifier for the subscription
-     - description: human-readable description
-     - behavior: which behavior to invoke
-     - event-selector: which events to match (event-name or event-kind)
-     - source-selector: which event sources to match
-     - require-tags: all tags that must exist on the event-source (placeholder for Contextual Automation)
-     - exclude-tags: tags that must NOT exist on the event-source (placeholder for Contextual Automation)
-     - Renamed subscribe -> define-subscription, unsubscribe -> remove-subscription
-     - Added strict validation (errors on missing behavior/source/event-selector)
-     - Moved get-subscribed-behaviors from dispatcher to subscription-registry
-
-**** NEXT Refactor rest of the code to use the event/behavior pattern :refactor:
-     - [ ] Migrate active-space-indicator.fnl (space/screen watchers → event sources, menubar update → behavior)
+**** LATER [#A] Migrate legacy modules to Sheaf concepts :refactor:
+     Each module becomes components + commands + behaviors + subscriptions.
+     - [ ] Migrate windows.fnl (30 functions → commands on a window-manager component)
+     - [ ] Migrate config.fnl (keybindings → hotkey source instances + subscriptions)
+     - [ ] Migrate slack.fnl (14 keystroke functions → commands + behaviors)
+     - [ ] Migrate chrome.fnl (3 nav functions → commands + behaviors)
+     - [ ] Migrate multimedia.fnl (5 media key functions → commands + behaviors)
+     - [ ] Migrate emacs.fnl (Emacs integration → component with commands)
+     - [ ] Migrate app-switcher.fnl (2 functions → commands + behaviors)
+     - [ ] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
-     - [ ] Migrate windows.fnl (command library → behaviors, mutable history state)
-     - [ ] Migrate config.fnl (declarative keybinding/menu config → modal system on event arch)
-     - [ ] Migrate slack.fnl (14 keystroke functions → behaviors)
-     - [ ] Migrate chrome.fnl (3 nav functions → behaviors)
-     - [ ] Migrate multimedia.fnl (5 media key functions → behaviors)
-     - [ ] Migrate emacs.fnl (Emacs integration + IPC-callable functions)
-     - [ ] Migrate app-switcher.fnl (2 functions → behaviors)
      - [ ] Keep apps-filter.fnl as shared utility
      - [ ] Skip paper-wm.fnl (Spoon version already running)
+
+**** LATER [#B] Define component concept :architecture:
+     - lib/component-registry.fnl: make-component, start-component!, stop-component!
+     - Component = {name, sources, commands, state, config}
+     - Context-blind, reusable unit — does NOT contain behaviors or subscriptions
+     - Components don't know about each other
+     - Dispatcher scopes send-cmd! to target component's commands
+
+**** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
+     - Define execution order when multiple behaviors match
+     - Handle dependencies between behaviors
+
+*** Milestone 4: System Map [0/1]
+The entire system is a single declarative value — inspectable, serializable, reconstructable.
+
+**** LATER [#B] Define system map concept                              :architecture:
+     - lib/system.fnl: make-system, start-system!, stop-system!, describe-system
+     - Declarative spec: components + behaviors + subscriptions + tags
+     - Replaces procedural boot sequence in core.fnl
+     - Capstone of the Sheaf pattern
+
+*** Milestone 5: Modules [0/1]
+Higher-level bundles of components, behaviors, subscriptions, and config that provide a complete feature.
+
+**** LATER [#B] Define module concept                                  :architecture:
+     - A module bundles related components + behaviors + subscriptions + default config
+     - Inspired by Spacemacs layers: enable a module, get a complete feature
+     - Influenced by Integrant templates: composable system fragments
+     - Example: a "window-management" module provides window component, hotkey sources,
+       move/resize behaviors, and all subscriptions wired together
+     - Modules are declarative — a data structure that can be merged into the system map
+     - Users can override module defaults with their own config
+     - Enables fast, high-level feature composition without wiring individual atoms
+
+*** Milestone 6: Rich Subscription Matching [0/3]
+Subscriptions can match events using flexible criteria - multiple event types, hierarchical matching, timing controls.
+
+**** LATER [#B] Consider accepting a set of event-selectors for more flexibility :feature:
+     - Currently subscribe-behavior takes a single event-selector
+     - Could allow subscribing to multiple event-selectors at once
+
+**** LATER [#C] Add debounce/throttle/delay to subscriptions          :feature:
+     - Allow subscriptions to specify timing behavior
+     - Useful for high-frequency events like file watchers
+
+**** LATER [#C] Event-hierarchies have schemas that inherit to children :architecture:
+     - Event-kinds define schemas
+     - Child events inherit and extend parent schemas
+
+*** Milestone 7: Optimized & Documented [0/5]
+System is performant and has comprehensive documentation for users.
 
 **** LATER [#B] Standardize registry constructors and define-*! functions :refactor:
      - All make-*-registry constructors accept an optional initial list of items
@@ -90,47 +126,11 @@ Entire automation config can be represented as a single data structure, serializ
      - https://github.com/weavejester/integrant
      - component, mount, arachne, duct, etc
 
-*** Milestone 3: Rich Subscription Matching [0/3]
-Subscriptions can match events using flexible criteria - multiple event types, hierarchical matching, timing controls.
-
-**** LATER [#B] Consider accepting a set of event-selectors for more flexibility :feature:
-     - Currently subscribe-behavior takes a single event-selector
-     - Could allow subscribing to multiple event-selectors at once
-
-**** LATER [#C] Add debounce/throttle/delay to subscriptions          :feature:
-     - Allow subscriptions to specify timing behavior
-     - Useful for high-frequency events like file watchers
-
-**** LATER [#C] Event-hierarchies have schemas that inherit to children :architecture:
-     - Event-kinds define schemas
-     - Child events inherit and extend parent schemas
-
-*** Milestone 4: Components & Commands [0/3]
-User can define components (context-blind units of sources + commands + state + config) and commands (named invocable actions). Behaviors and subscriptions live outside components.
-
-**** LATER [#B] Define command concept                                 :architecture:
-     - Named action with schema and implementation
-     - Owned by components
-     - Invoked by behaviors via send-cmd!
-
-**** LATER [#C] Define component concept                              :architecture:
-     - Context-blind, reusable unit
-     - Bundles: sources (emit events), commands (receive invocations), state, config
-     - Does NOT contain behaviors or subscriptions
-     - Components don't know about each other
-
-**** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
-     - Define execution order when multiple behaviors match
-     - Handle dependencies between behaviors
-
-*** Milestone 5: Optimized & Documented [0/3]
-System is performant and has comprehensive documentation for users.
-
 **** LATER [#C] Cache ancestor lookups                                :perf:
      - Currently recalculated each time
      - Invalidate cache on derive/underive
 
-**** LATER [#C] Create a tutorial-style doc for the event/behavior pattern :doc:
+**** LATER [#C] Create a tutorial-style doc for the Sheaf pattern      :doc:
 
 **** LATER [#C] Create doc explaining 6 orthogonal concepts           :doc:
      - Event, Command, Component, Behavior, Tag, Subscription
@@ -158,7 +158,10 @@ Full interactive UI with controls, SQLite persistence, event tracing.
 Users can make automations context-aware using tags and filtering.
 Enables modes, contexts, and conditional behavior.
 
-*** LATER [#A] Define tag attachment to behavior/event-source-instance :architecture:
+*** LATER [#A] Define tag attachment to component instances             :architecture:
+     - lib/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!, get-tags, tags-match?
+     - Tags inherited through the component instance tree
+     - Subscription filtering via tags-match? in get-subscribed-behaviors
 
 *** LATER [#B] Disable events, behaviors, subscriptions, tags, sources :feature:
     - Add ability to pause/disable at various levels
@@ -173,12 +176,8 @@ Enables modes, contexts, and conditional behavior.
     - Use tags + contextual filtering instead of hs.hotkey.modal
     - Depends on: tag attachment, require-tags filtering, App event source
 
-** PROJ Expand Configuration Options [1/10]
+** PROJ Expand Configuration Options [0/9]
 Users can automate based on more system events.
-
-*** DONE Create Hotkey event source :feature:
-    - Emit events on hotkey press
-    - Blocking dependency for migrating: config, windows, slack, chrome, multimedia, emacs, app-switcher
 
 *** NEXT Create Window event source :feature:
     - Emit events on window create/destroy/focus/unfocus/move/resize
@@ -208,19 +207,39 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-* Chores [1/3]
+* Chores [0/2]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
     - For now linked manually
     - Need to investigate proper permission handling for hs.ipc.cliInstall
-
-*** DONE Proper shortcut and configs for expose :feature:
-    - Migrated to event architecture: hotkey event source + toggle-expose behavior + subscription
 
 *** LATER [#C] Make thumbnail height advisable when #102 lands        :feature:
     - Related to GitHub issue #102
     - Thumbnail height calculation should be configurable/advisable
 
-* DONE Archived [7/7]
+* DONE Archived [16/16]
+
+** DONE Milestone 1: Multiple Instances of the Same Source Type        :feature:
+    User can create multiple instances of the same event-source type.
+
+*** DONE Separate event-source class/instance concepts               :refactor:
+
+*** DONE Event-sources can specify what they can emit :feature:
+
+** DONE Milestone 2: Serializable Config                               :architecture:
+    Entire automation config as a single data structure.
+
+*** DONE Migrate registry/global APIs to datastructure/local APIs :architecture:
+
+*** DONE Remove external requires from lib/ modules :architecture:
+
+*** DONE Expand subscription data model :architecture:
+
+** DONE Create Hotkey event source :feature:
+    - Emit events on hotkey press
+    - Blocking dependency for migrating: config, windows, slack, chrome, multimedia, emacs, app-switcher
+
+** DONE Proper shortcut and configs for expose :feature:
+    - Migrated to event architecture: hotkey event source + toggle-expose behavior + subscription
 ** DONE derive should check for cycles                                :feature:
     - Prevent A derives B derives A situations
     - Uses isa? to detect if parent already derives from child
