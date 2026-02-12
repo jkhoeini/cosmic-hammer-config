@@ -1067,7 +1067,7 @@ package.preload["lib.subscription-registry"] = package.preload["lib.subscription
   end
   local function define_subscription_21(registry, name, opts)
     validate_subscription_21(registry, name, opts)
-    local subscription = {name = name, description = opts.description, behavior = opts.behavior, ["event-selector"] = opts["event-selector"], ["source-selector"] = opts["source-selector"], ["require-tags"] = (opts["require-tags"] or {}), ["exclude-tags"] = (opts["exclude-tags"] or {})}
+    local subscription = {name = name, description = opts.description, behavior = opts.behavior, ["event-selector"] = opts["event-selector"], ["source-selector"] = opts["source-selector"], ["target-selector"] = opts["target-selector"], ["require-tags"] = (opts["require-tags"] or {}), ["exclude-tags"] = (opts["exclude-tags"] or {})}
     registry.subscriptions[name] = subscription
     index_add_21(registry, subscription)
     return print(("[INFO] Defined subscription: " .. tostring(name)))

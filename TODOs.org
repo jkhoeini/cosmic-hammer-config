@@ -27,7 +27,7 @@ The system should be:
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [2/6]
+*** NOW Milestone 3: Sheaf Core [3/6]
 Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
 Built incrementally — each step is independently functional.
 
@@ -44,7 +44,7 @@ Built incrementally — each step is independently functional.
      - Backward compatible: existing behaviors ignore extra arg
      - toggle-expose behavior updated to use send-cmd! instead of direct invoke-command!
 
-**** NEXT Add target-selector to subscriptions :architecture:
+**** DONE Add target-selector to subscriptions :architecture:
      - Subscriptions gain optional :target-selector field
      - Data model expansion only — not enforced until components exist
      - Prepares subscription shape for component wiring

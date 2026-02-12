@@ -16,6 +16,7 @@
 ;;    :behavior    :my-behavior
 ;;    :event-selector  :event.kind/something
 ;;    :source-selector :my-source
+;;    :target-selector :my-target  ; optional, for future component targeting
 ;;    :require-tags []   ; placeholder for future
 ;;    :exclude-tags []}  ; placeholder for future
 
@@ -126,15 +127,17 @@
      :description     - human-readable description (required)
      :behavior        - behavior name to invoke (required)
      :event-selector  - event name or kind to match (required)
-     :source-selector - event source name to match (required)
-     :require-tags    - tags source must have (optional, placeholder)
-     :exclude-tags    - tags source must NOT have (optional, placeholder)"
+      :source-selector - event source name to match (required)
+      :target-selector - target component for commands (optional, for future component targeting)
+      :require-tags    - tags source must have (optional, placeholder)
+      :exclude-tags    - tags source must NOT have (optional, placeholder)"
   (validate-subscription! registry name opts)
   (let [subscription {:name name
                       :description opts.description
                       :behavior opts.behavior
                       :event-selector opts.event-selector
                       :source-selector opts.source-selector
+                      :target-selector opts.target-selector
                       :require-tags (or opts.require-tags [])
                       :exclude-tags (or opts.exclude-tags [])}]
     (tset registry.subscriptions name subscription)
