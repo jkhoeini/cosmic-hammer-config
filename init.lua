@@ -71,51 +71,6 @@ package.preload["spoons"] = package.preload["spoons"] or function(...)
   return {}
 end
 spoons = require("spoons")
-local active_space_indicator
-package.preload["active-space-indicator"] = package.preload["active-space-indicator"] or function(...)
-  local menubar = nil
-  local function get_active_spaces_str()
-    local parts = {}
-    local spaces_layout = hs.spaces.allSpaces()
-    local active_spaces = hs.spaces.activeSpaces()
-    local num_spaces = 0
-    for _, screen in ipairs(hs.screen.allScreens()) do
-      local screen_uuid = screen:getUUID()
-      local active_space = active_spaces[screen_uuid]
-      local screen_spaces = spaces_layout[screen_uuid]
-      for i, space in ipairs(screen_spaces) do
-        if (active_space and (active_space == space)) then
-          table.insert(parts, tostring((i + num_spaces)))
-        else
-        end
-      end
-      num_spaces = (num_spaces + #screen_spaces)
-    end
-    return table.concat(parts, "|")
-  end
-  local function update_menubar()
-    if menubar then
-      return menubar:setTitle(get_active_spaces_str())
-    else
-      return nil
-    end
-  end
-  local function handle_space_switch(...)
-    local rest = {...}
-    return update_menubar()
-  end
-  menubar = hs.menubar.new(true, "cosmicHammerSpaceIndicator")
-  if menubar then
-    menubar:setTitle(get_active_spaces_str())
-  else
-  end
-  local space_watcher = hs.spaces.watcher.new(handle_space_switch)
-  space_watcher:start()
-  local screen_watcher = hs.screen.watcher.new(handle_space_switch)
-  screen_watcher:start()
-  return {}
-end
-active_space_indicator = require("active-space-indicator")
 local notify
 package.preload["notify"] = package.preload["notify"] or function(...)
   local notification_duration = 30
@@ -255,14 +210,14 @@ package.preload["notify"] = package.preload["notify"] or function(...)
     table.insert(drawings, close_btn)
     local notif = {drawings = drawings, height = total_height, timer = nil}
     close_btn:setBehaviorByLabels({"canvasClickable"})
-    local function _17_()
+    local function _14_()
       return remove_notification(notif)
     end
-    close_btn:setClickCallback(_17_)
-    local function _18_()
+    close_btn:setClickCallback(_14_)
+    local function _15_()
       return remove_notification(notif)
     end
-    notif["timer"] = hs.timer.doAfter(notification_duration, _18_)
+    notif["timer"] = hs.timer.doAfter(notification_duration, _15_)
     return table.insert(active_notifications, notif)
   end
   local function notify(title, type, message)
@@ -294,14 +249,14 @@ package.preload["notify"] = package.preload["notify"] or function(...)
 end
 notify = require("notify")
 package.preload["events"] = package.preload["events"] or function(...)
-  local _local_20_ = require("lib.cljlib-shim")
-  local string_3f = _local_20_["string?"]
-  local _local_52_ = require("lib.event-registry")
-  local make_event_registry = _local_52_["make-event-registry"]
-  local define_event_21 = _local_52_["define-event!"]
-  local _local_53_ = require("lib.hierarchy")
-  local make_hierarchy = _local_53_["make-hierarchy"]
-  local derive_21 = _local_53_["derive!"]
+  local _local_17_ = require("lib.cljlib-shim")
+  local string_3f = _local_17_["string?"]
+  local _local_49_ = require("lib.event-registry")
+  local make_event_registry = _local_49_["make-event-registry"]
+  local define_event_21 = _local_49_["define-event!"]
+  local _local_50_ = require("lib.hierarchy")
+  local make_hierarchy = _local_50_["make-hierarchy"]
+  local derive_21 = _local_50_["derive!"]
   local event_hierarchy = make_hierarchy()
   derive_21(event_hierarchy, "event.kind.fs/any", "event.kind/any")
   derive_21(event_hierarchy, "event.kind.fs/file-change", "event.kind.fs/any")
@@ -344,14 +299,18 @@ package.preload["events"] = package.preload["events"] or function(...)
   derive_21(event_hierarchy, "file-watcher.events/file-change", "event.kind.fs/file-change")
   define_event_21(event_registry, "hotkey.events/pressed", "Hotkey was pressed", {mods = __fnl_global__table_3f, key = string_3f})
   derive_21(event_hierarchy, "hotkey.events/pressed", "event.kind.hotkey/pressed")
+  define_event_21(event_registry, "space-watcher.events/space-changed", "Active space/desktop changed", {["space-number"] = __fnl_global__number_3f, ["all-spaces"] = __fnl_global__table_3f, ["active-spaces"] = __fnl_global__table_3f})
+  derive_21(event_hierarchy, "space-watcher.events/space-changed", "event.kind.space/changed")
+  define_event_21(event_registry, "screen-watcher.events/screen-changed", "Screen layout changed", {["all-spaces"] = __fnl_global__table_3f, ["active-spaces"] = __fnl_global__table_3f})
+  derive_21(event_hierarchy, "screen-watcher.events/screen-changed", "event.kind.screen/layout-changed")
   return {["event-registry"] = event_registry}
 end
 package.preload["lib.event-registry"] = package.preload["lib.event-registry"] or function(...)
-  local _local_21_ = require("lib.cljlib-shim")
-  local some = _local_21_.some
-  local seq = _local_21_.seq
-  local _local_45_ = require("lib.hierarchy")
-  local descendants = _local_45_.descendants
+  local _local_18_ = require("lib.cljlib-shim")
+  local some = _local_18_.some
+  local seq = _local_18_.seq
+  local _local_42_ = require("lib.hierarchy")
+  local descendants = _local_42_.descendants
   local function make_event_registry(opts)
     if (nil == opts.hierarchy) then
       error("make-event-registry: :hierarchy is required")
@@ -371,14 +330,14 @@ package.preload["lib.event-registry"] = package.preload["lib.event-registry"] or
     return (nil ~= registry.events[event_name])
   end
   local function valid_event_selector_3f(registry, selector)
-    local or_48_ = event_defined_3f(registry, selector)
-    if not or_48_ then
-      local function _49_(_241)
+    local or_45_ = event_defined_3f(registry, selector)
+    if not or_45_ then
+      local function _46_(_241)
         return event_defined_3f(registry, _241)
       end
-      or_48_ = some(_49_, seq(descendants(registry.hierarchy, selector)))
+      or_45_ = some(_46_, seq(descendants(registry.hierarchy, selector)))
     end
-    return or_48_
+    return or_45_
   end
   local function add_event_handler_21(registry, key, handler)
     if (nil ~= registry.handlers[key]) then
@@ -403,15 +362,15 @@ package.preload["lib.event-registry"] = package.preload["lib.event-registry"] or
   return {["make-event-registry"] = make_event_registry, ["define-event!"] = define_event_21, ["event-defined?"] = event_defined_3f, ["valid-event-selector?"] = valid_event_selector_3f, ["add-event-handler!"] = add_event_handler_21, ["remove-event-handler!"] = remove_event_handler_21, ["dispatch-event!"] = dispatch_event_21}
 end
 package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(...)
-  local _local_22_ = require("lib.cljlib-shim")
-  local hash_set = _local_22_["hash-set"]
-  local conj = _local_22_.conj
-  local disj = _local_22_.disj
-  local contains_3f = _local_22_["contains?"]
-  local into = _local_22_.into
-  local mapcat = _local_22_.mapcat
-  local empty_3f = _local_22_["empty?"]
-  local seq = _local_22_.seq
+  local _local_19_ = require("lib.cljlib-shim")
+  local hash_set = _local_19_["hash-set"]
+  local conj = _local_19_.conj
+  local disj = _local_19_.disj
+  local contains_3f = _local_19_["contains?"]
+  local into = _local_19_.into
+  local mapcat = _local_19_.mapcat
+  local empty_3f = _local_19_["empty?"]
+  local seq = _local_19_.seq
   local function ensure_entry(h, tag)
     if (nil == h[tag]) then
       h[tag] = {parents = hash_set(), children = hash_set()}
@@ -421,46 +380,46 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
     end
   end
   local function parents(h, tag)
-    local _25_
+    local _22_
     do
-      local t_24_ = h
-      if (nil ~= t_24_) then
-        t_24_ = t_24_[tag]
+      local t_21_ = h
+      if (nil ~= t_21_) then
+        t_21_ = t_21_[tag]
       else
       end
-      if (nil ~= t_24_) then
-        t_24_ = t_24_.parents
+      if (nil ~= t_21_) then
+        t_21_ = t_21_.parents
       else
       end
-      _25_ = t_24_
+      _22_ = t_21_
     end
-    return (_25_ or hash_set())
+    return (_22_ or hash_set())
   end
   local function children(h, tag)
-    local _29_
+    local _26_
     do
-      local t_28_ = h
-      if (nil ~= t_28_) then
-        t_28_ = t_28_[tag]
+      local t_25_ = h
+      if (nil ~= t_25_) then
+        t_25_ = t_25_[tag]
       else
       end
-      if (nil ~= t_28_) then
-        t_28_ = t_28_.children
+      if (nil ~= t_25_) then
+        t_25_ = t_25_.children
       else
       end
-      _29_ = t_28_
+      _26_ = t_25_
     end
-    return (_29_ or hash_set())
+    return (_26_ or hash_set())
   end
   local function ancestors(h, tag)
     local ps = parents(h, tag)
     if empty_3f(ps) then
       return ps
     else
-      local function _32_(_241)
+      local function _29_(_241)
         return ancestors(h, _241)
       end
-      return into(ps, mapcat(_32_, seq(ps)))
+      return into(ps, mapcat(_29_, seq(ps)))
     end
   end
   local function descendants(h, tag)
@@ -468,10 +427,10 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
     if empty_3f(cs) then
       return cs
     else
-      local function _34_(_241)
+      local function _31_(_241)
         return descendants(h, _241)
       end
-      return into(cs, mapcat(_34_, seq(cs)))
+      return into(cs, mapcat(_31_, seq(cs)))
     end
   end
   local function isa_3f(h, child, parent)
@@ -549,29 +508,37 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
   end
   return {["make-hierarchy"] = make_hierarchy, ["derive!"] = derive_21, ["underive!"] = underive_21, parents = parents, children = children, ancestors = ancestors, descendants = descendants, ["isa?"] = isa_3f}
 end
-local _local_54_ = require("events")
-local event_registry = _local_54_["event-registry"]
+local _local_51_ = require("events")
+local event_registry = _local_51_["event-registry"]
 package.preload["event_sources"] = package.preload["event_sources"] or function(...)
-  local _local_65_ = require("lib.source-registry")
-  local make_source_registry = _local_65_["make-source-registry"]
-  local add_source_type_21 = _local_65_["add-source-type!"]
-  local start_event_source_21 = _local_65_["start-event-source!"]
-  local _local_66_ = require("events")
-  local event_registry = _local_66_["event-registry"]
-  local _local_72_ = require("event_sources.file-watcher")
-  local file_watcher_source_type = _local_72_["file-watcher-source-type"]
-  local _local_77_ = require("event_sources.hotkey")
-  local hotkey_source_type = _local_77_["hotkey-source-type"]
+  local _local_62_ = require("lib.source-registry")
+  local make_source_registry = _local_62_["make-source-registry"]
+  local add_source_type_21 = _local_62_["add-source-type!"]
+  local start_event_source_21 = _local_62_["start-event-source!"]
+  local _local_63_ = require("events")
+  local event_registry = _local_63_["event-registry"]
+  local _local_69_ = require("event_sources.file-watcher")
+  local file_watcher_source_type = _local_69_["file-watcher-source-type"]
+  local _local_74_ = require("event_sources.hotkey")
+  local hotkey_source_type = _local_74_["hotkey-source-type"]
+  local _local_79_ = require("event_sources.space-watcher")
+  local space_watcher_source_type = _local_79_["space-watcher-source-type"]
+  local _local_84_ = require("event_sources.screen-watcher")
+  local screen_watcher_source_type = _local_84_["screen-watcher-source-type"]
   local source_registry = make_source_registry({["event-registry"] = event_registry})
   add_source_type_21(source_registry, file_watcher_source_type)
   add_source_type_21(source_registry, hotkey_source_type)
+  add_source_type_21(source_registry, space_watcher_source_type)
+  add_source_type_21(source_registry, screen_watcher_source_type)
   start_event_source_21(source_registry, "event-source.file-watcher/config-dir", "event-source.type/file-watcher", {path = hs.configdir})
   start_event_source_21(source_registry, "event-source.hotkey/ctrl+cmd+e", "event-source.type/hotkey", {mods = {"ctrl", "cmd"}, key = "e"})
+  start_event_source_21(source_registry, "event-source.space-watcher/default", "event-source.type/space-watcher", {})
+  start_event_source_21(source_registry, "event-source.screen-watcher/default", "event-source.type/screen-watcher", {})
   return {["source-registry"] = source_registry}
 end
 package.preload["lib.source-registry"] = package.preload["lib.source-registry"] or function(...)
-  local _local_55_ = require("lib.event-registry")
-  local dispatch_event_21 = _local_55_["dispatch-event!"]
+  local _local_52_ = require("lib.event-registry")
+  local dispatch_event_21 = _local_52_["dispatch-event!"]
   local function make_source_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-source-registry: :event-registry is required")
@@ -637,10 +604,10 @@ package.preload["lib.source-registry"] = package.preload["lib.source-registry"] 
     end
     local self = {name = instance_name, type = type_name, config = (config or {})}
     local emit
-    local function _62_(event_name, event_data)
+    local function _59_(event_name, event_data)
       return dispatch_event_21(registry["event-registry"], event_name, instance_name, event_data)
     end
-    emit = _62_
+    emit = _59_
     local state = source_type["start-fn"](self, emit)
     registry.instances[instance_name] = {type = type_name, config = (config or {}), state = state}
     return print(("[INFO] Started source instance: " .. tostring(instance_name)))
@@ -669,27 +636,27 @@ package.preload["lib.source-registry"] = package.preload["lib.source-registry"] 
   return {["make-source-registry"] = make_source_registry, ["make-source-type"] = make_source_type, ["add-source-type!"] = add_source_type_21, ["source-type-defined?"] = source_type_defined_3f, ["get-source-type"] = get_source_type, ["list-source-types"] = list_source_types, ["source-instance-exists?"] = source_instance_exists_3f, ["get-source-instance"] = get_source_instance, ["list-source-instances"] = list_source_instances, ["start-event-source!"] = start_event_source_21, ["stop-event-source!"] = stop_event_source_21, ["stop-all-event-sources!"] = stop_all_event_sources_21}
 end
 package.preload["event_sources.file-watcher"] = package.preload["event_sources.file-watcher"] or function(...)
-  local _local_67_ = require("lib.cljlib-shim")
-  local mapv = _local_67_.mapv
-  local assoc = _local_67_.assoc
-  local string_3f = _local_67_["string?"]
-  local _local_68_ = require("lib.source-registry")
-  local make_source_type = _local_68_["make-source-type"]
+  local _local_64_ = require("lib.cljlib-shim")
+  local mapv = _local_64_.mapv
+  local assoc = _local_64_.assoc
+  local string_3f = _local_64_["string?"]
+  local _local_65_ = require("lib.source-registry")
+  local make_source_type = _local_65_["make-source-type"]
   local function start_file_watcher(self, emit)
     local path = self.config.path
     local handler
-    local function _69_(files, attrs)
+    local function _66_(files, attrs)
       local evs
-      local function _70_(_241, _242)
+      local function _67_(_241, _242)
         return assoc(_241, "file-path", _242)
       end
-      evs = mapv(_70_, attrs, files)
+      evs = mapv(_67_, attrs, files)
       for _, ev in ipairs(evs) do
         emit("file-watcher.events/file-change", ev)
       end
       return nil
     end
-    handler = _69_
+    handler = _66_
     local watcher = hs.pathwatcher.new(path, handler)
     watcher:start()
     return watcher
@@ -705,18 +672,18 @@ package.preload["event_sources.file-watcher"] = package.preload["event_sources.f
   return {["file-watcher-source-type"] = file_watcher_source_type}
 end
 package.preload["event_sources.hotkey"] = package.preload["event_sources.hotkey"] or function(...)
-  local _local_73_ = require("lib.cljlib-shim")
-  local string_3f = _local_73_["string?"]
-  local _local_74_ = require("lib.source-registry")
-  local make_source_type = _local_74_["make-source-type"]
+  local _local_70_ = require("lib.cljlib-shim")
+  local string_3f = _local_70_["string?"]
+  local _local_71_ = require("lib.source-registry")
+  local make_source_type = _local_71_["make-source-type"]
   local function start_hotkey(self, emit)
     local mods = self.config.mods
     local key = self.config.key
     local handler
-    local function _75_()
+    local function _72_()
       return emit("hotkey.events/pressed", {mods = mods, key = key})
     end
-    handler = _75_
+    handler = _72_
     return hs.hotkey.bind(mods, key, handler)
   end
   local function stop_hotkey(state)
@@ -729,15 +696,100 @@ package.preload["event_sources.hotkey"] = package.preload["event_sources.hotkey"
   local hotkey_source_type = make_source_type("event-source.type/hotkey", "Emits an event when a hotkey is pressed", {["config-schema"] = {mods = __fnl_global__table_3f, key = string_3f}, emits = {"hotkey.events/pressed"}, ["start-fn"] = start_hotkey, ["stop-fn"] = stop_hotkey})
   return {["hotkey-source-type"] = hotkey_source_type}
 end
+package.preload["event_sources.space-watcher"] = package.preload["event_sources.space-watcher"] or function(...)
+  local _local_75_ = require("lib.source-registry")
+  local make_source_type = _local_75_["make-source-type"]
+  local function snapshot_spaces()
+    local spaces_layout = hs.spaces.allSpaces()
+    local tbl_26_ = {}
+    local i_27_ = 0
+    for _, screen in ipairs(hs.screen.allScreens()) do
+      local val_28_
+      do
+        local uuid = screen:getUUID()
+        val_28_ = {uuid, spaces_layout[uuid]}
+      end
+      if (nil ~= val_28_) then
+        i_27_ = (i_27_ + 1)
+        tbl_26_[i_27_] = val_28_
+      else
+      end
+    end
+    return tbl_26_
+  end
+  local function start_space_watcher(self, emit)
+    local handler
+    local function _77_(space_number)
+      return emit("space-watcher.events/space-changed", {["space-number"] = space_number, ["all-spaces"] = snapshot_spaces(), ["active-spaces"] = hs.spaces.activeSpaces()})
+    end
+    handler = _77_
+    local watcher = hs.spaces.watcher.new(handler)
+    watcher:start()
+    return watcher
+  end
+  local function stop_space_watcher(state)
+    if state then
+      return state:stop()
+    else
+      return nil
+    end
+  end
+  local space_watcher_source_type = make_source_type("event-source.type/space-watcher", "Emits an event when the active space/desktop changes", {["config-schema"] = {}, emits = {"space-watcher.events/space-changed"}, ["start-fn"] = start_space_watcher, ["stop-fn"] = stop_space_watcher})
+  return {["space-watcher-source-type"] = space_watcher_source_type}
+end
+package.preload["event_sources.screen-watcher"] = package.preload["event_sources.screen-watcher"] or function(...)
+  local _local_80_ = require("lib.source-registry")
+  local make_source_type = _local_80_["make-source-type"]
+  local function snapshot_spaces()
+    local spaces_layout = hs.spaces.allSpaces()
+    local tbl_26_ = {}
+    local i_27_ = 0
+    for _, screen in ipairs(hs.screen.allScreens()) do
+      local val_28_
+      do
+        local uuid = screen:getUUID()
+        val_28_ = {uuid, spaces_layout[uuid]}
+      end
+      if (nil ~= val_28_) then
+        i_27_ = (i_27_ + 1)
+        tbl_26_[i_27_] = val_28_
+      else
+      end
+    end
+    return tbl_26_
+  end
+  local function start_screen_watcher(self, emit)
+    local handler
+    local function _82_()
+      return emit("screen-watcher.events/screen-changed", {["all-spaces"] = snapshot_spaces(), ["active-spaces"] = hs.spaces.activeSpaces()})
+    end
+    handler = _82_
+    local watcher = hs.screen.watcher.new(handler)
+    watcher:start()
+    return watcher
+  end
+  local function stop_screen_watcher(state)
+    if state then
+      return state:stop()
+    else
+      return nil
+    end
+  end
+  local screen_watcher_source_type = make_source_type("event-source.type/screen-watcher", "Emits an event when the screen layout changes", {["config-schema"] = {}, emits = {"screen-watcher.events/screen-changed"}, ["start-fn"] = start_screen_watcher, ["stop-fn"] = stop_screen_watcher})
+  return {["screen-watcher-source-type"] = screen_watcher_source_type}
+end
 require("event_sources")
 package.preload["commands"] = package.preload["commands"] or function(...)
-  local _local_82_ = require("lib.command-registry")
-  local make_command_registry = _local_82_["make-command-registry"]
-  local add_command_21 = _local_82_["add-command!"]
-  local _local_85_ = require("commands.toggle-expose")
-  local toggle_expose_command = _local_85_["toggle-expose-command"]
+  local _local_89_ = require("lib.command-registry")
+  local make_command_registry = _local_89_["make-command-registry"]
+  local add_command_21 = _local_89_["add-command!"]
+  local _local_92_ = require("commands.toggle-expose")
+  local toggle_expose_command = _local_92_["toggle-expose-command"]
+  local _local_99_ = require("commands.space-indicator")
+  local update_menubar_command = _local_99_["update-menubar-command"]
   local command_registry = make_command_registry()
   add_command_21(command_registry, toggle_expose_command)
+  add_command_21(command_registry, update_menubar_command)
   return {["command-registry"] = command_registry}
 end
 package.preload["lib.command-registry"] = package.preload["lib.command-registry"] or function(...)
@@ -788,51 +840,111 @@ package.preload["lib.command-registry"] = package.preload["lib.command-registry"
   return {["make-command-registry"] = make_command_registry, ["make-command"] = make_command, ["add-command!"] = add_command_21, ["command-defined?"] = command_defined_3f, ["get-command"] = get_command, ["list-commands"] = list_commands, ["invoke-command!"] = invoke_command_21}
 end
 package.preload["commands.toggle-expose"] = package.preload["commands.toggle-expose"] or function(...)
-  local _local_83_ = require("lib.command-registry")
-  local make_command = _local_83_["make-command"]
+  local _local_90_ = require("lib.command-registry")
+  local make_command = _local_90_["make-command"]
   local expose = hs.expose.new()
   local toggle_expose_command
-  local function _84_(params)
+  local function _91_(params)
     return expose:toggleShow()
   end
-  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {fn = _84_})
+  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {fn = _91_})
   return {["toggle-expose-command"] = toggle_expose_command}
+end
+package.preload["commands.space-indicator"] = package.preload["commands.space-indicator"] or function(...)
+  local _local_93_ = require("lib.command-registry")
+  local make_command = _local_93_["make-command"]
+  local menubar = hs.menubar.new(true, "cosmicHammerSpaceIndicator")
+  if menubar then
+    menubar:setTitle("...")
+  else
+  end
+  local update_menubar_command
+  local function _95_(params)
+    if menubar then
+      local _96_
+      do
+        local tbl_26_ = {}
+        local i_27_ = 0
+        for _, n in ipairs(params["active-spaces"]) do
+          local val_28_ = tostring(n)
+          if (nil ~= val_28_) then
+            i_27_ = (i_27_ + 1)
+            tbl_26_[i_27_] = val_28_
+          else
+          end
+        end
+        _96_ = tbl_26_
+      end
+      return menubar:setTitle(table.concat(_96_, "|"))
+    else
+      return nil
+    end
+  end
+  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {schema = {["active-spaces"] = __fnl_global__table_3f}, fn = _95_})
+  return {["update-menubar-command"] = update_menubar_command}
 end
 require("commands")
 package.preload["behaviors"] = package.preload["behaviors"] or function(...)
-  local _local_95_ = require("lib.behavior-registry")
-  local make_behavior_registry = _local_95_["make-behavior-registry"]
-  local add_behavior_21 = _local_95_["add-behavior!"]
-  local _local_96_ = require("events")
-  local event_registry = _local_96_["event-registry"]
-  local _local_103_ = require("behaviors.compile-fennel")
-  local compile_fennel_behavior = _local_103_["compile-fennel-behavior"]
-  local _local_110_ = require("behaviors.reload-hammerspoon")
-  local reload_hammerspoon_behavior = _local_110_["reload-hammerspoon-behavior"]
-  local _local_113_ = require("behaviors.toggle-expose")
-  local toggle_expose_behavior = _local_113_["toggle-expose-behavior"]
-  local behavior_registry = make_behavior_registry({["event-registry"] = event_registry})
+  local _local_116_ = require("lib.behavior-registry")
+  local make_behavior_registry = _local_116_["make-behavior-registry"]
+  local add_behavior_21 = _local_116_["add-behavior!"]
+  local _local_117_ = require("events")
+  local event_registry = _local_117_["event-registry"]
+  local _local_118_ = require("commands")
+  local command_registry = _local_118_["command-registry"]
+  local _local_125_ = require("behaviors.compile-fennel")
+  local compile_fennel_behavior = _local_125_["compile-fennel-behavior"]
+  local _local_132_ = require("behaviors.reload-hammerspoon")
+  local reload_hammerspoon_behavior = _local_132_["reload-hammerspoon-behavior"]
+  local _local_135_ = require("behaviors.toggle-expose")
+  local toggle_expose_behavior = _local_135_["toggle-expose-behavior"]
+  local _local_139_ = require("behaviors.update-space-indicator")
+  local update_space_indicator_behavior = _local_139_["update-space-indicator-behavior"]
+  local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
   add_behavior_21(behavior_registry, toggle_expose_behavior)
+  add_behavior_21(behavior_registry, update_space_indicator_behavior)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["lib.behavior-registry"] = package.preload["lib.behavior-registry"] or function(...)
-  local _local_86_ = require("lib.cljlib-shim")
-  local some = _local_86_.some
-  local _local_87_ = require("lib.event-registry")
-  local valid_event_selector_3f = _local_87_["valid-event-selector?"]
-  local _local_88_ = require("lib.hierarchy")
-  local isa_3f = _local_88_["isa?"]
+  local _local_100_ = require("lib.cljlib-shim")
+  local some = _local_100_.some
+  local _local_101_ = require("lib.event-registry")
+  local valid_event_selector_3f = _local_101_["valid-event-selector?"]
+  local _local_102_ = require("lib.command-registry")
+  local command_defined_3f = _local_102_["command-defined?"]
+  local _local_103_ = require("lib.hierarchy")
+  local isa_3f = _local_103_["isa?"]
   local function make_behavior_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-behavior-registry: :event-registry is required")
     else
     end
-    return {behaviors = {}, ["event-registry"] = opts["event-registry"]}
+    if (nil == opts["command-registry"]) then
+      error("make-behavior-registry: :command-registry is required")
+    else
+    end
+    return {behaviors = {}, ["event-registry"] = opts["event-registry"], ["command-registry"] = opts["command-registry"]}
   end
-  local function make_behavior(name, description, event_selectors, handler_fn)
-    return {name = name, description = description, ["respond-to"] = event_selectors, fn = handler_fn}
+  local function make_behavior(opts)
+    if (nil == opts.name) then
+      error("make-behavior: :name is required")
+    else
+    end
+    if (nil == opts.description) then
+      error("make-behavior: :description is required")
+    else
+    end
+    if (nil == opts["respond-to"]) then
+      error(("make-behavior: :respond-to is required for " .. tostring(opts.name)))
+    else
+    end
+    if (nil == opts.fn) then
+      error(("make-behavior: :fn is required for " .. tostring(opts.name)))
+    else
+    end
+    return {name = opts.name, description = opts.description, ["respond-to"] = opts["respond-to"], commands = (opts.commands or {}), fn = opts.fn}
   end
   local function add_behavior_21(registry, behavior)
     local name = behavior.name
@@ -847,6 +959,12 @@ package.preload["lib.behavior-registry"] = package.preload["lib.behavior-registr
     for _, selector in ipairs(behavior["respond-to"]) do
       if not valid_event_selector_3f(registry["event-registry"], selector) then
         print(("[WARN] add-behavior!: event-selector '" .. tostring(selector) .. "' in behavior '" .. tostring(name) .. "' has no matching defined events"))
+      else
+      end
+    end
+    for alias, cmd_name in pairs(behavior.commands) do
+      if not command_defined_3f(registry["command-registry"], cmd_name) then
+        error(("add-behavior! " .. tostring(name) .. ": command '" .. tostring(cmd_name) .. "' (alias '" .. tostring(alias) .. "') not found in command-registry"))
       else
       end
     end
@@ -871,31 +989,31 @@ package.preload["lib.behavior-registry"] = package.preload["lib.behavior-registr
     if (nil == behavior) then
       return false
     else
-      local function _93_(_241)
+      local function _114_(_241)
         return isa_3f(registry["event-registry"].hierarchy, event_name, _241)
       end
-      return some(_93_, behavior["respond-to"])
+      return some(_114_, behavior["respond-to"])
     end
   end
   return {["make-behavior-registry"] = make_behavior_registry, ["make-behavior"] = make_behavior, ["add-behavior!"] = add_behavior_21, ["behavior-defined?"] = behavior_defined_3f, ["get-behavior"] = get_behavior, ["list-behaviors"] = list_behaviors, ["behavior-responds-to?"] = behavior_responds_to_3f}
 end
 package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile-fennel"] or function(...)
-  local _local_97_ = require("lib.behavior-registry")
-  local make_behavior = _local_97_["make-behavior"]
+  local _local_119_ = require("lib.behavior-registry")
+  local make_behavior = _local_119_["make-behavior"]
   local compile_fennel_behavior
-  local function _98_(file_change_event)
+  local function _120_(file_change_event)
     local path
     do
-      local t_99_ = file_change_event
-      if (nil ~= t_99_) then
-        t_99_ = t_99_["event-data"]
+      local t_121_ = file_change_event
+      if (nil ~= t_121_) then
+        t_121_ = t_121_["event-data"]
       else
       end
-      if (nil ~= t_99_) then
-        t_99_ = t_99_["file-path"]
+      if (nil ~= t_121_) then
+        t_121_ = t_121_["file-path"]
       else
       end
-      path = t_99_
+      path = t_121_
     end
     if ((nil ~= path) and (".fnl" == path:sub(-4))) then
       return print(hs.execute("./compile.sh", true))
@@ -903,29 +1021,29 @@ package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile
       return nil
     end
   end
-  compile_fennel_behavior = make_behavior("compile-fennel.behaviors/compile-fennel", "Watch fennel files in hammerspoon folder and recompile them.", {"event.kind.fs/file-change"}, _98_)
+  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _120_})
   return {["compile-fennel-behavior"] = compile_fennel_behavior}
 end
 package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.reload-hammerspoon"] or function(...)
-  local _local_104_ = require("lib.behavior-registry")
-  local make_behavior = _local_104_["make-behavior"]
+  local _local_126_ = require("lib.behavior-registry")
+  local make_behavior = _local_126_["make-behavior"]
   local notify = require("notify")
   local reloading_3f = false
   local reload = hs.timer.delayed.new(0.5, hs.reload)
   local reload_hammerspoon_behavior
-  local function _105_(file_change_event)
+  local function _127_(file_change_event)
     local path
     do
-      local t_106_ = file_change_event
-      if (nil ~= t_106_) then
-        t_106_ = t_106_["event-data"]
+      local t_128_ = file_change_event
+      if (nil ~= t_128_) then
+        t_128_ = t_128_["event-data"]
       else
       end
-      if (nil ~= t_106_) then
-        t_106_ = t_106_["file-path"]
+      if (nil ~= t_128_) then
+        t_128_ = t_128_["file-path"]
       else
       end
-      path = t_106_
+      path = t_128_
     end
     if (not reloading_3f and (nil ~= path) and (".hammerspoon/init.lua" == path:sub(-21))) then
       reloading_3f = true
@@ -935,52 +1053,82 @@ package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.rel
       return nil
     end
   end
-  reload_hammerspoon_behavior = make_behavior("reload-hammerspoon.behaviors/reload-hammerspoon", "When init.lua changes, reload hammerspoon.", {"event.kind.fs/file-change"}, _105_)
+  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _127_})
   return {["reload-hammerspoon-behavior"] = reload_hammerspoon_behavior}
 end
 package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-expose"] or function(...)
-  local _local_111_ = require("lib.behavior-registry")
-  local make_behavior = _local_111_["make-behavior"]
+  local _local_133_ = require("lib.behavior-registry")
+  local make_behavior = _local_133_["make-behavior"]
   local toggle_expose_behavior
-  local function _112_(event, send_cmd_21)
-    return send_cmd_21("expose.commands/toggle-show", {})
+  local function _134_(event, cmd)
+    return cmd["toggle-show"]({})
   end
-  toggle_expose_behavior = make_behavior("expose.behaviors/toggle-expose", "Toggle the Hammerspoon Expose window picker", {"event.kind.hotkey/pressed"}, _112_)
+  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _134_})
   return {["toggle-expose-behavior"] = toggle_expose_behavior}
+end
+package.preload["behaviors.update-space-indicator"] = package.preload["behaviors.update-space-indicator"] or function(...)
+  local _local_136_ = require("lib.behavior-registry")
+  local make_behavior = _local_136_["make-behavior"]
+  local function compute_active_space_indices(all_spaces, active_spaces)
+    local result = {}
+    local offset = 0
+    for _, entry in ipairs(all_spaces) do
+      local uuid = entry[1]
+      local space_ids = entry[2]
+      local active_sid = active_spaces[uuid]
+      for i, sid in ipairs(space_ids) do
+        if (sid == active_sid) then
+          table.insert(result, (i + offset))
+        else
+        end
+      end
+      offset = (offset + #space_ids)
+    end
+    return result
+  end
+  local update_space_indicator_behavior
+  local function _138_(event, cmd)
+    local indices = compute_active_space_indices(event["event-data"]["all-spaces"], event["event-data"]["active-spaces"])
+    return cmd["update-menubar"]({["active-spaces"] = indices})
+  end
+  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _138_})
+  return {["update-space-indicator-behavior"] = update_space_indicator_behavior}
 end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_134_ = require("lib.subscription-registry")
-  local make_subscription_registry = _local_134_["make-subscription-registry"]
-  local define_subscription_21 = _local_134_["define-subscription!"]
-  local _local_135_ = require("events")
-  local event_registry = _local_135_["event-registry"]
-  local _local_136_ = require("behaviors")
-  local behavior_registry = _local_136_["behavior-registry"]
-  local _local_137_ = require("event_sources")
-  local source_registry = _local_137_["source-registry"]
+  local _local_160_ = require("lib.subscription-registry")
+  local make_subscription_registry = _local_160_["make-subscription-registry"]
+  local define_subscription_21 = _local_160_["define-subscription!"]
+  local _local_161_ = require("events")
+  local event_registry = _local_161_["event-registry"]
+  local _local_162_ = require("behaviors")
+  local behavior_registry = _local_162_["behavior-registry"]
+  local _local_163_ = require("event_sources")
+  local source_registry = _local_163_["source-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["source-registry"] = source_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-selector"] = "event-source.file-watcher/config-dir", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-selector"] = "event-source.file-watcher/config-dir", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/toggle-expose-on-hotkey", {description = "Toggle Expose when ctrl+cmd+e is pressed", behavior = "expose.behaviors/toggle-expose", ["source-selector"] = "event-source.hotkey/ctrl+cmd+e", ["event-selector"] = "event.kind.hotkey/pressed"})
+  define_subscription_21(subscription_registry, "sub/update-indicator-on-space-change", {description = "Update space indicator when space changes", behavior = "space-indicator.behaviors/update-on-change", ["source-selector"] = "event-source.space-watcher/default", ["event-selector"] = "event.kind.space/changed"})
+  define_subscription_21(subscription_registry, "sub/update-indicator-on-screen-change", {description = "Update space indicator when screen layout changes", behavior = "space-indicator.behaviors/update-on-change", ["source-selector"] = "event-source.screen-watcher/default", ["event-selector"] = "event.kind.screen/layout-changed"})
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["lib.subscription-registry"] = package.preload["lib.subscription-registry"] or function(...)
-  local _local_114_ = require("lib.cljlib-shim")
-  local hash_set = _local_114_["hash-set"]
-  local conj = _local_114_.conj
-  local disj = _local_114_.disj
-  local into = _local_114_.into
-  local seq = _local_114_.seq
-  local filter = _local_114_.filter
-  local _local_115_ = require("lib.event-registry")
-  local valid_event_selector_3f = _local_115_["valid-event-selector?"]
-  local _local_116_ = require("lib.behavior-registry")
-  local behavior_defined_3f = _local_116_["behavior-defined?"]
-  local _local_117_ = require("lib.source-registry")
-  local source_instance_exists_3f = _local_117_["source-instance-exists?"]
-  local _local_118_ = require("lib.hierarchy")
-  local ancestors = _local_118_.ancestors
+  local _local_140_ = require("lib.cljlib-shim")
+  local hash_set = _local_140_["hash-set"]
+  local conj = _local_140_.conj
+  local disj = _local_140_.disj
+  local into = _local_140_.into
+  local seq = _local_140_.seq
+  local filter = _local_140_.filter
+  local _local_141_ = require("lib.event-registry")
+  local valid_event_selector_3f = _local_141_["valid-event-selector?"]
+  local _local_142_ = require("lib.behavior-registry")
+  local behavior_defined_3f = _local_142_["behavior-defined?"]
+  local _local_143_ = require("lib.source-registry")
+  local source_instance_exists_3f = _local_143_["source-instance-exists?"]
+  local _local_144_ = require("lib.hierarchy")
+  local ancestors = _local_144_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -1017,16 +1165,16 @@ package.preload["lib.subscription-registry"] = package.preload["lib.subscription
     local behavior = subscription.behavior
     local behavior_set
     do
-      local t_124_ = registry.index
-      if (nil ~= t_124_) then
-        t_124_ = t_124_[source]
+      local t_150_ = registry.index
+      if (nil ~= t_150_) then
+        t_150_ = t_150_[source]
       else
       end
-      if (nil ~= t_124_) then
-        t_124_ = t_124_[event]
+      if (nil ~= t_150_) then
+        t_150_ = t_150_[event]
       else
       end
-      behavior_set = t_124_
+      behavior_set = t_150_
     end
     if behavior_set then
       registry.index[source][event] = disj(behavior_set, behavior)
@@ -1110,24 +1258,34 @@ package.preload["lib.subscription-registry"] = package.preload["lib.subscription
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-subscribed-behaviors"] = get_subscribed_behaviors}
 end
-local _local_138_ = require("subscriptions")
-local subscription_registry = _local_138_["subscription-registry"]
+local _local_164_ = require("subscriptions")
+local subscription_registry = _local_164_["subscription-registry"]
 package.preload["lib.dispatcher"] = package.preload["lib.dispatcher"] or function(...)
-  local _local_139_ = require("lib.cljlib-shim")
-  local mapv = _local_139_.mapv
-  local filter = _local_139_.filter
-  local seq = _local_139_.seq
-  local _local_140_ = require("lib.event-registry")
-  local add_event_handler_21 = _local_140_["add-event-handler!"]
-  local _local_141_ = require("lib.behavior-registry")
-  local behavior_responds_to_3f = _local_141_["behavior-responds-to?"]
-  local get_behavior = _local_141_["get-behavior"]
-  local _local_142_ = require("lib.subscription-registry")
-  local get_subscribed_behaviors = _local_142_["get-subscribed-behaviors"]
-  local _local_143_ = require("lib.source-registry")
-  local source_instance_exists_3f = _local_143_["source-instance-exists?"]
-  local _local_144_ = require("lib.command-registry")
-  local invoke_command_21 = _local_144_["invoke-command!"]
+  local _local_165_ = require("lib.cljlib-shim")
+  local mapv = _local_165_.mapv
+  local filter = _local_165_.filter
+  local seq = _local_165_.seq
+  local _local_166_ = require("lib.event-registry")
+  local add_event_handler_21 = _local_166_["add-event-handler!"]
+  local _local_167_ = require("lib.behavior-registry")
+  local behavior_responds_to_3f = _local_167_["behavior-responds-to?"]
+  local get_behavior = _local_167_["get-behavior"]
+  local _local_168_ = require("lib.subscription-registry")
+  local get_subscribed_behaviors = _local_168_["get-subscribed-behaviors"]
+  local _local_169_ = require("lib.source-registry")
+  local source_instance_exists_3f = _local_169_["source-instance-exists?"]
+  local _local_170_ = require("lib.command-registry")
+  local invoke_command_21 = _local_170_["invoke-command!"]
+  local function build_cmd_table(command_registry, behavior)
+    local cmd = {}
+    for alias, cmd_name in pairs((behavior.commands or {})) do
+      local function _171_(params)
+        return invoke_command_21(command_registry, cmd_name, params)
+      end
+      cmd[alias] = _171_
+    end
+    return cmd
+  end
   local function get_behaviors_for_event(subscription_registry, event)
     local behavior_registry = subscription_registry["behavior-registry"]
     local source_registry = subscription_registry["source-registry"]
@@ -1137,7 +1295,7 @@ package.preload["lib.dispatcher"] = package.preload["lib.dispatcher"] or functio
     end
     local behavior_names = (get_subscribed_behaviors(subscription_registry, event["event-source"], event["event-name"]) or {})
     local valid_names
-    local function _146_(name)
+    local function _173_(name)
       local responds_3f = behavior_responds_to_3f(behavior_registry, name, event["event-name"])
       if not responds_3f then
         print(("[ERROR] get-behaviors-for-event: behavior '" .. tostring(name) .. "' does not respond to event '" .. tostring(event["event-name"]) .. "'"))
@@ -1145,8 +1303,8 @@ package.preload["lib.dispatcher"] = package.preload["lib.dispatcher"] or functio
       end
       return responds_3f
     end
-    valid_names = filter(_146_, behavior_names)
-    local function _148_(name)
+    valid_names = filter(_173_, behavior_names)
+    local function _175_(name)
       local behavior = get_behavior(behavior_registry, name)
       if (nil == behavior) then
         print(("[ERROR] get-behaviors-for-event: behavior '" .. tostring(name) .. "' not found in registry"))
@@ -1154,39 +1312,48 @@ package.preload["lib.dispatcher"] = package.preload["lib.dispatcher"] or functio
       end
       return behavior
     end
-    return mapv(_148_, (seq(valid_names) or {}))
+    return mapv(_175_, (seq(valid_names) or {}))
   end
-  local function start_dispatcher_21(subscription_registry, command_registry)
+  local function start_dispatcher_21(subscription_registry)
     local event_registry = subscription_registry["event-registry"]
-    local send_cmd_21
-    local function _150_(cmd_name, params)
-      return invoke_command_21(command_registry, cmd_name, params)
+    local command_registry = subscription_registry["behavior-registry"]["command-registry"]
+    local cmd_cache = {}
+    local get_cmd_table
+    local function _177_(behavior)
+      local cached = cmd_cache[behavior.name]
+      if cached then
+        return cached
+      else
+        local cmd = build_cmd_table(command_registry, behavior)
+        cmd_cache[behavior.name] = cmd
+        return cmd
+      end
     end
-    send_cmd_21 = _150_
-    local function _151_(event)
+    get_cmd_table = _177_
+    local function _179_(event)
       local bs = get_behaviors_for_event(subscription_registry, event)
       for _, behavior in pairs(bs) do
         if behavior then
-          behavior.fn(event, send_cmd_21)
+          behavior.fn(event, get_cmd_table(behavior))
         else
         end
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _151_)
-    local function _153_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _179_)
+    local function _181_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _153_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _181_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_155_ = require("lib.dispatcher")
-local start_dispatcher_21 = _local_155_["start-dispatcher!"]
+local _local_183_ = require("lib.dispatcher")
+local start_dispatcher_21 = _local_183_["start-dispatcher!"]
 package.preload["lib.event-loop"] = package.preload["lib.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -1213,12 +1380,12 @@ package.preload["lib.event-loop"] = package.preload["lib.event-loop"] or functio
     else
     end
     local timer
-    local function _159_()
+    local function _187_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _159_)
+    timer = hs.timer.new(0.01, _187_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -1234,12 +1401,10 @@ package.preload["lib.event-loop"] = package.preload["lib.event-loop"] or functio
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_161_ = require("lib.event-loop")
-local make_event_loop = _local_161_["make-event-loop"]
-local start_event_loop_21 = _local_161_["start-event-loop!"]
-local _local_162_ = require("commands")
-local command_registry = _local_162_["command-registry"]
-start_dispatcher_21(subscription_registry, command_registry)
+local _local_189_ = require("lib.event-loop")
+local make_event_loop = _local_189_["make-event-loop"]
+local start_event_loop_21 = _local_189_["start-event-loop!"]
+start_dispatcher_21(subscription_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)
 notify.warn("Reload Succeeded")

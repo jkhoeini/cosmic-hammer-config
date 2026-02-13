@@ -7,11 +7,12 @@
 
 (local toggle-expose-behavior
   (make-behavior
-   :expose.behaviors/toggle-expose
-   "Toggle the Hammerspoon Expose window picker"
-   [:event.kind.hotkey/pressed]
-   (fn [event send-cmd!]
-     (send-cmd! :expose.commands/toggle-show {}))))
+   {:name :expose.behaviors/toggle-expose
+    :description "Toggle the Hammerspoon Expose window picker"
+    :respond-to [:event.kind.hotkey/pressed]
+    :commands {:toggle-show :expose.commands/toggle-show}
+    :fn (fn [event cmd]
+          (cmd.toggle-show {}))}))
 
 
 {: toggle-expose-behavior}

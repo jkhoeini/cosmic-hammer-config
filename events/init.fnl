@@ -147,5 +147,21 @@
 (derive! event-hierarchy :hotkey.events/pressed :event.kind.hotkey/pressed)
 
 
+;; --- Space Watcher Events ---
+(define-event! event-registry
+               :space-watcher.events/space-changed
+               "Active space/desktop changed"
+               {:space-number number? :all-spaces table? :active-spaces table?})
+(derive! event-hierarchy :space-watcher.events/space-changed :event.kind.space/changed)
+
+
+;; --- Screen Watcher Events ---
+(define-event! event-registry
+               :screen-watcher.events/screen-changed
+               "Screen layout changed"
+               {:all-spaces table? :active-spaces table?})
+(derive! event-hierarchy :screen-watcher.events/screen-changed :event.kind.screen/layout-changed)
+
+
 ;; Export registry (hierarchy accessible via event-registry.hierarchy)
 {: event-registry}

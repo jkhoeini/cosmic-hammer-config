@@ -34,4 +34,18 @@
   :source-selector :event-source.hotkey/ctrl+cmd+e
   :event-selector :event.kind.hotkey/pressed})
 
+(define-subscription! subscription-registry
+ :sub/update-indicator-on-space-change
+ {:description "Update space indicator when space changes"
+  :behavior :space-indicator.behaviors/update-on-change
+  :source-selector :event-source.space-watcher/default
+  :event-selector :event.kind.space/changed})
+
+(define-subscription! subscription-registry
+ :sub/update-indicator-on-screen-change
+ {:description "Update space indicator when screen layout changes"
+  :behavior :space-indicator.behaviors/update-on-change
+  :source-selector :event-source.screen-watcher/default
+   :event-selector :event.kind.screen/layout-changed})
+
 {: subscription-registry}

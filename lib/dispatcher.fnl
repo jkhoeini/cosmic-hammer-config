@@ -12,6 +12,17 @@
 (local {: invoke-command!} (require :lib.command-registry))
 
 
+(fn build-cmd-table [command-registry behavior]
+  "Build a cmd table for a behavior from its :commands map.
+   Each key in the :commands map becomes a function that invokes the corresponding command.
+   Returns a table like {alias (fn [params] (invoke-command! registry cmd-name params))}."
+  (let [cmd {}]
+    (each [alias cmd-name (pairs (or behavior.commands {}))]
+      (tset cmd alias (fn [params]
+                        (invoke-command! command-registry cmd-name params))))
+    cmd))
+
+
 (fn get-behaviors-for-event [subscription-registry event]
   "Get all behaviors for this event, resolved from registry."
   (let [behavior-registry subscription-registry.behavior-registry
@@ -38,19 +49,27 @@
             (or (seq valid-names) [])))))
 
 
-(fn start-dispatcher! [subscription-registry command-registry]
+(fn start-dispatcher! [subscription-registry]
   "Register behavior routing handlers on the event registry.
    subscription-registry must contain :event-registry, :behavior-registry, and :source-registry.
-   command-registry is used to create the send-cmd! closure passed to behaviors."
+   command-registry is resolved from subscription-registry.behavior-registry.command-registry.
+   Per-behavior cmd tables are lazily built and cached on first use."
   (let [event-registry subscription-registry.event-registry
-        send-cmd! (fn [cmd-name params]
-                    (invoke-command! command-registry cmd-name params))]
+        command-registry subscription-registry.behavior-registry.command-registry
+        cmd-cache {}
+        get-cmd-table (fn [behavior]
+                        (let [cached (. cmd-cache behavior.name)]
+                          (if cached
+                              cached
+                              (let [cmd (build-cmd-table command-registry behavior)]
+                                (tset cmd-cache behavior.name cmd)
+                                cmd))))]
     (add-event-handler! event-registry :dispatcher/behavior-router
                         (fn [event]
                           (let [bs (get-behaviors-for-event subscription-registry event)]
                             (each [_ behavior (pairs bs)]
                               (when behavior
-                                ((. behavior :fn) event send-cmd!))))))
+                                ((. behavior :fn) event (get-cmd-table behavior)))))))
 
     (add-event-handler! event-registry :dispatcher/debug-handler
                         (fn [event]

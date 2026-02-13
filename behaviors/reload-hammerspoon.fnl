@@ -12,17 +12,17 @@
 
 (local reload-hammerspoon-behavior
   (make-behavior
-   :reload-hammerspoon.behaviors/reload-hammerspoon
-   "When init.lua changes, reload hammerspoon."
-   [:event.kind.fs/file-change]
-   (fn [file-change-event]
-     (let [path (?. file-change-event :event-data :file-path)]
-       (when (and (not reloading?)
-                  (not= nil path)
-                  (= ".hammerspoon/init.lua" (path:sub -21)))
-         (set reloading? true)
-         (notify.warn "Reloading...")
-         (reload:start))))))
+   {:name :reload-hammerspoon.behaviors/reload-hammerspoon
+    :description "When init.lua changes, reload hammerspoon."
+    :respond-to [:event.kind.fs/file-change]
+    :fn (fn [file-change-event]
+          (let [path (?. file-change-event :event-data :file-path)]
+            (when (and (not reloading?)
+                       (not= nil path)
+                       (= ".hammerspoon/init.lua" (path:sub -21)))
+              (set reloading? true)
+              (notify.warn "Reloading...")
+              (reload:start))))}))
 
 
 {: reload-hammerspoon-behavior}

@@ -38,16 +38,22 @@ Built incrementally — each step is independently functional.
      - Naming convention: :namespace.commands/action-name
      - First command: :expose.commands/toggle-show
 
-**** DONE Update behaviors to receive send-cmd! :architecture:
-     - Behavior handler signature: (fn [event send-cmd!] ...)
-     - Dispatcher passes send-cmd! closure that calls invoke-command!
-     - Backward compatible: existing behaviors ignore extra arg
-     - toggle-expose behavior updated to use send-cmd! instead of direct invoke-command!
+**** DONE Update behaviors to receive cmd object :architecture:
+     - Behaviors declare :commands {local-alias -> registry-name}
+     - Dispatcher builds per-behavior cmd table at startup (cached)
+     - Behavior handler signature: (fn [event cmd] ...) where cmd.alias invokes the command
+     - Correct by construction: command references validated at add-behavior! time
+     - make-behavior switched to opts table API
 
 **** DONE Add target-selector to subscriptions :architecture:
      - Subscriptions gain optional :target-selector field
      - Data model expansion only — not enforced until components exist
      - Prepares subscription shape for component wiring
+
+**** TODO [#B] Migrate remaining behaviors to use commands instead of side-effects :refactor:
+     - reload-hammerspoon: hs.reload → command
+     - compile-fennel: hs.execute → command
+     - Side-effects should go through the command registry for consistency and testability
 
 **** LATER [#A] Migrate legacy modules to Sheaf concepts :refactor:
      Each module becomes components + commands + behaviors + subscriptions.
@@ -58,7 +64,7 @@ Built incrementally — each step is independently functional.
      - [ ] Migrate multimedia.fnl (5 media key functions → commands + behaviors)
      - [ ] Migrate emacs.fnl (Emacs integration → component with commands)
      - [ ] Migrate app-switcher.fnl (2 functions → commands + behaviors)
-     - [ ] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
+     - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
      - [ ] Keep apps-filter.fnl as shared utility
      - [ ] Skip paper-wm.fnl (Spoon version already running)
@@ -178,7 +184,7 @@ Enables modes, contexts, and conditional behavior.
     - Use tags + contextual filtering instead of hs.hotkey.modal
     - Depends on: tag attachment, require-tags filtering, App event source
 
-** PROJ Expand Configuration Options [0/9]
+** PROJ Expand Configuration Options [2/9]
 Users can automate based on more system events.
 
 *** NEXT Create Window event source :feature:
@@ -187,13 +193,13 @@ Users can automate based on more system events.
 *** NEXT Create App event source :feature:
     - Emit events on app launch/quit/activate/deactivate/hidden
 
-*** NEXT Create Screen event source :feature:
+*** DONE Create Screen event source :feature:
     - Emit events on display add/remove/layout-change
-    - Needed for active-space-indicator migration
+    - event_sources/screen-watcher.fnl, :event-source.type/screen-watcher
 
-*** NEXT Create Space event source :feature:
+*** DONE Create Space event source :feature:
     - Emit events on space/desktop change
-    - Needed for active-space-indicator migration
+    - event_sources/space-watcher.fnl, :event-source.type/space-watcher
 
 *** LATER [#C] Create WiFi event source :feature:
     - Emit events on WiFi network change

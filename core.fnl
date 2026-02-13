@@ -12,7 +12,6 @@
 
 
 (local spoons (require :spoons))
-(local active-space-indicator (require :active-space-indicator))
 (local notify (require :notify))
 
 ;; Load events first (creates registry), then event sources, then behaviors
@@ -26,8 +25,7 @@
 (local {: start-dispatcher!} (require :lib.dispatcher))
 (local {: make-event-loop : start-event-loop!} (require :lib.event-loop))
 
-(local {: command-registry} (require :commands))
-(start-dispatcher! subscription-registry command-registry)
+(start-dispatcher! subscription-registry)
 (local event-loop (make-event-loop event-registry))
 (start-event-loop! event-loop)
 

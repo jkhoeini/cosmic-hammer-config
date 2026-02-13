@@ -3,17 +3,20 @@
 ;; Data-oriented behavior registry - no global state.
 ;;
 ;; A behavior-registry is a data structure:
-;;   {:behaviors {}       ; behavior-name -> behavior data
-;;    :event-registry r}  ; for event-selector validation
+;;   {:behaviors {}          ; behavior-name -> behavior data
+;;    :event-registry r      ; for event-selector validation
+;;    :command-registry cr}  ; for command validation
 ;;
 ;; A behavior is a data structure:
 ;;   {:name :my-behavior
 ;;    :description "Human-readable description"
 ;;    :respond-to [:event.kind/something]
-;;    :fn (fn [event send-cmd!] ...)}
+;;    :commands {:local-alias :namespace.commands/action}
+;;    :fn (fn [event cmd] ...)}
 
 (local {: some} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :lib.event-registry))
+(local {: command-defined?} (require :lib.command-registry))
 (local {: isa?} (require :lib.hierarchy))
 
 
@@ -24,24 +27,39 @@
 (fn make-behavior-registry [opts]
   "Create a new behavior registry.
    opts:
-     :event-registry - for event-selector validation (required)"
+     :event-registry    - for event-selector validation (required)
+     :command-registry  - for command validation (required)"
   (when (= nil opts.event-registry)
     (error "make-behavior-registry: :event-registry is required"))
+  (when (= nil opts.command-registry)
+    (error "make-behavior-registry: :command-registry is required"))
   {:behaviors {}
-   :event-registry opts.event-registry})
+   :event-registry opts.event-registry
+   :command-registry opts.command-registry})
 
 
-(fn make-behavior [name description event-selectors handler-fn]
+(fn make-behavior [opts]
   "Create a behavior data structure (pure, no validation).
-   name: unique identifier (e.g. :reload-hammerspoon.behaviors/reload)
-   description: human-readable description
-   event-selectors: list of event-names or event-kinds this behavior responds to
-    handler-fn: (fn [event send-cmd!] ...) - called when matching event occurs
-   Returns: {:name :description :respond-to :fn}"
-  {:name name
-   :description description
-   :respond-to event-selectors
-   :fn handler-fn})
+   opts:
+     :name        - unique identifier (e.g. :reload-hammerspoon.behaviors/reload) (required)
+     :description - human-readable description (required)
+     :respond-to  - list of event-names or event-kinds this behavior responds to (required)
+     :commands    - map of {local-alias -> command-registry-name} (default {})
+     :fn          - (fn [event cmd] ...) - called when matching event occurs (required)
+   Returns: {:name :description :respond-to :commands :fn}"
+  (when (= nil opts.name)
+    (error "make-behavior: :name is required"))
+  (when (= nil opts.description)
+    (error "make-behavior: :description is required"))
+  (when (= nil opts.respond-to)
+    (error (.. "make-behavior: :respond-to is required for " (tostring opts.name))))
+  (when (= nil opts.fn)
+    (error (.. "make-behavior: :fn is required for " (tostring opts.name))))
+  {:name opts.name
+   :description opts.description
+   :respond-to opts.respond-to
+   :commands (or opts.commands {})
+   :fn opts.fn})
 
 
 ;; ============================================================================
@@ -50,7 +68,8 @@
 
 (fn add-behavior! [registry behavior]
   "Add a behavior to the registry. Mutates registry.
-   Validates event-selectors against registry.event-registry."
+   Validates event-selectors against registry.event-registry.
+   Validates command references against registry.command-registry."
   (let [name behavior.name]
     (when (= nil name)
       (error "add-behavior!: behavior must have a :name"))
@@ -62,6 +81,13 @@
         (print (.. "[WARN] add-behavior!: event-selector '"
                    (tostring selector) "' in behavior '"
                    (tostring name) "' has no matching defined events"))))
+    ;; Validate command references
+    (each [alias cmd-name (pairs behavior.commands)]
+      (when (not (command-defined? registry.command-registry cmd-name))
+        (error (.. "add-behavior! " (tostring name)
+                   ": command '" (tostring cmd-name)
+                   "' (alias '" (tostring alias)
+                   "') not found in command-registry"))))
     (tset registry.behaviors name behavior)))
 
 
