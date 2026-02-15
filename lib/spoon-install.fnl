@@ -206,7 +206,7 @@
     (when (valid-spoon? name repo)
       (async-install-spoon-from-zip-url! (. repos repo :data name
                                              :download_url)
-                                          callback))
+                                         callback))
     nil))
 
 (fn install-spoon-from-repo! [name repo]
