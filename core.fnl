@@ -11,7 +11,8 @@
 (set hs.window.animationDuration 0.0)
 
 
-(local spoons (require :spoons))
+(local paper-wm (require :paper-wm))
+(paper-wm.start!)
 (local notify (require :notify))
 
 ;; Load events first (creates registry), then event sources, then behaviors

@@ -2,264 +2,962 @@ hs.console.clearConsole()
 _G["event-bus.debug-mode?"] = false
 hs.ipc.cliInstall()
 hs.window.animationDuration = 0.0
-local spoons
-package.preload["spoons"] = package.preload["spoons"] or function(...)
-  local _local_32_ = require("lib.spoon-install")
-  local and_use_21 = _local_32_["and-use!"]
-  local add_repo_21 = _local_32_["add-repo!"]
-  add_repo_21("PaperWM", {url = "https://github.com/mogenson/PaperWM.spoon", desc = "PaperWM.spoon repository", branch = "release"})
-  local function _33_(_241)
-    return _241:bindHotkeys(_241.default_hotkeys)
+local paper_wm
+package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
+  local Window = hs.window
+  local Screen = hs.screen
+  local Spaces = hs.spaces
+  local Timer = hs.timer
+  local Watcher = hs.uielement.watcher
+  local WindowFilter = hs.window.filter
+  local Rect = hs.geometry.rect
+  local config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.3125, 0.421875, 0.625, 0.84375}}
+  local logger = hs.logger.new("PaperWM")
+  local Direction = {LEFT = -1, RIGHT = 1, UP = -2, DOWN = 2, WIDTH = 3, HEIGHT = 4, ASCENDING = 5, DESCENDING = 6}
+  local window_list = {}
+  local index_table = {}
+  local ui_watchers = {}
+  local focused_window = nil
+  local pending_window = nil
+  local window_filter = nil
+  local screen_watcher = nil
+  local hotkeys = {}
+  local function get_space(index)
+    local layout = Spaces.allSpaces()
+    local idx = index
+    local result = nil
+    for _, screen in ipairs(Screen.allScreens()) do
+      if result then break end
+      local screen_uuid = screen:getUUID()
+      local num_spaces = #layout[screen_uuid]
+      if (idx <= num_spaces) then
+        result = layout[screen_uuid][idx]
+      else
+        idx = (idx - num_spaces)
+      end
+    end
+    return result
   end
-  and_use_21("PaperWM", {repo = "PaperWM", config = {window_gap = 35, screen_margin = 16, window_ratios = {0.3125, 0.421875, 0.625, 0.84375}}, fn = _33_, start = true})
-  return {}
+  local function get_first_visible_window(columns, screen)
+    local x = screen:frame().x
+    local result = nil
+    for _, windows in ipairs((columns or {})) do
+      if result then break end
+      local window = windows[1]
+      if (window:frame().x >= x) then
+        result = window
+      else
+      end
+    end
+    return result
+  end
+  local function get_column(space, col)
+    return (window_list[space] or {})[col]
+  end
+  local function get_window(space, col, row)
+    return (get_column(space, col) or {})[row]
+  end
+  local function get_canvas(screen)
+    local f = screen:frame()
+    local gap = config["window-gap"]
+    return Rect((f.x + gap), (f.y + gap), (f.w - (2 * gap)), (f.h - (2 * gap)))
+  end
+  local function update_index_table_21(space, column)
+    local columns = (window_list[space] or {})
+    for col = column, #columns do
+      for row, window in ipairs(get_column(space, col)) do
+        index_table[window:id()] = {space = space, col = col, row = row}
+      end
+    end
+    return nil
+  end
+  local function move_window_21(window, frame)
+    local padding = 0.02
+    local watcher = ui_watchers[window:id()]
+    if not watcher then
+      logger.e("window does not have ui watcher")
+      return
+    else
+    end
+    if (frame == window:frame()) then
+      logger.v("no change in window frame")
+      return
+    else
+    end
+    watcher:stop()
+    window:setFrame(frame)
+    local function _5_()
+      return watcher:start({Watcher.windowMoved, Watcher.windowResized})
+    end
+    return Timer.doAfter((Window.animationDuration + padding), _5_)
+  end
+  local function tile_column_21(windows, bounds, h, w, id, h4id)
+    local last_window = nil
+    local frame = nil
+    local col_width = w
+    for _, window in ipairs(windows) do
+      frame = window:frame()
+      col_width = (col_width or frame.w)
+      if bounds.x then
+        frame.x = bounds.x
+      elseif bounds.x2 then
+        frame.x = (bounds.x2 - col_width)
+      else
+      end
+      if h then
+        if (id and h4id and (window:id() == id)) then
+          frame.h = h4id
+        else
+          frame.h = h
+        end
+      else
+      end
+      frame.y = bounds.y
+      frame.w = col_width
+      frame.y2 = math.min(frame.y2, bounds.y2)
+      move_window_21(window, frame)
+      bounds.y = math.min((frame.y2 + config["window-gap"]), bounds.y2)
+      last_window = window
+    end
+    if (frame and (frame.y2 ~= bounds.y2)) then
+      frame.y2 = bounds.y2
+      move_window_21(last_window, frame)
+    else
+    end
+    return col_width
+  end
+  local function tile_space_21(space)
+    if (not space or (Spaces.spaceType(space) ~= "user")) then
+      logger.e("current space invalid")
+      return
+    else
+    end
+    local screen = Screen(Spaces.spaceDisplay(space))
+    if not screen then
+      logger.e("no screen for space")
+      return
+    else
+    end
+    local fw = Window.focusedWindow()
+    local anchor_window
+    if (fw and (Spaces.windowSpaces(fw)[1] == space)) then
+      anchor_window = fw
+    else
+      anchor_window = get_first_visible_window(window_list[space], screen)
+    end
+    if not anchor_window then
+      logger.e("no anchor window in space")
+      return
+    else
+    end
+    local anchor_index = index_table[anchor_window:id()]
+    if not anchor_index then
+      logger.e("anchor index not found")
+      return
+    else
+    end
+    local screen_frame = screen:frame()
+    local left_margin = (screen_frame.x + config["screen-margin"])
+    local right_margin = (screen_frame.x2 - config["screen-margin"])
+    local canvas = get_canvas(screen)
+    local anchor_frame = anchor_window:frame()
+    anchor_frame.x = math.max(anchor_frame.x, canvas.x)
+    anchor_frame.w = math.min(anchor_frame.w, canvas.w)
+    anchor_frame.h = math.min(anchor_frame.h, canvas.h)
+    if (anchor_frame.x2 > canvas.x2) then
+      anchor_frame.x = (canvas.x2 - anchor_frame.w)
+    else
+    end
+    local column = get_column(space, anchor_index.col)
+    if not column then
+      logger.e("no anchor window column")
+      return
+    else
+    end
+    if (#column == 1) then
+      anchor_frame.y = canvas.y
+      anchor_frame.h = canvas.h
+      move_window_21(anchor_window, anchor_frame)
+    else
+      local n = (#column - 1)
+      local h = math.floor((math.max(0, (canvas.h - anchor_frame.h - (n * config["window-gap"]))) / n))
+      local bounds = {x = anchor_frame.x, x2 = nil, y = canvas.y, y2 = canvas.y2}
+      tile_column_21(column, bounds, h, anchor_frame.w, anchor_window:id(), anchor_frame.h)
+    end
+    local x = math.min((anchor_frame.x2 + config["window-gap"]), right_margin)
+    for col = (anchor_index.col + 1), #(window_list[space] or {}) do
+      local bounds = {x = x, x2 = nil, y = canvas.y, y2 = canvas.y2}
+      local column_width = tile_column_21(get_column(space, col), bounds)
+      x = math.min((x + column_width + config["window-gap"]), right_margin)
+    end
+    local x2 = math.max((anchor_frame.x - config["window-gap"]), left_margin)
+    for col = (anchor_index.col - 1), 1, -1 do
+      local bounds = {x = nil, x2 = x2, y = canvas.y, y2 = canvas.y2}
+      local column_width = tile_column_21(get_column(space, col), bounds)
+      x2 = math.max((x2 - column_width - config["window-gap"]), left_margin)
+    end
+    return nil
+  end
+  local add_window_21 = nil
+  local remove_window_21 = nil
+  local focus_window = nil
+  local function window_event_handler(window, event)
+    logger.df("%s for [%s] id: %d", event, window, ((window and window:id()) or -1))
+    local space = nil
+    if (event == "windowFocused") then
+      if (pending_window and (window == pending_window)) then
+        local function _18_()
+          logger.vf("pending window timer for %s", window)
+          return window_event_handler(window, event)
+        end
+        Timer.doAfter(Window.animationDuration, _18_)
+        return
+      else
+      end
+      focused_window = window
+      space = Spaces.windowSpaces(window)[1]
+    elseif ((event == "windowVisible") or (event == "windowUnfullscreened")) then
+      space = add_window_21(window)
+      if (pending_window and (window == pending_window)) then
+        pending_window = nil
+      elseif not space then
+        pending_window = window
+        local function _20_()
+          return window_event_handler(window, event)
+        end
+        Timer.doAfter(Window.animationDuration, _20_)
+        return
+      else
+      end
+    elseif (event == "windowNotVisible") then
+      space = remove_window_21(window)
+    elseif (event == "windowFullscreened") then
+      space = remove_window_21(window, true)
+    elseif ((event == "AXWindowMoved") or (event == "AXWindowResized")) then
+      space = Spaces.windowSpaces(window)[1]
+    else
+    end
+    if space then
+      return tile_space_21(space)
+    else
+      return nil
+    end
+  end
+  local function focus_space(space, window)
+    local screen = Screen(Spaces.spaceDisplay(space))
+    if not screen then
+      return
+    else
+    end
+    local target_window = (window or get_first_visible_window(window_list[space], screen))
+    local do_space_focus
+    local function _25_()
+      if target_window then
+        local function check_focus(win, n)
+          local focused_3f = true
+          for _ = 1, n do
+            focused_3f = (focused_3f and (Window.focusedWindow() == win))
+            if not focused_3f then
+              return false
+            else
+            end
+            coroutine.yield(false)
+          end
+          return focused_3f
+        end
+        while true do
+          target_window:focus()
+          coroutine.yield(false)
+          if ((Spaces.focusedSpace() == space) and check_focus(target_window, 3)) then
+            break
+          else
+          end
+        end
+      else
+        local point = screen:frame()
+        point.x = (point.x + math.floor((point.w / 2)))
+        point.y = (point.y - 4)
+        while true do
+          hs.eventtap.leftClick(point)
+          coroutine.yield(false)
+          if (Spaces.focusedSpace() == space) then
+            break
+          else
+          end
+        end
+      end
+      hs.mouse.absolutePosition(hs.geometry.rectMidPoint(screen:frame()))
+      return true
+    end
+    do_space_focus = coroutine.wrap(_25_)
+    local start_time = Timer.secondsSinceEpoch()
+    local function _30_(timer)
+      if ((Timer.secondsSinceEpoch() - start_time) > 4) then
+        logger.ef("focusSpace() timeout! space %d focused space %d", space, Spaces.focusedSpace())
+        return timer:stop()
+      else
+        return nil
+      end
+    end
+    return Timer.doUntil(do_space_focus, _30_, Window.animationDuration)
+  end
+  local function _32_(add_win)
+    if (add_win:tabCount() > 0) then
+      hs.notify.show("PaperWM", "Windows with tabs are not supported!", "See https://github.com/mogenson/PaperWM.spoon/issues/39")
+      return
+    else
+    end
+    if index_table[add_win:id()] then
+      return
+    else
+    end
+    local space = Spaces.windowSpaces(add_win)[1]
+    if not space then
+      logger.e("add window does not have a space")
+      return
+    else
+    end
+    if not window_list[space] then
+      window_list[space] = {}
+    else
+    end
+    local add_column = 1
+    if (focused_window and ((index_table[focused_window:id()] or {}).space == space) and (focused_window:id() ~= add_win:id())) then
+      add_column = (index_table[focused_window:id()].col + 1)
+    else
+      local x = add_win:frame().center.x
+      for col, windows in ipairs(window_list[space]) do
+        if (x < windows[1]:frame().center.x) then
+          add_column = col
+          break
+        else
+        end
+      end
+    end
+    table.insert(window_list[space], add_column, {add_win})
+    update_index_table_21(space, add_column)
+    do
+      local watcher
+      local function _39_(window, event)
+        return window_event_handler(window, event)
+      end
+      watcher = add_win:newWatcher(_39_)
+      watcher:start({Watcher.windowMoved, Watcher.windowResized})
+      ui_watchers[add_win:id()] = watcher
+    end
+    return space
+  end
+  add_window_21 = _32_
+  local function _40_(remove_win, _3fskip_focus)
+    local remove_index = index_table[remove_win:id()]
+    if not remove_index then
+      logger.e("remove index not found")
+      return
+    else
+    end
+    if not _3fskip_focus then
+      local fw = Window.focusedWindow()
+      if (fw and (remove_win:id() == fw:id())) then
+        for _, direction in ipairs({Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT}) do
+          if focus_window(direction, remove_index) then
+            break
+          else
+          end
+        end
+      else
+      end
+    else
+    end
+    table.remove(window_list[remove_index.space][remove_index.col], remove_index.row)
+    if (#window_list[remove_index.space][remove_index.col] == 0) then
+      table.remove(window_list[remove_index.space], remove_index.col)
+    else
+    end
+    ui_watchers[remove_win:id()]:stop()
+    ui_watchers[remove_win:id()] = nil
+    index_table[remove_win:id()] = nil
+    update_index_table_21(remove_index.space, remove_index.col)
+    if (#window_list[remove_index.space] == 0) then
+      window_list[remove_index.space] = nil
+    else
+    end
+    return remove_index.space
+  end
+  remove_window_21 = _40_
+  local function _47_(direction, _3ffocused_index)
+    local fi = _3ffocused_index
+    if not fi then
+      local fw = Window.focusedWindow()
+      if not fw then
+        logger.d("focused window not found")
+        return
+      else
+      end
+      fi = index_table[fw:id()]
+    else
+    end
+    if not fi then
+      logger.e("focused index not found")
+      return
+    else
+    end
+    local new_focused = nil
+    if ((direction == Direction.LEFT) or (direction == Direction.RIGHT)) then
+      for row = fi.row, 1, -1 do
+        new_focused = get_window(fi.space, (fi.col + direction), row)
+        if new_focused then
+          break
+        else
+        end
+      end
+    elseif ((direction == Direction.UP) or (direction == Direction.DOWN)) then
+      new_focused = get_window(fi.space, fi.col, (fi.row + math.floor((direction / 2))))
+    else
+    end
+    if not new_focused then
+      logger.d("new focused window not found")
+      return
+    else
+    end
+    new_focused:focus()
+    return new_focused
+  end
+  focus_window = _47_
+  local function swap_windows_21(direction)
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local fi = index_table[fw:id()]
+    if not fi then
+      logger.e("focused index not found")
+      return
+    else
+    end
+    if ((direction == Direction.LEFT) or (direction == Direction.RIGHT)) then
+      local target_col = (fi.col + direction)
+      local target_column = get_column(fi.space, target_col)
+      if not target_column then
+        logger.d("target column not found")
+        return
+      else
+      end
+      local focused_column = get_column(fi.space, fi.col)
+      window_list[fi.space][target_col] = focused_column
+      window_list[fi.space][fi.col] = target_column
+      for row, window in ipairs(target_column) do
+        index_table[window:id()] = {space = fi.space, col = fi.col, row = row}
+      end
+      for row, window in ipairs(focused_column) do
+        index_table[window:id()] = {space = fi.space, col = target_col, row = row}
+      end
+      local focused_frame = fw:frame()
+      local target_frame = target_column[1]:frame()
+      if (direction == Direction.LEFT) then
+        focused_frame.x = target_frame.x
+        target_frame.x = (focused_frame.x2 + config["window-gap"])
+      else
+        target_frame.x = focused_frame.x
+        focused_frame.x = (target_frame.x2 + config["window-gap"])
+      end
+      for _, window in ipairs(target_column) do
+        local frame = window:frame()
+        frame.x = target_frame.x
+        move_window_21(window, frame)
+      end
+      for _, window in ipairs(focused_column) do
+        local frame = window:frame()
+        frame.x = focused_frame.x
+        move_window_21(window, frame)
+      end
+    elseif ((direction == Direction.UP) or (direction == Direction.DOWN)) then
+      local target_row = (fi.row + math.floor((direction / 2)))
+      local target_window = get_window(fi.space, fi.col, target_row)
+      if not target_window then
+        logger.d("target window not found")
+        return
+      else
+      end
+      window_list[fi.space][fi.col][target_row] = fw
+      window_list[fi.space][fi.col][fi.row] = target_window
+      do
+        local target_index = {space = fi.space, col = fi.col, row = target_row}
+        index_table[target_window:id()] = fi
+        index_table[fw:id()] = target_index
+      end
+      local focused_frame = fw:frame()
+      local target_frame = target_window:frame()
+      if (direction == Direction.UP) then
+        focused_frame.y = target_frame.y
+        target_frame.y = (focused_frame.y2 + config["window-gap"])
+      else
+        target_frame.y = focused_frame.y
+        focused_frame.y = (target_frame.y2 + config["window-gap"])
+      end
+      move_window_21(fw, focused_frame)
+      move_window_21(target_window, target_frame)
+    else
+    end
+    return tile_space_21(fi.space)
+  end
+  local function center_window_21()
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local frame = fw:frame()
+    local sf = fw:screen():frame()
+    frame.x = ((sf.x + math.floor((sf.w / 2))) - math.floor((frame.w / 2)))
+    move_window_21(fw, frame)
+    return tile_space_21(Spaces.windowSpaces(fw)[1])
+  end
+  local function set_window_full_width_21()
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local canvas = get_canvas(fw:screen())
+    local frame = fw:frame()
+    frame.x = canvas.x
+    frame.w = canvas.w
+    move_window_21(fw, frame)
+    return tile_space_21(Spaces.windowSpaces(fw)[1])
+  end
+  local function cycle_window_size_21(direction, cycle_direction)
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local function find_new_size(area_size, frame_size, dir)
+      local sizes
+      do
+        local tbl_26_ = {}
+        local i_27_ = 0
+        for _, ratio in ipairs(config["window-ratios"]) do
+          local val_28_ = ((ratio * (area_size + config["window-gap"])) - config["window-gap"])
+          if (nil ~= val_28_) then
+            i_27_ = (i_27_ + 1)
+            tbl_26_[i_27_] = val_28_
+          else
+          end
+        end
+        sizes = tbl_26_
+      end
+      local new_size = nil
+      if (dir == Direction.ASCENDING) then
+        new_size = sizes[1]
+        for _, size in ipairs(sizes) do
+          if (size > (frame_size + 10)) then
+            new_size = size
+            break
+          else
+          end
+        end
+      elseif (dir == Direction.DESCENDING) then
+        new_size = sizes[#sizes]
+        for i = #sizes, 1, -1 do
+          if (sizes[i] < (frame_size - 10)) then
+            new_size = sizes[i]
+            break
+          else
+          end
+        end
+      else
+        logger.e("invalid cycle direction")
+        return
+      end
+      return new_size
+    end
+    local canvas = get_canvas(fw:screen())
+    local frame = fw:frame()
+    if (direction == Direction.WIDTH) then
+      local new_width = find_new_size(canvas.w, frame.w, cycle_direction)
+      frame.x = (frame.x + math.floor(((frame.w - new_width) / 2)))
+      frame.w = new_width
+    elseif (direction == Direction.HEIGHT) then
+      local new_height = find_new_size(canvas.h, frame.h, cycle_direction)
+      frame.y = math.max(canvas.y, (frame.y + math.floor(((frame.h - new_height) / 2))))
+      frame.h = new_height
+      frame.y = (frame.y - math.max(0, (frame.y2 - canvas.y2)))
+    else
+      logger.e("invalid direction for cycle")
+      return
+    end
+    move_window_21(fw, frame)
+    return tile_space_21(Spaces.windowSpaces(fw)[1])
+  end
+  local function slurp_window_21()
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local fi = index_table[fw:id()]
+    if not fi then
+      logger.e("focused index not found")
+      return
+    else
+    end
+    local column = get_column(fi.space, (fi.col - 1))
+    if not column then
+      logger.d("column not found")
+      return
+    else
+    end
+    table.remove(window_list[fi.space][fi.col], fi.row)
+    if (#window_list[fi.space][fi.col] == 0) then
+      table.remove(window_list[fi.space], fi.col)
+    else
+    end
+    table.insert(column, fw)
+    local num_windows = #column
+    index_table[fw:id()] = {space = fi.space, col = (fi.col - 1), row = num_windows}
+    update_index_table_21(fi.space, fi.col)
+    local canvas = get_canvas(fw:screen())
+    local bounds = {x = column[1]:frame().x, x2 = nil, y = canvas.y, y2 = canvas.y2}
+    local h = math.floor((math.max(0, (canvas.h - ((num_windows - 1) * config["window-gap"]))) / num_windows))
+    tile_column_21(column, bounds, h)
+    return tile_space_21(fi.space)
+  end
+  local function barf_window_21()
+    local fw = Window.focusedWindow()
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local fi = index_table[fw:id()]
+    if not fi then
+      logger.e("focused index not found")
+      return
+    else
+    end
+    local column = get_column(fi.space, fi.col)
+    if (#column == 1) then
+      logger.d("only window in column")
+      return
+    else
+    end
+    table.remove(column, fi.row)
+    table.insert(window_list[fi.space], (fi.col + 1), {fw})
+    update_index_table_21(fi.space, fi.col)
+    local num_windows = #column
+    local canvas = get_canvas(fw:screen())
+    local frame = fw:frame()
+    local bounds = {x = frame.x, x2 = nil, y = canvas.y, y2 = canvas.y2}
+    local h = math.floor((math.max(0, (canvas.h - ((num_windows - 1) * config["window-gap"]))) / num_windows))
+    frame.y = canvas.y
+    frame.x = (frame.x2 + config["window-gap"])
+    frame.h = canvas.h
+    move_window_21(fw, frame)
+    tile_column_21(column, bounds, h)
+    return tile_space_21(fi.space)
+  end
+  local function switch_to_space_21(index)
+    local space = get_space(index)
+    if not space then
+      logger.d("space not found")
+      return
+    else
+    end
+    Spaces.gotoSpace(space)
+    return focus_space(space)
+  end
+  local function increment_space_21(direction)
+    if ((direction ~= Direction.LEFT) and (direction ~= Direction.RIGHT)) then
+      logger.d("move is invalid, left and right only")
+      return
+    else
+    end
+    local curr_space_id = Spaces.focusedSpace()
+    local layout = Spaces.allSpaces()
+    local curr_space_idx = -1
+    local num_spaces = 0
+    for _, screen in ipairs(Screen.allScreens()) do
+      local screen_uuid = screen:getUUID()
+      if (curr_space_idx < 0) then
+        for idx, space_id in ipairs(layout[screen_uuid]) do
+          if (curr_space_id == space_id) then
+            curr_space_idx = (idx + num_spaces)
+            break
+          else
+          end
+        end
+      else
+      end
+      num_spaces = (num_spaces + #layout[screen_uuid])
+    end
+    if (curr_space_idx >= 0) then
+      local new_idx = ((((curr_space_idx - 1) + direction) % num_spaces) + 1)
+      return switch_to_space_21(new_idx)
+    else
+      return nil
+    end
+  end
+  local function move_window_to_space_21(index, _3fwindow)
+    local fw = (_3fwindow or Window.focusedWindow())
+    if not fw then
+      logger.d("focused window not found")
+      return
+    else
+    end
+    local fi = index_table[fw:id()]
+    if not fi then
+      logger.e("focused index not found")
+      return
+    else
+    end
+    local new_space = get_space(index)
+    if not new_space then
+      logger.d("space not found")
+      return
+    else
+    end
+    if (new_space == Spaces.windowSpaces(fw)[1]) then
+      logger.d("window already on space")
+      return
+    else
+    end
+    if (Spaces.spaceType(new_space) ~= "user") then
+      logger.d("space is invalid")
+      return
+    else
+    end
+    local screen = Screen(Spaces.spaceDisplay(new_space))
+    if not screen then
+      logger.d("no screen for space")
+      return
+    else
+    end
+    local old_space = remove_window_21(fw, true)
+    if not old_space then
+      logger.e("can't remove focused window")
+      return
+    else
+    end
+    local version = hs.host.operatingSystemVersion()
+    if (((version.major * 100) + version.minor) >= 1405) then
+      local start_point = fw:frame()
+      local end_point = screen:frame()
+      start_point.x = (start_point.x + math.floor((start_point.w / 2)))
+      start_point.y = (start_point.y + 4)
+      end_point.x = (end_point.x + math.floor((end_point.w / 2)))
+      end_point.y = (end_point.y + config["window-gap"] + 4)
+      local do_window_drag
+      local function _88_()
+        start_point.x = (start_point.x + math.floor(((end_point.x - start_point.x) / 2)))
+        start_point.y = (start_point.y + math.floor(((end_point.y - start_point.y) / 2)))
+        hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.leftMouseDragged, start_point):post()
+        coroutine.yield(false)
+        hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.leftMouseUp, end_point):post()
+        while true do
+          coroutine.yield(false)
+          if (Spaces.windowSpaces(fw)[1] == new_space) then
+            break
+          else
+          end
+        end
+        add_window_21(fw)
+        tile_space_21(old_space)
+        tile_space_21(new_space)
+        focus_space(new_space, fw)
+        return true
+      end
+      do_window_drag = coroutine.wrap(_88_)
+      local start_time = Timer.secondsSinceEpoch()
+      hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.leftMouseDown, start_point):post()
+      Spaces.gotoSpace(new_space)
+      local function _90_(timer)
+        if ((Timer.secondsSinceEpoch() - start_time) > 4) then
+          logger.ef("moveWindowToSpace() timeout! new %d curr %d win %d", new_space, Spaces.activeSpaceOnScreen(screen:id()), Spaces.windowSpaces(fw)[1])
+          return timer:stop()
+        else
+          return nil
+        end
+      end
+      return Timer.doUntil(do_window_drag, _90_, Window.animationDuration)
+    else
+      Spaces.moveWindowToSpace(fw, new_space)
+      add_window_21(fw)
+      tile_space_21(old_space)
+      tile_space_21(new_space)
+      Spaces.gotoSpace(new_space)
+      return focus_space(new_space, fw)
+    end
+  end
+  local function refresh_windows_21()
+    local all_windows = window_filter:getWindows()
+    local retile_spaces = {}
+    for _, window in ipairs(all_windows) do
+      local index = index_table[window:id()]
+      if not index then
+        local space = add_window_21(window)
+        if space then
+          retile_spaces[space] = true
+        else
+        end
+      elseif (index.space ~= Spaces.windowSpaces(window)[1]) then
+        remove_window_21(window)
+        local space = add_window_21(window)
+        if space then
+          retile_spaces[space] = true
+        else
+        end
+      else
+      end
+    end
+    for space, _ in pairs(retile_spaces) do
+      tile_space_21(space)
+    end
+    return nil
+  end
+  local function bind_hotkeys_21()
+    local bind
+    local function _96_(mods, key, action)
+      return table.insert(hotkeys, hs.hotkey.bind(mods, key, action))
+    end
+    bind = _96_
+    local function _97_()
+      return focus_window(Direction.LEFT)
+    end
+    bind({"alt", "cmd"}, "left", _97_)
+    local function _98_()
+      return focus_window(Direction.RIGHT)
+    end
+    bind({"alt", "cmd"}, "right", _98_)
+    local function _99_()
+      return focus_window(Direction.UP)
+    end
+    bind({"alt", "cmd"}, "up", _99_)
+    local function _100_()
+      return focus_window(Direction.DOWN)
+    end
+    bind({"alt", "cmd"}, "down", _100_)
+    local function _101_()
+      return swap_windows_21(Direction.LEFT)
+    end
+    bind({"alt", "cmd", "shift"}, "left", _101_)
+    local function _102_()
+      return swap_windows_21(Direction.RIGHT)
+    end
+    bind({"alt", "cmd", "shift"}, "right", _102_)
+    local function _103_()
+      return swap_windows_21(Direction.UP)
+    end
+    bind({"alt", "cmd", "shift"}, "up", _103_)
+    local function _104_()
+      return swap_windows_21(Direction.DOWN)
+    end
+    bind({"alt", "cmd", "shift"}, "down", _104_)
+    local function _105_()
+      return center_window_21()
+    end
+    bind({"alt", "cmd"}, "c", _105_)
+    local function _106_()
+      return set_window_full_width_21()
+    end
+    bind({"alt", "cmd"}, "f", _106_)
+    local function _107_()
+      return cycle_window_size_21(Direction.WIDTH, Direction.ASCENDING)
+    end
+    bind({"alt", "cmd"}, "r", _107_)
+    local function _108_()
+      return cycle_window_size_21(Direction.HEIGHT, Direction.ASCENDING)
+    end
+    bind({"alt", "cmd", "shift"}, "r", _108_)
+    local function _109_()
+      return cycle_window_size_21(Direction.WIDTH, Direction.DESCENDING)
+    end
+    bind({"ctrl", "alt", "cmd"}, "r", _109_)
+    local function _110_()
+      return cycle_window_size_21(Direction.HEIGHT, Direction.DESCENDING)
+    end
+    bind({"ctrl", "alt", "cmd", "shift"}, "r", _110_)
+    local function _111_()
+      return slurp_window_21()
+    end
+    bind({"alt", "cmd"}, "i", _111_)
+    local function _112_()
+      return barf_window_21()
+    end
+    bind({"alt", "cmd"}, "o", _112_)
+    local function _113_()
+      return increment_space_21(Direction.LEFT)
+    end
+    bind({"alt", "cmd"}, ",", _113_)
+    local function _114_()
+      return increment_space_21(Direction.RIGHT)
+    end
+    bind({"alt", "cmd"}, ".", _114_)
+    for i = 1, 9 do
+      local function _115_()
+        return switch_to_space_21(i)
+      end
+      bind({"alt", "cmd"}, tostring(i), _115_)
+    end
+    for i = 1, 9 do
+      local function _116_()
+        return move_window_to_space_21(i)
+      end
+      bind({"alt", "cmd", "shift"}, tostring(i), _116_)
+    end
+    local function _117_()
+      return __fnl_global__stop_21()
+    end
+    return bind({"alt", "cmd", "shift"}, "q", _117_)
+  end
+  local function start_21()
+    if not Spaces.screensHaveSeparateSpaces() then
+      logger.e("please check 'Displays have separate Spaces' in System Preferences -> Mission Control")
+    else
+    end
+    window_list = {}
+    index_table = {}
+    ui_watchers = {}
+    window_filter = WindowFilter.new():setOverrideFilter({visible = true, hasTitlebar = true, allowRoles = "AXStandardWindow", fullscreen = false})
+    refresh_windows_21()
+    local function _119_(window, _, event)
+      return window_event_handler(window, event)
+    end
+    window_filter:subscribe({WindowFilter.windowFocused, WindowFilter.windowVisible, WindowFilter.windowNotVisible, WindowFilter.windowFullscreened, WindowFilter.windowUnfullscreened}, _119_)
+    local function _120_()
+      return refresh_windows_21()
+    end
+    screen_watcher = Screen.watcher.new(_120_)
+    screen_watcher:start()
+    return bind_hotkeys_21()
+  end
+  local function stop_21()
+    if window_filter then
+      window_filter:unsubscribeAll()
+    else
+    end
+    for _, watcher in pairs(ui_watchers) do
+      watcher:stop()
+    end
+    if screen_watcher then
+      screen_watcher:stop()
+    else
+    end
+    for _, hk in ipairs(hotkeys) do
+      hk:delete()
+    end
+    hotkeys = {}
+    return nil
+  end
+  return {["start!"] = start_21, ["stop!"] = stop_21, ["refresh-windows!"] = refresh_windows_21, config = config}
 end
-package.preload["lib.spoon-install"] = package.preload["lib.spoon-install"] or function(...)
-  local logger = hs.logger.new("spoon-install")
-  local repos = {default = {branch = "master", desc = "Main Hammerspoon Spoon repository", url = "https://github.com/Hammerspoon/Spoons"}}
-  local use_syncinstall = false
-  local function exec_21(cmd, errfmt, ...)
-    local output, status = hs.execute(cmd)
-    if status then
-      local trimstr = string.gsub(output, "\n*$", "")
-      return trimstr
-    else
-      logger.ef(errfmt, ...)
-      return nil
-    end
-  end
-  local function store_repo_json_21(repo, callback, status, body, hdrs)
-    local success = nil
-    if ((status < 100) or (status >= 400)) then
-      logger.ef("Error fetching JSON data for repository '%s'. Error code %d: %s", repo, status, (body or "<no error message>"))
-    else
-      local json = hs.json.decode(body)
-      if json then
-        repos[repo]["data"] = {}
-        for i, v in ipairs(json) do
-          v.download_url = (repos[repo].download_base_url .. v.name .. ".spoon.zip")
-          repos[repo].data[v.name] = v
-        end
-        logger.df("Updated JSON data for repository '%s'", repo)
-        success = true
-      else
-        logger.ef("Invalid JSON received for repository '%s': %s", repo, body)
-      end
-    end
-    if callback then
-      callback(repo, success)
-    else
-    end
-    return success
-  end
-  local function build_repo_json_url_21(repo)
-    if (repos[repo] and repos[repo].url) then
-      local branch = (repos[repo].branch or "master")
-      repos[repo]["json_url"] = (string.gsub(repos[repo].url, "/$", "") .. "/raw/" .. branch .. "/docs/docs.json")
-      repos[repo]["download_base_url"] = (string.gsub(repos[repo].url, "/$", "") .. "/raw/" .. branch .. "/Spoons/")
-      return true
-    else
-      logger.ef("Invalid or unknown repository '%s'", repo)
-      return nil
-    end
-  end
-  local function async_update_repo_21(repo, callback)
-    local repo0 = (repo or "default")
-    if build_repo_json_url_21(repo0) then
-      local function _6_(status, body, hdrs)
-        return store_repo_json_21(repo0, callback, status, body, hdrs)
-      end
-      hs.http.asyncGet(repos[repo0].json_url, nil, _6_)
-      return true
-    else
-      return nil
-    end
-  end
-  local function update_repo_21(repo)
-    local repo0 = (repo or "default")
-    if build_repo_json_url_21(repo0) then
-      local a, b, c = hs.http.get(repos[repo0].json_url)
-      return store_repo_json_21(repo0, nil, a, b, c)
-    else
-      return nil
-    end
-  end
-  local function async_update_all_repos_21()
-    for k, v in pairs(repos) do
-      async_update_repo_21(k)
-    end
-    return nil
-  end
-  local function update_all_repos_21()
-    for k, v in pairs(repos) do
-      update_repo_21(k)
-    end
-    return nil
-  end
-  local function add_repo_21(name, config)
-    repos[name] = config
-    return nil
-  end
-  local function repo_list()
-    local keys = {}
-    for k, v in pairs(repos) do
-      table.insert(keys, k)
-    end
-    table.sort(keys)
-    return keys
-  end
-  local function search(pat)
-    local res = {}
-    for repo, v in pairs(repos) do
-      if v.data then
-        for spoon, rec in pairs(v.data) do
-          if string.find(string.lower((rec.name .. "\n" .. rec.desc)), pat) then
-            table.insert(res, {desc = rec.desc, name = rec.name, repo = repo})
-          else
-          end
-        end
-      else
-        logger.ef("Repository data for '%s' not available - call (update-repo! \"%s\"), then try again.", repo, repo)
-      end
-    end
-    return res
-  end
-  local function install_spoon_from_zip_url_callback_21(urlparts, callback, status, body, headers)
-    local success = nil
-    if ((status < 100) or (status >= 400)) then
-      logger.ef("Error downloading %s. Error code %d: %s", urlparts.absoluteString, status, (body or "<none>"))
-    else
-      local tmpdir = exec_21("/usr/bin/mktemp -d", "Error creating temporary directory to download new spoon.")
-      if tmpdir then
-        local outfile = string.format("%s/%s", tmpdir, urlparts.lastPathComponent)
-        local f = assert(io.open(outfile, "w"))
-        f:write(body)
-        f:close()
-        local output = exec_21(string.format("/usr/bin/unzip -l %s '*.spoon/' | /usr/bin/awk '$NF ~ /\\.spoon\\/$/ { print $NF }' | /usr/bin/wc -l", outfile), "Error examining downloaded zip file %s, leaving it in place for your examination.", outfile)
-        if output then
-          if ((tonumber(output) or 0) == 1) then
-            local outdir = string.format("%s/Spoons", hs.configdir)
-            if exec_21(string.format("/usr/bin/unzip -o %s -d %s 2>&1", outfile, outdir), "Error uncompressing file %s, leaving it in place for your examination.", outfile) then
-              logger.f("Downloaded and installed %s", urlparts.absoluteString)
-              exec_21(string.format("/bin/rm -rf '%s'", tmpdir), "Error removing directory %s", tmpdir)
-              success = true
-            else
-            end
-          else
-            logger.ef("The downloaded zip file %s is invalid - it should contain exactly one spoon. Leaving it in place for your examination.", outfile)
-          end
-        else
-        end
-      else
-      end
-    end
-    if callback then
-      callback(urlparts, success)
-    else
-    end
-    return success
-  end
-  local function valid_spoon_3f(name, repo)
-    if repos[repo] then
-      if repos[repo].data then
-        if repos[repo].data[name] then
-          return true
-        else
-          return logger.ef("Spoon '%s' does not exist in repository '%s'. Please check and try again.", name, repo)
-        end
-      else
-        return logger.ef("Repository data for '%s' not available - call (update-repo! \"%s\"), then try again.", repo, repo)
-      end
-    else
-      return logger.ef("Invalid or unknown repository '%s'", repo)
-    end
-  end
-  local function async_install_spoon_from_zip_url_21(url, callback)
-    local urlparts = hs.http.urlParts(url)
-    local dlfile = urlparts.lastPathComponent
-    if ((dlfile and (dlfile ~= "")) and (urlparts.pathExtension == "zip")) then
-      local function _20_(status, body, headers)
-        return install_spoon_from_zip_url_callback_21(urlparts, callback, status, body, headers)
-      end
-      hs.http.asyncGet(url, nil, _20_)
-      return true
-    else
-      logger.ef("Invalid URL %s, must point to a zip file", url)
-      return nil
-    end
-  end
-  local function install_spoon_from_zip_url_21(url)
-    local urlparts = hs.http.urlParts(url)
-    local dlfile = urlparts.lastPathComponent
-    if ((dlfile and (dlfile ~= "")) and (urlparts.pathExtension == "zip")) then
-      local a, b, c = hs.http.get(url)
-      return install_spoon_from_zip_url_callback_21(urlparts, nil, a, b, c)
-    else
-      logger.ef("Invalid URL %s, must point to a zip file", url)
-      return nil
-    end
-  end
-  local function async_install_spoon_from_repo_21(name, repo, callback)
-    local repo0 = (repo or "default")
-    if valid_spoon_3f(name, repo0) then
-      async_install_spoon_from_zip_url_21(repos[repo0].data[name].download_url, callback)
-    else
-    end
-    return nil
-  end
-  local function install_spoon_from_repo_21(name, repo)
-    local repo0 = (repo or "default")
-    if valid_spoon_3f(name, repo0) then
-      return install_spoon_from_zip_url_21(repos[repo0].data[name].download_url)
-    else
-      return nil
-    end
-  end
-  local function and_use_21(name, arg)
-    local arg0 = (arg or {})
-    if arg0.disable then
-      return true
-    elseif hs.spoons.use(name, arg0, true) then
-      return true
-    else
-      local repo = (arg0.repo or "default")
-      if repos[repo] then
-        if repos[repo].data then
-          local function load_and_config(_, success)
-            if success then
-              hs.notify.show("Spoon installed", (name .. ".spoon is now available"), "")
-              return hs.spoons.use(name, arg0)
-            else
-              return logger.ef("Error installing Spoon '%s' from repo '%s'", name, repo)
-            end
-          end
-          if use_syncinstall then
-            return load_and_config(nil, install_spoon_from_repo_21(name, repo))
-          else
-            return async_install_spoon_from_repo_21(name, repo, load_and_config)
-          end
-        else
-          local function update_repo_and_continue(_, success)
-            if success then
-              return and_use_21(name, arg0)
-            else
-              return logger.ef("Error updating repository '%s'", repo)
-            end
-          end
-          if use_syncinstall then
-            return update_repo_and_continue(nil, update_repo_21(repo))
-          else
-            return async_update_repo_21(repo, update_repo_and_continue)
-          end
-        end
-      else
-        return logger.ef("Unknown repository '%s' for Spoon", repo, name)
-      end
-    end
-  end
-  return {["and-use!"] = and_use_21, ["add-repo!"] = add_repo_21, search = search, ["repo-list"] = repo_list, ["update-repo!"] = update_repo_21, ["async-update-repo!"] = async_update_repo_21, ["update-all-repos!"] = update_all_repos_21, ["async-update-all-repos!"] = async_update_all_repos_21, ["install-spoon-from-zip-url!"] = install_spoon_from_zip_url_21, ["async-install-spoon-from-zip-url!"] = async_install_spoon_from_zip_url_21, ["install-spoon-from-repo!"] = install_spoon_from_repo_21, ["async-install-spoon-from-repo!"] = async_install_spoon_from_repo_21}
-end
-spoons = require("spoons")
+paper_wm = require("paper-wm")
+paper_wm["start!"]()
 local notify
 package.preload["notify"] = package.preload["notify"] or function(...)
   local notification_duration = 30
@@ -399,14 +1097,14 @@ package.preload["notify"] = package.preload["notify"] or function(...)
     table.insert(drawings, close_btn)
     local notif = {drawings = drawings, height = total_height, timer = nil}
     close_btn:setBehaviorByLabels({"canvasClickable"})
-    local function _41_()
+    local function _130_()
       return remove_notification(notif)
     end
-    close_btn:setClickCallback(_41_)
-    local function _42_()
+    close_btn:setClickCallback(_130_)
+    local function _131_()
       return remove_notification(notif)
     end
-    notif["timer"] = hs.timer.doAfter(notification_duration, _42_)
+    notif["timer"] = hs.timer.doAfter(notification_duration, _131_)
     return table.insert(active_notifications, notif)
   end
   local function notify(title, type, message)
@@ -438,14 +1136,14 @@ package.preload["notify"] = package.preload["notify"] or function(...)
 end
 notify = require("notify")
 package.preload["events"] = package.preload["events"] or function(...)
-  local _local_44_ = require("lib.cljlib-shim")
-  local string_3f = _local_44_["string?"]
-  local _local_76_ = require("sheaf.event-registry")
-  local make_event_registry = _local_76_["make-event-registry"]
-  local define_event_21 = _local_76_["define-event!"]
-  local _local_77_ = require("lib.hierarchy")
-  local make_hierarchy = _local_77_["make-hierarchy"]
-  local derive_21 = _local_77_["derive!"]
+  local _local_133_ = require("lib.cljlib-shim")
+  local string_3f = _local_133_["string?"]
+  local _local_165_ = require("sheaf.event-registry")
+  local make_event_registry = _local_165_["make-event-registry"]
+  local define_event_21 = _local_165_["define-event!"]
+  local _local_166_ = require("lib.hierarchy")
+  local make_hierarchy = _local_166_["make-hierarchy"]
+  local derive_21 = _local_166_["derive!"]
   local event_hierarchy = make_hierarchy()
   derive_21(event_hierarchy, "event.kind.fs/any", "event.kind/any")
   derive_21(event_hierarchy, "event.kind.fs/file-change", "event.kind.fs/any")
@@ -495,11 +1193,11 @@ package.preload["events"] = package.preload["events"] or function(...)
   return {["event-registry"] = event_registry}
 end
 package.preload["sheaf.event-registry"] = package.preload["sheaf.event-registry"] or function(...)
-  local _local_45_ = require("lib.cljlib-shim")
-  local some = _local_45_.some
-  local seq = _local_45_.seq
-  local _local_69_ = require("lib.hierarchy")
-  local descendants = _local_69_.descendants
+  local _local_134_ = require("lib.cljlib-shim")
+  local some = _local_134_.some
+  local seq = _local_134_.seq
+  local _local_158_ = require("lib.hierarchy")
+  local descendants = _local_158_.descendants
   local function make_event_registry(opts)
     if (nil == opts.hierarchy) then
       error("make-event-registry: :hierarchy is required")
@@ -519,14 +1217,14 @@ package.preload["sheaf.event-registry"] = package.preload["sheaf.event-registry"
     return (nil ~= registry.events[event_name])
   end
   local function valid_event_selector_3f(registry, selector)
-    local or_72_ = event_defined_3f(registry, selector)
-    if not or_72_ then
-      local function _73_(_241)
+    local or_161_ = event_defined_3f(registry, selector)
+    if not or_161_ then
+      local function _162_(_241)
         return event_defined_3f(registry, _241)
       end
-      or_72_ = some(_73_, seq(descendants(registry.hierarchy, selector)))
+      or_161_ = some(_162_, seq(descendants(registry.hierarchy, selector)))
     end
-    return or_72_
+    return or_161_
   end
   local function add_event_handler_21(registry, key, handler)
     if (nil ~= registry.handlers[key]) then
@@ -551,15 +1249,15 @@ package.preload["sheaf.event-registry"] = package.preload["sheaf.event-registry"
   return {["make-event-registry"] = make_event_registry, ["define-event!"] = define_event_21, ["event-defined?"] = event_defined_3f, ["valid-event-selector?"] = valid_event_selector_3f, ["add-event-handler!"] = add_event_handler_21, ["remove-event-handler!"] = remove_event_handler_21, ["dispatch-event!"] = dispatch_event_21}
 end
 package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(...)
-  local _local_46_ = require("lib.cljlib-shim")
-  local hash_set = _local_46_["hash-set"]
-  local conj = _local_46_.conj
-  local disj = _local_46_.disj
-  local contains_3f = _local_46_["contains?"]
-  local into = _local_46_.into
-  local mapcat = _local_46_.mapcat
-  local empty_3f = _local_46_["empty?"]
-  local seq = _local_46_.seq
+  local _local_135_ = require("lib.cljlib-shim")
+  local hash_set = _local_135_["hash-set"]
+  local conj = _local_135_.conj
+  local disj = _local_135_.disj
+  local contains_3f = _local_135_["contains?"]
+  local into = _local_135_.into
+  local mapcat = _local_135_.mapcat
+  local empty_3f = _local_135_["empty?"]
+  local seq = _local_135_.seq
   local function ensure_entry(h, tag)
     if (nil == h[tag]) then
       h[tag] = {parents = hash_set(), children = hash_set()}
@@ -569,46 +1267,46 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
     end
   end
   local function parents(h, tag)
-    local _49_
+    local _138_
     do
-      local t_48_ = h
-      if (nil ~= t_48_) then
-        t_48_ = t_48_[tag]
+      local t_137_ = h
+      if (nil ~= t_137_) then
+        t_137_ = t_137_[tag]
       else
       end
-      if (nil ~= t_48_) then
-        t_48_ = t_48_.parents
+      if (nil ~= t_137_) then
+        t_137_ = t_137_.parents
       else
       end
-      _49_ = t_48_
+      _138_ = t_137_
     end
-    return (_49_ or hash_set())
+    return (_138_ or hash_set())
   end
   local function children(h, tag)
-    local _53_
+    local _142_
     do
-      local t_52_ = h
-      if (nil ~= t_52_) then
-        t_52_ = t_52_[tag]
+      local t_141_ = h
+      if (nil ~= t_141_) then
+        t_141_ = t_141_[tag]
       else
       end
-      if (nil ~= t_52_) then
-        t_52_ = t_52_.children
+      if (nil ~= t_141_) then
+        t_141_ = t_141_.children
       else
       end
-      _53_ = t_52_
+      _142_ = t_141_
     end
-    return (_53_ or hash_set())
+    return (_142_ or hash_set())
   end
   local function ancestors(h, tag)
     local ps = parents(h, tag)
     if empty_3f(ps) then
       return ps
     else
-      local function _56_(_241)
+      local function _145_(_241)
         return ancestors(h, _241)
       end
-      return into(ps, mapcat(_56_, seq(ps)))
+      return into(ps, mapcat(_145_, seq(ps)))
     end
   end
   local function descendants(h, tag)
@@ -616,10 +1314,10 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
     if empty_3f(cs) then
       return cs
     else
-      local function _58_(_241)
+      local function _147_(_241)
         return descendants(h, _241)
       end
-      return into(cs, mapcat(_58_, seq(cs)))
+      return into(cs, mapcat(_147_, seq(cs)))
     end
   end
   local function isa_3f(h, child, parent)
@@ -697,23 +1395,23 @@ package.preload["lib.hierarchy"] = package.preload["lib.hierarchy"] or function(
   end
   return {["make-hierarchy"] = make_hierarchy, ["derive!"] = derive_21, ["underive!"] = underive_21, parents = parents, children = children, ancestors = ancestors, descendants = descendants, ["isa?"] = isa_3f}
 end
-local _local_78_ = require("events")
-local event_registry = _local_78_["event-registry"]
+local _local_167_ = require("events")
+local event_registry = _local_167_["event-registry"]
 package.preload["event_sources"] = package.preload["event_sources"] or function(...)
-  local _local_89_ = require("sheaf.source-registry")
-  local make_source_registry = _local_89_["make-source-registry"]
-  local add_source_type_21 = _local_89_["add-source-type!"]
-  local start_event_source_21 = _local_89_["start-event-source!"]
-  local _local_90_ = require("events")
-  local event_registry = _local_90_["event-registry"]
-  local _local_96_ = require("event_sources.file-watcher")
-  local file_watcher_source_type = _local_96_["file-watcher-source-type"]
-  local _local_101_ = require("event_sources.hotkey")
-  local hotkey_source_type = _local_101_["hotkey-source-type"]
-  local _local_106_ = require("event_sources.space-watcher")
-  local space_watcher_source_type = _local_106_["space-watcher-source-type"]
-  local _local_111_ = require("event_sources.screen-watcher")
-  local screen_watcher_source_type = _local_111_["screen-watcher-source-type"]
+  local _local_178_ = require("sheaf.source-registry")
+  local make_source_registry = _local_178_["make-source-registry"]
+  local add_source_type_21 = _local_178_["add-source-type!"]
+  local start_event_source_21 = _local_178_["start-event-source!"]
+  local _local_179_ = require("events")
+  local event_registry = _local_179_["event-registry"]
+  local _local_185_ = require("event_sources.file-watcher")
+  local file_watcher_source_type = _local_185_["file-watcher-source-type"]
+  local _local_190_ = require("event_sources.hotkey")
+  local hotkey_source_type = _local_190_["hotkey-source-type"]
+  local _local_195_ = require("event_sources.space-watcher")
+  local space_watcher_source_type = _local_195_["space-watcher-source-type"]
+  local _local_200_ = require("event_sources.screen-watcher")
+  local screen_watcher_source_type = _local_200_["screen-watcher-source-type"]
   local source_registry = make_source_registry({["event-registry"] = event_registry})
   add_source_type_21(source_registry, file_watcher_source_type)
   add_source_type_21(source_registry, hotkey_source_type)
@@ -726,8 +1424,8 @@ package.preload["event_sources"] = package.preload["event_sources"] or function(
   return {["source-registry"] = source_registry}
 end
 package.preload["sheaf.source-registry"] = package.preload["sheaf.source-registry"] or function(...)
-  local _local_79_ = require("sheaf.event-registry")
-  local dispatch_event_21 = _local_79_["dispatch-event!"]
+  local _local_168_ = require("sheaf.event-registry")
+  local dispatch_event_21 = _local_168_["dispatch-event!"]
   local function make_source_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-source-registry: :event-registry is required")
@@ -793,10 +1491,10 @@ package.preload["sheaf.source-registry"] = package.preload["sheaf.source-registr
     end
     local self = {name = instance_name, type = type_name, config = (config or {})}
     local emit
-    local function _86_(event_name, event_data)
+    local function _175_(event_name, event_data)
       return dispatch_event_21(registry["event-registry"], event_name, instance_name, event_data)
     end
-    emit = _86_
+    emit = _175_
     local state = source_type["start-fn"](self, emit)
     registry.instances[instance_name] = {type = type_name, config = (config or {}), state = state}
     return print(("[INFO] Started source instance: " .. tostring(instance_name)))
@@ -825,27 +1523,27 @@ package.preload["sheaf.source-registry"] = package.preload["sheaf.source-registr
   return {["make-source-registry"] = make_source_registry, ["make-source-type"] = make_source_type, ["add-source-type!"] = add_source_type_21, ["source-type-defined?"] = source_type_defined_3f, ["get-source-type"] = get_source_type, ["list-source-types"] = list_source_types, ["source-instance-exists?"] = source_instance_exists_3f, ["get-source-instance"] = get_source_instance, ["list-source-instances"] = list_source_instances, ["start-event-source!"] = start_event_source_21, ["stop-event-source!"] = stop_event_source_21, ["stop-all-event-sources!"] = stop_all_event_sources_21}
 end
 package.preload["event_sources.file-watcher"] = package.preload["event_sources.file-watcher"] or function(...)
-  local _local_91_ = require("lib.cljlib-shim")
-  local mapv = _local_91_.mapv
-  local assoc = _local_91_.assoc
-  local string_3f = _local_91_["string?"]
-  local _local_92_ = require("sheaf.source-registry")
-  local make_source_type = _local_92_["make-source-type"]
+  local _local_180_ = require("lib.cljlib-shim")
+  local mapv = _local_180_.mapv
+  local assoc = _local_180_.assoc
+  local string_3f = _local_180_["string?"]
+  local _local_181_ = require("sheaf.source-registry")
+  local make_source_type = _local_181_["make-source-type"]
   local function start_file_watcher(self, emit)
     local path = self.config.path
     local handler
-    local function _93_(files, attrs)
+    local function _182_(files, attrs)
       local evs
-      local function _94_(_241, _242)
+      local function _183_(_241, _242)
         return assoc(_241, "file-path", _242)
       end
-      evs = mapv(_94_, attrs, files)
+      evs = mapv(_183_, attrs, files)
       for _, ev in ipairs(evs) do
         emit("file-watcher.events/file-change", ev)
       end
       return nil
     end
-    handler = _93_
+    handler = _182_
     local watcher = hs.pathwatcher.new(path, handler)
     watcher:start()
     return watcher
@@ -861,18 +1559,18 @@ package.preload["event_sources.file-watcher"] = package.preload["event_sources.f
   return {["file-watcher-source-type"] = file_watcher_source_type}
 end
 package.preload["event_sources.hotkey"] = package.preload["event_sources.hotkey"] or function(...)
-  local _local_97_ = require("lib.cljlib-shim")
-  local string_3f = _local_97_["string?"]
-  local _local_98_ = require("sheaf.source-registry")
-  local make_source_type = _local_98_["make-source-type"]
+  local _local_186_ = require("lib.cljlib-shim")
+  local string_3f = _local_186_["string?"]
+  local _local_187_ = require("sheaf.source-registry")
+  local make_source_type = _local_187_["make-source-type"]
   local function start_hotkey(self, emit)
     local mods = self.config.mods
     local key = self.config.key
     local handler
-    local function _99_()
+    local function _188_()
       return emit("hotkey.events/pressed", {mods = mods, key = key})
     end
-    handler = _99_
+    handler = _188_
     return hs.hotkey.bind(mods, key, handler)
   end
   local function stop_hotkey(state)
@@ -886,8 +1584,8 @@ package.preload["event_sources.hotkey"] = package.preload["event_sources.hotkey"
   return {["hotkey-source-type"] = hotkey_source_type}
 end
 package.preload["event_sources.space-watcher"] = package.preload["event_sources.space-watcher"] or function(...)
-  local _local_102_ = require("sheaf.source-registry")
-  local make_source_type = _local_102_["make-source-type"]
+  local _local_191_ = require("sheaf.source-registry")
+  local make_source_type = _local_191_["make-source-type"]
   local function snapshot_spaces()
     local spaces_layout = hs.spaces.allSpaces()
     local tbl_26_ = {}
@@ -908,10 +1606,10 @@ package.preload["event_sources.space-watcher"] = package.preload["event_sources.
   end
   local function start_space_watcher(self, emit)
     local handler
-    local function _104_(space_number)
+    local function _193_(space_number)
       return emit("space-watcher.events/space-changed", {["space-number"] = space_number, ["all-spaces"] = snapshot_spaces(), ["active-spaces"] = hs.spaces.activeSpaces()})
     end
-    handler = _104_
+    handler = _193_
     local watcher = hs.spaces.watcher.new(handler)
     watcher:start()
     return watcher
@@ -927,8 +1625,8 @@ package.preload["event_sources.space-watcher"] = package.preload["event_sources.
   return {["space-watcher-source-type"] = space_watcher_source_type}
 end
 package.preload["event_sources.screen-watcher"] = package.preload["event_sources.screen-watcher"] or function(...)
-  local _local_107_ = require("sheaf.source-registry")
-  local make_source_type = _local_107_["make-source-type"]
+  local _local_196_ = require("sheaf.source-registry")
+  local make_source_type = _local_196_["make-source-type"]
   local function snapshot_spaces()
     local spaces_layout = hs.spaces.allSpaces()
     local tbl_26_ = {}
@@ -949,10 +1647,10 @@ package.preload["event_sources.screen-watcher"] = package.preload["event_sources
   end
   local function start_screen_watcher(self, emit)
     local handler
-    local function _109_()
+    local function _198_()
       return emit("screen-watcher.events/screen-changed", {["all-spaces"] = snapshot_spaces(), ["active-spaces"] = hs.spaces.activeSpaces()})
     end
-    handler = _109_
+    handler = _198_
     local watcher = hs.screen.watcher.new(handler)
     watcher:start()
     return watcher
@@ -969,13 +1667,13 @@ package.preload["event_sources.screen-watcher"] = package.preload["event_sources
 end
 require("event_sources")
 package.preload["commands"] = package.preload["commands"] or function(...)
-  local _local_116_ = require("sheaf.command-registry")
-  local make_command_registry = _local_116_["make-command-registry"]
-  local add_command_21 = _local_116_["add-command!"]
-  local _local_119_ = require("commands.toggle-expose")
-  local toggle_expose_command = _local_119_["toggle-expose-command"]
-  local _local_126_ = require("commands.space-indicator")
-  local update_menubar_command = _local_126_["update-menubar-command"]
+  local _local_205_ = require("sheaf.command-registry")
+  local make_command_registry = _local_205_["make-command-registry"]
+  local add_command_21 = _local_205_["add-command!"]
+  local _local_208_ = require("commands.toggle-expose")
+  local toggle_expose_command = _local_208_["toggle-expose-command"]
+  local _local_215_ = require("commands.space-indicator")
+  local update_menubar_command = _local_215_["update-menubar-command"]
   local command_registry = make_command_registry()
   add_command_21(command_registry, toggle_expose_command)
   add_command_21(command_registry, update_menubar_command)
@@ -1029,28 +1727,28 @@ package.preload["sheaf.command-registry"] = package.preload["sheaf.command-regis
   return {["make-command-registry"] = make_command_registry, ["make-command"] = make_command, ["add-command!"] = add_command_21, ["command-defined?"] = command_defined_3f, ["get-command"] = get_command, ["list-commands"] = list_commands, ["invoke-command!"] = invoke_command_21}
 end
 package.preload["commands.toggle-expose"] = package.preload["commands.toggle-expose"] or function(...)
-  local _local_117_ = require("sheaf.command-registry")
-  local make_command = _local_117_["make-command"]
+  local _local_206_ = require("sheaf.command-registry")
+  local make_command = _local_206_["make-command"]
   local expose = hs.expose.new()
   local toggle_expose_command
-  local function _118_(params)
+  local function _207_(params)
     return expose:toggleShow()
   end
-  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {fn = _118_})
+  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {fn = _207_})
   return {["toggle-expose-command"] = toggle_expose_command}
 end
 package.preload["commands.space-indicator"] = package.preload["commands.space-indicator"] or function(...)
-  local _local_120_ = require("sheaf.command-registry")
-  local make_command = _local_120_["make-command"]
+  local _local_209_ = require("sheaf.command-registry")
+  local make_command = _local_209_["make-command"]
   local menubar = hs.menubar.new(true, "cosmicHammerSpaceIndicator")
   if menubar then
     menubar:setTitle("...")
   else
   end
   local update_menubar_command
-  local function _122_(params)
+  local function _211_(params)
     if menubar then
-      local _123_
+      local _212_
       do
         local tbl_26_ = {}
         local i_27_ = 0
@@ -1062,33 +1760,33 @@ package.preload["commands.space-indicator"] = package.preload["commands.space-in
           else
           end
         end
-        _123_ = tbl_26_
+        _212_ = tbl_26_
       end
-      return menubar:setTitle(table.concat(_123_, "|"))
+      return menubar:setTitle(table.concat(_212_, "|"))
     else
       return nil
     end
   end
-  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {schema = {["active-spaces"] = __fnl_global__table_3f}, fn = _122_})
+  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {schema = {["active-spaces"] = __fnl_global__table_3f}, fn = _211_})
   return {["update-menubar-command"] = update_menubar_command}
 end
 require("commands")
 package.preload["behaviors"] = package.preload["behaviors"] or function(...)
-  local _local_143_ = require("sheaf.behavior-registry")
-  local make_behavior_registry = _local_143_["make-behavior-registry"]
-  local add_behavior_21 = _local_143_["add-behavior!"]
-  local _local_144_ = require("events")
-  local event_registry = _local_144_["event-registry"]
-  local _local_145_ = require("commands")
-  local command_registry = _local_145_["command-registry"]
-  local _local_152_ = require("behaviors.compile-fennel")
-  local compile_fennel_behavior = _local_152_["compile-fennel-behavior"]
-  local _local_159_ = require("behaviors.reload-hammerspoon")
-  local reload_hammerspoon_behavior = _local_159_["reload-hammerspoon-behavior"]
-  local _local_162_ = require("behaviors.toggle-expose")
-  local toggle_expose_behavior = _local_162_["toggle-expose-behavior"]
-  local _local_166_ = require("behaviors.update-space-indicator")
-  local update_space_indicator_behavior = _local_166_["update-space-indicator-behavior"]
+  local _local_232_ = require("sheaf.behavior-registry")
+  local make_behavior_registry = _local_232_["make-behavior-registry"]
+  local add_behavior_21 = _local_232_["add-behavior!"]
+  local _local_233_ = require("events")
+  local event_registry = _local_233_["event-registry"]
+  local _local_234_ = require("commands")
+  local command_registry = _local_234_["command-registry"]
+  local _local_241_ = require("behaviors.compile-fennel")
+  local compile_fennel_behavior = _local_241_["compile-fennel-behavior"]
+  local _local_248_ = require("behaviors.reload-hammerspoon")
+  local reload_hammerspoon_behavior = _local_248_["reload-hammerspoon-behavior"]
+  local _local_251_ = require("behaviors.toggle-expose")
+  local toggle_expose_behavior = _local_251_["toggle-expose-behavior"]
+  local _local_255_ = require("behaviors.update-space-indicator")
+  local update_space_indicator_behavior = _local_255_["update-space-indicator-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
@@ -1097,14 +1795,14 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-registry"] or function(...)
-  local _local_127_ = require("lib.cljlib-shim")
-  local some = _local_127_.some
-  local _local_128_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_128_["valid-event-selector?"]
-  local _local_129_ = require("sheaf.command-registry")
-  local command_defined_3f = _local_129_["command-defined?"]
-  local _local_130_ = require("lib.hierarchy")
-  local isa_3f = _local_130_["isa?"]
+  local _local_216_ = require("lib.cljlib-shim")
+  local some = _local_216_.some
+  local _local_217_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_217_["valid-event-selector?"]
+  local _local_218_ = require("sheaf.command-registry")
+  local command_defined_3f = _local_218_["command-defined?"]
+  local _local_219_ = require("lib.hierarchy")
+  local isa_3f = _local_219_["isa?"]
   local function make_behavior_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-behavior-registry: :event-registry is required")
@@ -1178,31 +1876,31 @@ package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-reg
     if (nil == behavior) then
       return false
     else
-      local function _141_(_241)
+      local function _230_(_241)
         return isa_3f(registry["event-registry"].hierarchy, event_name, _241)
       end
-      return some(_141_, behavior["respond-to"])
+      return some(_230_, behavior["respond-to"])
     end
   end
   return {["make-behavior-registry"] = make_behavior_registry, ["make-behavior"] = make_behavior, ["add-behavior!"] = add_behavior_21, ["behavior-defined?"] = behavior_defined_3f, ["get-behavior"] = get_behavior, ["list-behaviors"] = list_behaviors, ["behavior-responds-to?"] = behavior_responds_to_3f}
 end
 package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile-fennel"] or function(...)
-  local _local_146_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_146_["make-behavior"]
+  local _local_235_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_235_["make-behavior"]
   local compile_fennel_behavior
-  local function _147_(file_change_event)
+  local function _236_(file_change_event)
     local path
     do
-      local t_148_ = file_change_event
-      if (nil ~= t_148_) then
-        t_148_ = t_148_["event-data"]
+      local t_237_ = file_change_event
+      if (nil ~= t_237_) then
+        t_237_ = t_237_["event-data"]
       else
       end
-      if (nil ~= t_148_) then
-        t_148_ = t_148_["file-path"]
+      if (nil ~= t_237_) then
+        t_237_ = t_237_["file-path"]
       else
       end
-      path = t_148_
+      path = t_237_
     end
     if ((nil ~= path) and (".fnl" == path:sub(-4))) then
       return print(hs.execute("./compile.sh", true))
@@ -1210,29 +1908,29 @@ package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile
       return nil
     end
   end
-  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _147_})
+  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _236_})
   return {["compile-fennel-behavior"] = compile_fennel_behavior}
 end
 package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.reload-hammerspoon"] or function(...)
-  local _local_153_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_153_["make-behavior"]
+  local _local_242_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_242_["make-behavior"]
   local notify = require("notify")
   local reloading_3f = false
   local reload = hs.timer.delayed.new(0.5, hs.reload)
   local reload_hammerspoon_behavior
-  local function _154_(file_change_event)
+  local function _243_(file_change_event)
     local path
     do
-      local t_155_ = file_change_event
-      if (nil ~= t_155_) then
-        t_155_ = t_155_["event-data"]
+      local t_244_ = file_change_event
+      if (nil ~= t_244_) then
+        t_244_ = t_244_["event-data"]
       else
       end
-      if (nil ~= t_155_) then
-        t_155_ = t_155_["file-path"]
+      if (nil ~= t_244_) then
+        t_244_ = t_244_["file-path"]
       else
       end
-      path = t_155_
+      path = t_244_
     end
     if (not reloading_3f and (nil ~= path) and (".hammerspoon/init.lua" == path:sub(-21))) then
       reloading_3f = true
@@ -1242,22 +1940,22 @@ package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.rel
       return nil
     end
   end
-  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _154_})
+  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, fn = _243_})
   return {["reload-hammerspoon-behavior"] = reload_hammerspoon_behavior}
 end
 package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-expose"] or function(...)
-  local _local_160_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_160_["make-behavior"]
+  local _local_249_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_249_["make-behavior"]
   local toggle_expose_behavior
-  local function _161_(event, cmd)
+  local function _250_(event, cmd)
     return cmd["toggle-show"]({})
   end
-  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _161_})
+  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _250_})
   return {["toggle-expose-behavior"] = toggle_expose_behavior}
 end
 package.preload["behaviors.update-space-indicator"] = package.preload["behaviors.update-space-indicator"] or function(...)
-  local _local_163_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_163_["make-behavior"]
+  local _local_252_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_252_["make-behavior"]
   local function compute_active_space_indices(all_spaces, active_spaces)
     local result = {}
     local offset = 0
@@ -1276,24 +1974,24 @@ package.preload["behaviors.update-space-indicator"] = package.preload["behaviors
     return result
   end
   local update_space_indicator_behavior
-  local function _165_(event, cmd)
+  local function _254_(event, cmd)
     local indices = compute_active_space_indices(event["event-data"]["all-spaces"], event["event-data"]["active-spaces"])
     return cmd["update-menubar"]({["active-spaces"] = indices})
   end
-  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _165_})
+  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _254_})
   return {["update-space-indicator-behavior"] = update_space_indicator_behavior}
 end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_187_ = require("sheaf.subscription-registry")
-  local make_subscription_registry = _local_187_["make-subscription-registry"]
-  local define_subscription_21 = _local_187_["define-subscription!"]
-  local _local_188_ = require("events")
-  local event_registry = _local_188_["event-registry"]
-  local _local_189_ = require("behaviors")
-  local behavior_registry = _local_189_["behavior-registry"]
-  local _local_190_ = require("event_sources")
-  local source_registry = _local_190_["source-registry"]
+  local _local_276_ = require("sheaf.subscription-registry")
+  local make_subscription_registry = _local_276_["make-subscription-registry"]
+  local define_subscription_21 = _local_276_["define-subscription!"]
+  local _local_277_ = require("events")
+  local event_registry = _local_277_["event-registry"]
+  local _local_278_ = require("behaviors")
+  local behavior_registry = _local_278_["behavior-registry"]
+  local _local_279_ = require("event_sources")
+  local source_registry = _local_279_["source-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["source-registry"] = source_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-selector"] = "event-source.file-watcher/config-dir", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-selector"] = "event-source.file-watcher/config-dir", ["event-selector"] = "event.kind.fs/file-change"})
@@ -1303,21 +2001,21 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
-  local _local_167_ = require("lib.cljlib-shim")
-  local hash_set = _local_167_["hash-set"]
-  local conj = _local_167_.conj
-  local disj = _local_167_.disj
-  local into = _local_167_.into
-  local seq = _local_167_.seq
-  local filter = _local_167_.filter
-  local _local_168_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_168_["valid-event-selector?"]
-  local _local_169_ = require("sheaf.behavior-registry")
-  local behavior_defined_3f = _local_169_["behavior-defined?"]
-  local _local_170_ = require("sheaf.source-registry")
-  local source_instance_exists_3f = _local_170_["source-instance-exists?"]
-  local _local_171_ = require("lib.hierarchy")
-  local ancestors = _local_171_.ancestors
+  local _local_256_ = require("lib.cljlib-shim")
+  local hash_set = _local_256_["hash-set"]
+  local conj = _local_256_.conj
+  local disj = _local_256_.disj
+  local into = _local_256_.into
+  local seq = _local_256_.seq
+  local filter = _local_256_.filter
+  local _local_257_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_257_["valid-event-selector?"]
+  local _local_258_ = require("sheaf.behavior-registry")
+  local behavior_defined_3f = _local_258_["behavior-defined?"]
+  local _local_259_ = require("sheaf.source-registry")
+  local source_instance_exists_3f = _local_259_["source-instance-exists?"]
+  local _local_260_ = require("lib.hierarchy")
+  local ancestors = _local_260_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -1354,16 +2052,16 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
     local behavior = subscription.behavior
     local behavior_set
     do
-      local t_177_ = registry.index
-      if (nil ~= t_177_) then
-        t_177_ = t_177_[source]
+      local t_266_ = registry.index
+      if (nil ~= t_266_) then
+        t_266_ = t_266_[source]
       else
       end
-      if (nil ~= t_177_) then
-        t_177_ = t_177_[event]
+      if (nil ~= t_266_) then
+        t_266_ = t_266_[event]
       else
       end
-      behavior_set = t_177_
+      behavior_set = t_266_
     end
     if behavior_set then
       registry.index[source][event] = disj(behavior_set, behavior)
@@ -1447,31 +2145,31 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-subscribed-behaviors"] = get_subscribed_behaviors}
 end
-local _local_191_ = require("subscriptions")
-local subscription_registry = _local_191_["subscription-registry"]
+local _local_280_ = require("subscriptions")
+local subscription_registry = _local_280_["subscription-registry"]
 package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or function(...)
-  local _local_192_ = require("lib.cljlib-shim")
-  local mapv = _local_192_.mapv
-  local filter = _local_192_.filter
-  local seq = _local_192_.seq
-  local _local_193_ = require("sheaf.event-registry")
-  local add_event_handler_21 = _local_193_["add-event-handler!"]
-  local _local_194_ = require("sheaf.behavior-registry")
-  local behavior_responds_to_3f = _local_194_["behavior-responds-to?"]
-  local get_behavior = _local_194_["get-behavior"]
-  local _local_195_ = require("sheaf.subscription-registry")
-  local get_subscribed_behaviors = _local_195_["get-subscribed-behaviors"]
-  local _local_196_ = require("sheaf.source-registry")
-  local source_instance_exists_3f = _local_196_["source-instance-exists?"]
-  local _local_197_ = require("sheaf.command-registry")
-  local invoke_command_21 = _local_197_["invoke-command!"]
+  local _local_281_ = require("lib.cljlib-shim")
+  local mapv = _local_281_.mapv
+  local filter = _local_281_.filter
+  local seq = _local_281_.seq
+  local _local_282_ = require("sheaf.event-registry")
+  local add_event_handler_21 = _local_282_["add-event-handler!"]
+  local _local_283_ = require("sheaf.behavior-registry")
+  local behavior_responds_to_3f = _local_283_["behavior-responds-to?"]
+  local get_behavior = _local_283_["get-behavior"]
+  local _local_284_ = require("sheaf.subscription-registry")
+  local get_subscribed_behaviors = _local_284_["get-subscribed-behaviors"]
+  local _local_285_ = require("sheaf.source-registry")
+  local source_instance_exists_3f = _local_285_["source-instance-exists?"]
+  local _local_286_ = require("sheaf.command-registry")
+  local invoke_command_21 = _local_286_["invoke-command!"]
   local function build_cmd_table(command_registry, behavior)
     local cmd = {}
     for alias, cmd_name in pairs((behavior.commands or {})) do
-      local function _198_(params)
+      local function _287_(params)
         return invoke_command_21(command_registry, cmd_name, params)
       end
-      cmd[alias] = _198_
+      cmd[alias] = _287_
     end
     return cmd
   end
@@ -1484,7 +2182,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
     end
     local behavior_names = (get_subscribed_behaviors(subscription_registry, event["event-source"], event["event-name"]) or {})
     local valid_names
-    local function _200_(name)
+    local function _289_(name)
       local responds_3f = behavior_responds_to_3f(behavior_registry, name, event["event-name"])
       if not responds_3f then
         print(("[ERROR] get-behaviors-for-event: behavior '" .. tostring(name) .. "' does not respond to event '" .. tostring(event["event-name"]) .. "'"))
@@ -1492,8 +2190,8 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
       end
       return responds_3f
     end
-    valid_names = filter(_200_, behavior_names)
-    local function _202_(name)
+    valid_names = filter(_289_, behavior_names)
+    local function _291_(name)
       local behavior = get_behavior(behavior_registry, name)
       if (nil == behavior) then
         print(("[ERROR] get-behaviors-for-event: behavior '" .. tostring(name) .. "' not found in registry"))
@@ -1501,14 +2199,14 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
       end
       return behavior
     end
-    return mapv(_202_, (seq(valid_names) or {}))
+    return mapv(_291_, (seq(valid_names) or {}))
   end
   local function start_dispatcher_21(subscription_registry)
     local event_registry = subscription_registry["event-registry"]
     local command_registry = subscription_registry["behavior-registry"]["command-registry"]
     local cmd_cache = {}
     local get_cmd_table
-    local function _204_(behavior)
+    local function _293_(behavior)
       local cached = cmd_cache[behavior.name]
       if cached then
         return cached
@@ -1518,8 +2216,8 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
         return cmd
       end
     end
-    get_cmd_table = _204_
-    local function _206_(event)
+    get_cmd_table = _293_
+    local function _295_(event)
       local bs = get_behaviors_for_event(subscription_registry, event)
       for _, behavior in pairs(bs) do
         if behavior then
@@ -1529,20 +2227,20 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _206_)
-    local function _208_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _295_)
+    local function _297_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _208_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _297_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_210_ = require("sheaf.dispatcher")
-local start_dispatcher_21 = _local_210_["start-dispatcher!"]
+local _local_299_ = require("sheaf.dispatcher")
+local start_dispatcher_21 = _local_299_["start-dispatcher!"]
 package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -1569,12 +2267,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     else
     end
     local timer
-    local function _214_()
+    local function _303_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _214_)
+    timer = hs.timer.new(0.01, _303_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -1590,9 +2288,9 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_216_ = require("sheaf.event-loop")
-local make_event_loop = _local_216_["make-event-loop"]
-local start_event_loop_21 = _local_216_["start-event-loop!"]
+local _local_305_ = require("sheaf.event-loop")
+local make_event_loop = _local_305_["make-event-loop"]
+local start_event_loop_21 = _local_305_["start-event-loop!"]
 start_dispatcher_21(subscription_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)
