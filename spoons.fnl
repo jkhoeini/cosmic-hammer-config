@@ -1,38 +1,13 @@
 
-(local {: contains?} (require :lib.cljlib-shim))
+(local {: and-use! : add-repo!} (require :spoon-install))
 
-(local loaded-spoons
-       (icollect [i spoon (ipairs (hs.spoons.list))] (. spoon :name)))
-
-(fn trim [s]
-  (-> s
-      (: :gsub "^%s+" "")
-      (: :gsub "%s+$" "")))
-
-(fn exec [& rst]
-  (hs.execute (table.concat rst " ") true))
-
-(when (not (contains? loaded-spoons "SpoonInstall"))
-    (let [tmpdir1 (exec "mktemp -d")
-          tmpdir (trim tmpdir1)
-          outfile (.. tmpdir "/SpoonInstall.spoon.zip")]
-      (exec "curl -fsSL https://github.com/Hammerspoon/Spoons/raw/master/Spoons/SpoonInstall.spoon.zip -o" outfile)
-      (exec "cd" tmpdir ";" "unzip SpoonInstall.spoon.zip -d ~/.hammerspoon/Spoons/")
-      (exec "rm -rf " tmpdir)))
-
-
-(hs.loadSpoon "SpoonInstall")
-
-(fn use-spoon [spoon-name opts]
-  (: spoon.SpoonInstall :andUse spoon-name opts))
-
-(use-spoon "Calendar" {})
+(and-use! "Calendar" {})
 
 ;; spoon.SpoonInstall:andUse("HCalendar", { start = true}))
 ;; Pomodoro Menubar: spoon.SpoonInstall:andUse("Cherry", {})
-(use-spoon "CircleClock" {})
-(use-spoon "ClipboardTool" {:start true})
-(use-spoon "Emojis" {})
+(and-use! "CircleClock" {})
+(and-use! "ClipboardTool" {:start true})
+(and-use! "Emojis" {})
 
 ;; Make setFrame behave more correctly. e.g. terminal windows)
 ;; hs.window.setFrameCorrectness = true
@@ -43,25 +18,25 @@
     (spoon.Emojis.chooser:show)))
 
 
-(use-spoon "HSKeybindings" {})
+(and-use! "HSKeybindings" {})
 
-(var hammerspoonKeybindingsIsShown false)
+(var hammerspoon-keybindings-shown? false)
 
-(fn toggleShowKeybindings []
-  (set hammerspoonKeybindingsIsShown (not hammerspoonKeybindingsIsShown))
-  (if hammerspoonKeybindingsIsShown
+(fn toggle-show-keybindings []
+  (set hammerspoon-keybindings-shown? (not hammerspoon-keybindings-shown?))
+  (if hammerspoon-keybindings-shown?
     (spoon.HSKeybindings:show)
     (spoon.HSKeybindings:hide)))
 
-(use-spoon "KSheet" {})
+(and-use! "KSheet" {})
 
-(set spoon.SpoonInstall.repos.PaperWM
-     {:url "https://github.com/mogenson/PaperWM.spoon"
-      :desc "PaperWM.spoon repository"
-      :branch "release"})
+(add-repo! :PaperWM
+           {:url "https://github.com/mogenson/PaperWM.spoon"
+            :desc "PaperWM.spoon repository"
+            :branch "release"})
 
 (local paper-wm
-       (use-spoon
+       (and-use!
         "PaperWM"
         {:repo "PaperWM"
          :config {:window_gap 35
