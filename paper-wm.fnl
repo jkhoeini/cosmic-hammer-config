@@ -27,7 +27,7 @@
 ;; These values can be overridden before calling start!
 (var config {:window-gap 35
              :screen-margin 16
-             :window-ratios [0.3125 0.421875 0.625 0.843750]})
+             :window-ratios [0.421875 0.843750]})
 
 (local logger (hs.logger.new :PaperWM))
 

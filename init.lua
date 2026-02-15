@@ -11,7 +11,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   local Watcher = hs.uielement.watcher
   local WindowFilter = hs.window.filter
   local Rect = hs.geometry.rect
-  local config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.3125, 0.421875, 0.625, 0.84375}}
+  local config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.421875, 0.84375}}
   local logger = hs.logger.new("PaperWM")
   local Direction = {LEFT = -1, RIGHT = 1, UP = -2, DOWN = 2, WIDTH = 3, HEIGHT = 4, ASCENDING = 5, DESCENDING = 6}
   local window_list = {}
