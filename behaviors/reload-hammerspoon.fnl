@@ -2,7 +2,7 @@
 ;; behaviors/reload-hammerspoon.fnl
 ;; Exports behavior data (pure, no registry dependency)
 
-(local {: make-behavior} (require :lib.behavior-registry))
+(local {: make-behavior} (require :sheaf.behavior-registry))
 (local notify (require :notify))
 
 

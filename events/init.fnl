@@ -6,7 +6,7 @@
 ;; The hierarchy is accessible via event-registry.hierarchy
 
 (local {: string?} (require :lib.cljlib-shim))
-(local {: make-event-registry : define-event!} (require :lib.event-registry))
+(local {: make-event-registry : define-event!} (require :sheaf.event-registry))
 (local {: make-hierarchy : derive!} (require :lib.hierarchy))
 
 

@@ -2,7 +2,7 @@
 ;; behaviors/update-space-indicator.fnl
 ;; Behavior: on space/screen change, compute active space indices and update menubar
 
-(local {: make-behavior} (require :lib.behavior-registry))
+(local {: make-behavior} (require :sheaf.behavior-registry))
 
 
 (fn compute-active-space-indices [all-spaces active-spaces]

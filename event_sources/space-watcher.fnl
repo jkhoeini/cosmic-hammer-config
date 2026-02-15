@@ -2,7 +2,7 @@
 ;; event_sources/space-watcher.fnl
 ;; Event source type: emits events on space/desktop change
 
-(local {: make-source-type} (require :lib.source-registry))
+(local {: make-source-type} (require :sheaf.source-registry))
 
 
 (fn snapshot-spaces []

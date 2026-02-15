@@ -2,7 +2,7 @@
 ;; subscriptions/init.fnl
 ;; Creates subscription registry and wires behaviors to event sources.
 
-(local {: make-subscription-registry : define-subscription!} (require :lib.subscription-registry))
+(local {: make-subscription-registry : define-subscription!} (require :sheaf.subscription-registry))
 (local {: event-registry} (require :events))
 (local {: behavior-registry} (require :behaviors))
 (local {: source-registry} (require :event_sources))

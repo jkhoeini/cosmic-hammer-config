@@ -3,7 +3,7 @@
 ;; Event source type: watches a directory for file changes
 
 (local {: mapv : assoc : string?} (require :lib.cljlib-shim))
-(local {: make-source-type} (require :lib.source-registry))
+(local {: make-source-type} (require :sheaf.source-registry))
 
 
 (fn start-file-watcher [self emit]

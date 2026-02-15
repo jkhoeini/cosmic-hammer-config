@@ -21,9 +21,9 @@
 ;;    :exclude-tags []}  ; placeholder for future
 
 (local {: hash-set : conj : disj : into : seq : filter} (require :lib.cljlib-shim))
-(local {: valid-event-selector?} (require :lib.event-registry))
-(local {: behavior-defined?} (require :lib.behavior-registry))
-(local {: source-instance-exists?} (require :lib.source-registry))
+(local {: valid-event-selector?} (require :sheaf.event-registry))
+(local {: behavior-defined?} (require :sheaf.behavior-registry))
+(local {: source-instance-exists?} (require :sheaf.source-registry))
 (local {: ancestors} (require :lib.hierarchy))
 
 

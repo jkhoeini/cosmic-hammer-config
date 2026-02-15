@@ -1,5 +1,5 @@
 
-(local {: and-use! : add-repo!} (require :spoon-install))
+(local {: and-use! : add-repo!} (require :lib.spoon-install))
 
 (and-use! "Calendar" {})
 

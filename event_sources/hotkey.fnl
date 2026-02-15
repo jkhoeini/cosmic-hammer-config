@@ -3,7 +3,7 @@
 ;; Event source type: emits events on hotkey press
 
 (local {: string?} (require :lib.cljlib-shim))
-(local {: make-source-type} (require :lib.source-registry))
+(local {: make-source-type} (require :sheaf.source-registry))
 
 
 (fn start-hotkey [self emit]

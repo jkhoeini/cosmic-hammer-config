@@ -2,7 +2,7 @@
 ;; event_sources/init.fnl
 ;; Create source registry, load source types, and create instances.
 
-(local {: make-source-registry : add-source-type! : start-event-source!} (require :lib.source-registry))
+(local {: make-source-registry : add-source-type! : start-event-source!} (require :sheaf.source-registry))
 (local {: event-registry} (require :events))
 (local {: file-watcher-source-type} (require :event_sources.file-watcher))
 (local {: hotkey-source-type} (require :event_sources.hotkey))

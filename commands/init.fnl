@@ -2,7 +2,7 @@
 ;; commands/init.fnl
 ;; Creates command registry and registers commands.
 
-(local {: make-command-registry : add-command!} (require :lib.command-registry))
+(local {: make-command-registry : add-command!} (require :sheaf.command-registry))
 
 ;; Import command data
 (local {: toggle-expose-command} (require :commands.toggle-expose))

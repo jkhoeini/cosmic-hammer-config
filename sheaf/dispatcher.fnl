@@ -5,11 +5,11 @@
 ;; Provides start-dispatcher! to register behavior routing handlers.
 
 (local {: mapv : filter : seq} (require :lib.cljlib-shim))
-(local {: add-event-handler!} (require :lib.event-registry))
-(local {: behavior-responds-to? : get-behavior} (require :lib.behavior-registry))
-(local {: get-subscribed-behaviors} (require :lib.subscription-registry))
-(local {: source-instance-exists?} (require :lib.source-registry))
-(local {: invoke-command!} (require :lib.command-registry))
+(local {: add-event-handler!} (require :sheaf.event-registry))
+(local {: behavior-responds-to? : get-behavior} (require :sheaf.behavior-registry))
+(local {: get-subscribed-behaviors} (require :sheaf.subscription-registry))
+(local {: source-instance-exists?} (require :sheaf.source-registry))
+(local {: invoke-command!} (require :sheaf.command-registry))
 
 
 (fn build-cmd-table [command-registry behavior]

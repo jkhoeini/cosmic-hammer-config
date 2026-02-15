@@ -2,7 +2,7 @@
 ;; behaviors/init.fnl
 ;; Creates behavior registry and wires everything together.
 
-(local {: make-behavior-registry : add-behavior!} (require :lib.behavior-registry))
+(local {: make-behavior-registry : add-behavior!} (require :sheaf.behavior-registry))
 (local {: event-registry} (require :events))
 (local {: command-registry} (require :commands))
 

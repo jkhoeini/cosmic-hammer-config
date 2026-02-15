@@ -2,7 +2,7 @@
 ;; commands/space-indicator.fnl
 ;; Command: update the space indicator menubar
 
-(local {: make-command} (require :lib.command-registry))
+(local {: make-command} (require :sheaf.command-registry))
 
 
 ;; Create menubar with autosave name so macOS remembers its position

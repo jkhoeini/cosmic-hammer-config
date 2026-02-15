@@ -2,7 +2,7 @@
 ;; event_sources/screen-watcher.fnl
 ;; Event source type: emits events on screen layout change
 
-(local {: make-source-type} (require :lib.source-registry))
+(local {: make-source-type} (require :sheaf.source-registry))
 
 
 (fn snapshot-spaces []

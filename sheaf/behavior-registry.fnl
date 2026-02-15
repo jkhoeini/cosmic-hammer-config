@@ -15,8 +15,8 @@
 ;;    :fn (fn [event cmd] ...)}
 
 (local {: some} (require :lib.cljlib-shim))
-(local {: valid-event-selector?} (require :lib.event-registry))
-(local {: command-defined?} (require :lib.command-registry))
+(local {: valid-event-selector?} (require :sheaf.event-registry))
+(local {: command-defined?} (require :sheaf.command-registry))
 (local {: isa?} (require :lib.hierarchy))
 
 

@@ -22,8 +22,8 @@
 (local {: subscription-registry} (require :subscriptions))
 
 ;; Start dispatcher and event loop
-(local {: start-dispatcher!} (require :lib.dispatcher))
-(local {: make-event-loop : start-event-loop!} (require :lib.event-loop))
+(local {: start-dispatcher!} (require :sheaf.dispatcher))
+(local {: make-event-loop : start-event-loop!} (require :sheaf.event-loop))
 
 (start-dispatcher! subscription-registry)
 (local event-loop (make-event-loop event-registry))

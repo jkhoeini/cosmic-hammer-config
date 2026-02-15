@@ -9,7 +9,7 @@
 ;;   Type:     :event-source.type/file-watcher
 ;;   Instance: :event-source.file-watcher/config-dir
 
-(local {: dispatch-event!} (require :lib.event-registry))
+(local {: dispatch-event!} (require :sheaf.event-registry))
 
 
 ;; ============================================================================

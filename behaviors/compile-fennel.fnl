@@ -2,7 +2,7 @@
 ;; behaviors/compile-fennel.fnl
 ;; Exports behavior data (pure, no registry dependency)
 
-(local {: make-behavior} (require :lib.behavior-registry))
+(local {: make-behavior} (require :sheaf.behavior-registry))
 
 
 (local compile-fennel-behavior
