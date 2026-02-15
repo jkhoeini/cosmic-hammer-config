@@ -9,7 +9,6 @@ package.preload["spoons"] = package.preload["spoons"] or function(...)
   local add_repo_21 = _local_32_["add-repo!"]
   add_repo_21("PaperWM", {url = "https://github.com/mogenson/PaperWM.spoon", desc = "PaperWM.spoon repository", branch = "release"})
   and_use_21("Calendar", {})
-  and_use_21("CircleClock", {})
   local function _33_(_241)
     return _241:bindHotkeys(_241.default_hotkeys)
   end
@@ -1598,5 +1597,139 @@ local start_event_loop_21 = _local_216_["start-event-loop!"]
 start_dispatcher_21(subscription_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)
+package.preload["clock"] = package.preload["clock"] or function(...)
+  local canvas = nil
+  local timer = nil
+  local colors = {tick = {hex = "#1A1A1A", alpha = 0.95}, ["minute-label"] = {hex = "#1A1A1A", alpha = 0.85}, ["hour-number"] = {hex = "#000000", alpha = 1.0}, background = {hex = "#FFFFFF", alpha = 0.3}, ["sec-track"] = {hex = "#9E9E9E", alpha = 0.3}, ["sec-fill"] = {hex = "#9E9E9E", alpha = 0.1}, ["hour-track"] = {hex = "#FFFFFF", alpha = 0.1}, ["hour-arc"] = {hex = "#EC6D27", alpha = 0.75}, ["min-track"] = {hex = "#FFFFFF", alpha = 0.1}, ["min-arc"] = {hex = "#1891C3", alpha = 0.75}}
+  local pi = math.pi
+  local function deg__3erad(deg)
+    return (deg * (pi / 180))
+  end
+  local function polar__3exy(half, angle_deg, radius)
+    local rad = deg__3erad((angle_deg - 90))
+    return (half + (radius * math.cos(rad))), (half + (radius * math.sin(rad)))
+  end
+  local function make_tick_elements(half)
+    local elements = {}
+    for i = 0, 59 do
+      local angle = (i * 6)
+      local major_3f = (0 == (i % 5))
+      local outer_r = (half * 0.92)
+      local inner_r
+      if major_3f then
+        inner_r = (half * 0.78)
+      else
+        inner_r = (half * 0.85)
+      end
+      local width
+      if major_3f then
+        width = 2.0
+      else
+        width = 1.0
+      end
+      local x1, y1 = polar__3exy(half, angle, outer_r)
+      local x2, y2 = polar__3exy(half, angle, inner_r)
+      table.insert(elements, {type = "segments", action = "stroke", strokeColor = colors.tick, strokeWidth = width, coordinates = {{x = x1, y = y1}, {x = x2, y = y2}}})
+    end
+    return elements
+  end
+  local function make_minute_label_elements(half)
+    local elements = {}
+    local label_r = (half * 0.97)
+    local font_size = math.max(6, math.floor((half * 0.07)))
+    local box_size = (font_size * 2.2)
+    for i = 1, 12 do
+      local minute = (i * 5)
+      local angle = (i * 30)
+      local label
+      if (minute < 10) then
+        label = ("0" .. tostring(minute))
+      else
+        label = tostring(minute)
+      end
+      local cx, cy = polar__3exy(half, angle, label_r)
+      table.insert(elements, {type = "text", text = label, textAlignment = "center", textColor = colors["minute-label"], textFont = "Helvetica Neue", textSize = font_size, frame = {x = (cx - (box_size / 2)), y = (cy - (box_size / 2)), w = box_size, h = box_size}})
+    end
+    return elements
+  end
+  local function make_hour_number_elements(half)
+    local elements = {}
+    local hour_r = (half * 0.66)
+    local font_size = math.max(10, math.floor((half * 0.16)))
+    local box_size = (font_size * 1.5)
+    for i = 1, 12 do
+      local angle = (i * 30)
+      local cx, cy = polar__3exy(half, angle, hour_r)
+      table.insert(elements, {type = "text", text = tostring(i), textAlignment = "center", textColor = colors["hour-number"], textFont = "Helvetica Neue Bold", textSize = font_size, frame = {x = (cx - (box_size / 2)), y = (cy - (box_size / 2)), w = box_size, h = box_size}})
+    end
+    return elements
+  end
+  local sec_arc_idx = nil
+  local min_arc_idx = nil
+  local hour_arc_idx = nil
+  local function update_clock()
+    local secnum = math.tointeger(os.date("%S"))
+    local minnum = math.tointeger(os.date("%M"))
+    local hournum = math.tointeger(os.date("%I"))
+    local secangle = (6 * secnum)
+    local minangle = ((6 * minnum) + (0.1 * secnum))
+    local hourangle = (((30 * hournum) + (0.5 * minnum) + ((0.5 / 60) * secnum)) % 360)
+    canvas[sec_arc_idx]["endAngle"] = secangle
+    canvas[min_arc_idx]["endAngle"] = minangle
+    canvas[hour_arc_idx]["endAngle"] = hourangle
+    return nil
+  end
+  local function start_draw_clock_21(cx, cy, clock_size)
+    local half = (clock_size / 2)
+    canvas = hs.canvas.new({x = (cx - half), y = (cy - half), w = clock_size, h = clock_size}):show()
+    canvas:behavior(hs.canvas.windowBehaviors.canJoinAllSpaces)
+    canvas:level(hs.canvas.windowLevels.desktopIcon)
+    local idx = 1
+    canvas[idx] = {type = "circle", action = "fill", radius = "50%", fillColor = colors.background}
+    for _, el in ipairs(make_tick_elements(half)) do
+      idx = (idx + 1)
+      canvas[idx] = el
+    end
+    for _, el in ipairs(make_minute_label_elements(half)) do
+      idx = (idx + 1)
+      canvas[idx] = el
+    end
+    for _, el in ipairs(make_hour_number_elements(half)) do
+      idx = (idx + 1)
+      canvas[idx] = el
+    end
+    idx = (idx + 1)
+    canvas[idx] = {id = "watch_circle", type = "circle", action = "stroke", radius = "40%", strokeColor = colors["sec-track"]}
+    idx = (idx + 1)
+    sec_arc_idx = idx
+    canvas[idx] = {id = "watch_sechand", type = "arc", radius = "40%", fillColor = colors["sec-fill"], strokeColor = colors["sec-track"], endAngle = 0}
+    idx = (idx + 1)
+    canvas[idx] = {id = "watch_hourcircle", type = "circle", action = "stroke", radius = "20%", strokeWidth = 3, strokeColor = colors["hour-track"]}
+    idx = (idx + 1)
+    hour_arc_idx = idx
+    canvas[idx] = {id = "watch_hourarc", type = "arc", action = "stroke", radius = "20%", strokeWidth = 3, strokeColor = colors["hour-arc"], endAngle = 0, arcRadii = false}
+    idx = (idx + 1)
+    canvas[idx] = {id = "watch_mincircle", type = "circle", action = "stroke", radius = "27%", strokeWidth = 3, strokeColor = colors["min-track"]}
+    idx = (idx + 1)
+    min_arc_idx = idx
+    canvas[idx] = {id = "watch_minarc", type = "arc", action = "stroke", radius = "27%", strokeWidth = 3, strokeColor = colors["min-arc"], endAngle = 0, arcRadii = false}
+    if not timer then
+      timer = hs.timer.doEvery(1, update_clock)
+      return nil
+    else
+      return timer:start()
+    end
+  end
+  return {["start-draw-clock!"] = start_draw_clock_21}
+end
+local _local_221_ = require("clock")
+local start_draw_clock_21 = _local_221_["start-draw-clock!"]
+do
+  local cres = hs.screen.mainScreen():fullFrame()
+  local clock_size = 200
+  local cx = (cres.w - (clock_size / 2) - 150)
+  local cy = (100 + (clock_size / 2))
+  start_draw_clock_21(cx, cy, clock_size)
+end
 notify.warn("Reload Succeeded")
 return {}

@@ -30,6 +30,14 @@
 (start-event-loop! event-loop)
 
 
+;; Draw desktop clock on the right side of the screen
+(local {: start-draw-clock!} (require :clock))
+(let [cres (: (hs.screen.mainScreen) :fullFrame)
+      clock-size 200
+      cx (- cres.w (/ clock-size 2) 150)
+      cy (+ 100 (/ clock-size 2))]
+  (start-draw-clock! cx cy clock-size))
+
 (notify.warn "Reload Succeeded")
 
 {}
