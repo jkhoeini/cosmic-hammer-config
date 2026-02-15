@@ -8,7 +8,6 @@ package.preload["spoons"] = package.preload["spoons"] or function(...)
   local and_use_21 = _local_32_["and-use!"]
   local add_repo_21 = _local_32_["add-repo!"]
   add_repo_21("PaperWM", {url = "https://github.com/mogenson/PaperWM.spoon", desc = "PaperWM.spoon repository", branch = "release"})
-  and_use_21("Calendar", {})
   local function _33_(_241)
     return _241:bindHotkeys(_241.default_hotkeys)
   end
@@ -1730,6 +1729,107 @@ do
   local cx = (cres.w - (clock_size / 2) - 150)
   local cy = (100 + (clock_size / 2))
   start_draw_clock_21(cx, cy, clock_size)
+end
+package.preload["calendar"] = package.preload["calendar"] or function(...)
+  local calw = 260
+  local calh = 184
+  local today_color = {red = 1, green = 1, blue = 1, alpha = 0.3}
+  local cal_color = {red = (235 / 255), green = (235 / 255), blue = (235 / 255)}
+  local bg_color = {red = 0, green = 0, blue = 0, alpha = 0.3}
+  local weeknum_color = {red = (246 / 255), green = (246 / 255), blue = (246 / 255), alpha = 0.5}
+  local cell_w = ((calw - 20) / 8)
+  local cell_h = ((calh - 20) / 8)
+  local function cell_x(col)
+    return tostring(((10 + (cell_w * col)) / calw))
+  end
+  local function cell_y(row)
+    return tostring(((10 + (cell_h * row)) / calh))
+  end
+  local function cell_frame(col, row)
+    return {x = cell_x(col), y = cell_y(row), w = tostring((cell_w / calw)), h = tostring((cell_h / calh))}
+  end
+  local function text_element(col, row, text, color, _3fid)
+    return {type = "text", id = (_3fid or nil), text = text, textFont = "Courier", textSize = 16, textColor = color, textAlignment = "center", frame = cell_frame(col, row)}
+  end
+  local canvas = nil
+  local timer = nil
+  local function update_cal_canvas()
+    local title = os.date("%B %Y")
+    local year = os.date("%Y")
+    local month = os.date("%m")
+    local day = os.date("%d")
+    local first_of_next = os.time({year = year, month = (month + 1), day = 1})
+    local max_day = os.date("*t", (first_of_next - (24 * 60 * 60))).day
+    local first_wday = os.date("*t", os.time({year = year, month = month, day = 1})).wday
+    local needed_rows = math.ceil(((first_wday + max_day + -1) / 7))
+    canvas[2]["text"] = title
+    for i = 1, needed_rows do
+      for k = 1, 7 do
+        local idx = ((7 * (i - 1)) + k)
+        local day_num = ((idx - first_wday) + 2)
+        local canvas_idx = (9 + idx)
+        if ((day_num <= 0) or (day_num > max_day)) then
+          canvas[canvas_idx]["text"] = ""
+        else
+          canvas[canvas_idx]["text"] = day_num
+        end
+        if (day_num == math.tointeger(day)) then
+          canvas[58].frame["x"] = cell_x(k)
+          canvas[58].frame["y"] = cell_y((i + 1))
+        else
+        end
+      end
+    end
+    do
+      local yearweek_start = hs.execute("date -v1d +'%W'")
+      for i = 1, 6 do
+        local wk = (math.tointeger(yearweek_start) + i + -1)
+        local _224_
+        if (i > needed_rows) then
+          _224_ = ""
+        else
+          _224_ = wk
+        end
+        canvas[(51 + i)]["text"] = _224_
+      end
+    end
+    return canvas:size({w = calw, h = (20 + (cell_h * (needed_rows + 2)))})
+  end
+  local function show_calendar(x, y)
+    canvas = hs.canvas.new({x = x, y = y, w = calw, h = calh}):show()
+    canvas:behavior(hs.canvas.windowBehaviors.canJoinAllSpaces)
+    canvas:level(hs.canvas.windowLevels.desktopIcon)
+    canvas[1] = {type = "rectangle", id = "cal_bg", action = "fill", fillColor = bg_color, roundedRectRadii = {xRadius = 10, yRadius = 10}}
+    canvas[2] = {type = "text", id = "cal_title", text = "", textFont = "Courier", textSize = 16, textColor = cal_color, textAlignment = "center", frame = {x = tostring((10 / calw)), y = tostring((10 / calw)), w = tostring((1 - (20 / calw))), h = tostring((cell_h / calh))}}
+    do
+      local weeknames = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+      for i, name in ipairs(weeknames) do
+        canvas[(2 + i)] = text_element(i, 1, name, cal_color, "cal_weekday")
+      end
+    end
+    for row = 1, 6 do
+      for col = 1, 7 do
+        canvas[(9 + (7 * (row - 1)) + col)] = text_element(col, (row + 1), "", cal_color)
+      end
+    end
+    for row = 1, 6 do
+      canvas[(51 + row)] = text_element(0, (row + 1), "", weeknum_color)
+    end
+    canvas[58] = {type = "rectangle", action = "fill", fillColor = today_color, roundedRectRadii = {xRadius = 3, yRadius = 3}, frame = cell_frame(1, 2)}
+    if (timer == nil) then
+      timer = hs.timer.doEvery(1800, update_cal_canvas)
+      return timer:setNextTrigger(0)
+    else
+      return timer:start()
+    end
+  end
+  return {["show-calendar"] = show_calendar}
+end
+local _local_227_ = require("calendar")
+local show_calendar = _local_227_["show-calendar"]
+do
+  local cres = hs.screen.mainScreen():fullFrame()
+  show_calendar((cres.w - 280), (cres.h - 204))
 end
 notify.warn("Reload Succeeded")
 return {}

@@ -38,6 +38,11 @@
       cy (+ 100 (/ clock-size 2))]
   (start-draw-clock! cx cy clock-size))
 
+;; Show desktop calendar at the bottom-right corner of the screen
+(local {: show-calendar} (require :calendar))
+(let [cres (: (hs.screen.mainScreen) :fullFrame)]
+  (show-calendar (- cres.w 280) (- cres.h 204)))
+
 (notify.warn "Reload Succeeded")
 
 {}

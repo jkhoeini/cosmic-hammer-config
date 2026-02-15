@@ -6,7 +6,6 @@
             :desc "PaperWM.spoon repository"
             :branch "release"})
 
-(and-use! :Calendar {})
 (and-use! :PaperWM {:repo :PaperWM
                     :config {:window_gap 35
                              :screen_margin 16
