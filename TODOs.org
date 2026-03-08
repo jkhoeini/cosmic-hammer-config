@@ -22,12 +22,12 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [0/38]
+* Projects [3/47]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [3/6]
+*** NOW Milestone 3: Sheaf Core [4/6]
 Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
 Built incrementally — each step is independently functional.
 
@@ -50,7 +50,7 @@ Built incrementally — each step is independently functional.
      - Data model expansion only — not enforced until components exist
      - Prepares subscription shape for component wiring
 
-**** TODO [#B] Migrate remaining behaviors to use commands instead of side-effects :refactor:
+**** DONE Migrate remaining behaviors to use commands instead of side-effects :refactor:
      - reload-hammerspoon: hs.reload → command
      - compile-fennel: hs.execute → command
      - Side-effects should go through the command registry for consistency and testability
@@ -67,7 +67,7 @@ Built incrementally — each step is independently functional.
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
      - [ ] Keep apps-filter.fnl as shared utility
-     - [ ] Skip paper-wm.fnl (Spoon version already running)
+     - [ ] Migrate paper-wm.fnl (867 lines, own watchers/state — needs scoping)
 
 **** LATER [#B] Define component concept :architecture:
      - lib/component-registry.fnl: make-component, start-component!, stop-component!
@@ -133,6 +133,11 @@ System is performant and has comprehensive documentation for users.
 **** LATER [#C] Explore Clojure Integrant for data-driven config inspiration :architecture:
      - https://github.com/weavejester/integrant
      - component, mount, arachne, duct, etc
+
+**** LATER [#C] Evaluate event loop polling vs direct dispatch          :architecture:perf:
+     - Currently polls queue every 10ms via hs.timer
+     - Alternative: dispatch synchronously from source emit callbacks
+     - Consider: latency, CPU cost, ordering guarantees, batching needs
 
 **** LATER [#C] Cache ancestor lookups                                :perf:
      - Currently recalculated each time
@@ -214,6 +219,54 @@ Users can automate based on more system events.
     - Emit events on battery level/charging state change
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
+
+** PROJ URL Dispatch [2/9]
+Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
+
+*** Phase 1: Core Dispatch [2/6]
+
+**** TODO [#A] Create URL event source                                  :feature:
+     - Register as default HTTP handler via hs.urlevent.setDefaultHandler
+     - Emit :url-handler.events/url-opened with {url, original, scheme, host, params, sender}
+     - pcall around sender app lookup (PID may be stale)
+     - stop-fn restores previous default handler
+
+**** TODO [#A] Implement decoder pipeline in URL event source            :feature:
+     - Ordered list of decoders in source config
+     - Each decoder operates on current (already-decoded) URL, not original
+     - Decoder = {:name :match :decode-url?}
+     - Built-in cases: Slack redir, Outlook SafeLinks
+
+**** DONE Create open-in-app command                                    :feature:
+     - :url-dispatch.commands/open-in-app {url, bundle-id}
+     - Wraps hs.urlevent.openURLWithBundle
+
+**** DONE Create show-chooser command                                   :feature:
+     - :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
+     - Use hs.chooser (async, non-blocking)
+
+**** TODO [#A] Create URL routing behavior                              :feature:
+     - First-match-wins against ordered rules
+     - Rule = {:patterns [...] :app "bundle.id" :sender [...]}
+     - Fallback rule can invoke show-chooser
+     - Dispatch via cmd.open-in-app or cmd.show-chooser
+
+**** TODO [#A] Wire subscription and integrate into core                :feature:
+     - Define events in events/init.fnl (:event.kind.url/opened hierarchy)
+     - Create source instance, subscription, add to core.fnl
+
+*** Phase 2: History [0/3]
+
+**** LATER [#B] Record URL history                                      :feature:
+     - Store dispatched URLs with timestamp, sender, matched rule, target app
+     - Persist to file or SQLite
+
+**** LATER [#B] Create history browser via hs.chooser                   :feature:
+     - Searchable list of past URLs
+     - Reopen in original or different app
+
+**** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
+     - Wire a hotkey to show the URL history chooser
 
 * Chores [0/2]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
