@@ -11,6 +11,7 @@
 (local {: reload-hammerspoon-command} (require :commands.reload-hammerspoon))
 (local {: open-in-app-command} (require :commands.open-in-app))
 (local {: show-chooser-command} (require :commands.show-chooser))
+(local {: open-emacs-command} (require :commands.open-emacs))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry))
@@ -20,6 +21,7 @@
 (add-command! command-registry reload-hammerspoon-command)
 (add-command! command-registry open-in-app-command)
 (add-command! command-registry show-chooser-command)
+(add-command! command-registry open-emacs-command)
 
 
 {: command-registry}

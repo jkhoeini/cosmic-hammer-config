@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/47]
+* Projects [3/48]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -62,7 +62,7 @@ Built incrementally — each step is independently functional.
      - [ ] Migrate slack.fnl (14 keystroke functions → commands + behaviors)
      - [ ] Migrate chrome.fnl (3 nav functions → commands + behaviors)
      - [ ] Migrate multimedia.fnl (5 media key functions → commands + behaviors)
-     - [ ] Migrate emacs.fnl (Emacs integration → component with commands)
+     - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [ ] Migrate app-switcher.fnl (2 functions → commands + behaviors)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
@@ -267,6 +267,23 @@ Route URLs to different browsers/apps based on rules. Hammerspoon acts as defaul
 
 **** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
      - Wire a hotkey to show the URL history chooser
+
+** PROJ Virtual Workspaces [0/1]
+Replace native macOS Spaces with a reliable off-screen workspace layer.
+Native Spaces have no public API; every private API workaround breaks on each macOS release.
+
+*** LATER [#A] Design virtual workspace system (AeroSpace-style) :architecture:
+     - macOS Spaces API is private, broken on Sequoia, and has broken on every 1-2 releases historically
+     - AeroSpace approach: inactive workspace windows moved off-screen via hs.window:setFrame()
+     - Uses only public Accessibility API (AXPosition/AXSize) — stable, no SIP required
+     - Key design questions:
+       - [ ] Off-screen coordinates strategy (e.g. x = totalScreenWidth + offset)
+       - [ ] How to handle minimized / hidden windows
+       - [ ] Mission Control / cmd+tab visibility of off-screen windows
+       - [ ] Integration with paper-wm (which currently relies on native spaces for move-to-space)
+       - [ ] Workspace ↔ monitor assignment model (one workspace per monitor, or floating?)
+       - [ ] Sheaf integration: workspace switches as events, commands to move windows
+     - Reference: AeroSpace source (nikitabobko/AeroSpace), FlashSpace (app-level hide/show variant)
 
 * Chores [0/2]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:

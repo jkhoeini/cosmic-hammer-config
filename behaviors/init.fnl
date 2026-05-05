@@ -11,6 +11,7 @@
 (local {: reload-hammerspoon-behavior} (require :behaviors.reload-hammerspoon))
 (local {: toggle-expose-behavior} (require :behaviors.toggle-expose))
 (local {: update-space-indicator-behavior} (require :behaviors.update-space-indicator))
+(local {: open-emacs-behavior} (require :behaviors.open-emacs))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -19,6 +20,7 @@
 (add-behavior! behavior-registry reload-hammerspoon-behavior)
 (add-behavior! behavior-registry toggle-expose-behavior)
 (add-behavior! behavior-registry update-space-indicator-behavior)
+(add-behavior! behavior-registry open-emacs-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

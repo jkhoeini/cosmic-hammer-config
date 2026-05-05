@@ -35,6 +35,12 @@
 
 
 (start-event-source! source-registry
+                     :event-source.hotkey/emacs-hotkey
+                     :event-source.type/hotkey
+                     {:mods [:cmd :alt] :key :return})
+
+
+(start-event-source! source-registry
                      :event-source.space-watcher/default
                      :event-source.type/space-watcher
                      {})

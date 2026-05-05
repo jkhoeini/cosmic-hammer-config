@@ -48,4 +48,11 @@
   :source-selector :event-source.screen-watcher/default
    :event-selector :event.kind.screen/layout-changed})
 
+(define-subscription! subscription-registry
+ :sub/open-emacs-on-hotkey
+ {:description "Open emacsclient frame when cmd+alt+return is pressed"
+  :behavior :emacs.behaviors/open-emacs
+  :source-selector :event-source.hotkey/emacs-hotkey
+  :event-selector :event.kind.hotkey/pressed})
+
 {: subscription-registry}

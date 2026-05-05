@@ -1,7 +1,7 @@
 
 (local core (require :lib.cljlib-shim))
 (local windows (require :windows))
-(local emacs (require :emacs))
+
 
 
 
@@ -216,20 +216,6 @@
          :title (.. "Launch " music-app)
          :action (activator music-app)}])
 
-(local emacs-bindings
-       [return
-        {:key :c
-         :title "Capture"
-         :action (fn [] (emacs.capture))}
-        {:key :z
-         :title "Note"
-         :action (fn [] (emacs.note))}
-        {:key :v
-         :title "Split"
-         :action "emacs:vertical-split-with-emacs"}
-        {:key :f
-         :title "Full Screen"
-         :action "emacs:full-screen"}])
 
 (local yabai-bindings
        [return
@@ -266,9 +252,6 @@
         {:key   :m
          :title "Media"
          :items media-bindings}
-        {:key   :x
-         :title "Emacs"
-         :items emacs-bindings}
         {:key   :y
          :title "Yabai"
          :items yabai-bindings}])
@@ -290,12 +273,7 @@
          :action "chrome:prev-tab"
          :repeat true}])
 
-(local browser-items
-       (core.concat
-        menu-items
-        [{:key "'"
-          :title "Edit with Emacs"
-          :action "emacs:edit-with-emacs"}]))
+(local browser-items menu-items)
 
 (local brave-config
        {:key "Brave Browser"
