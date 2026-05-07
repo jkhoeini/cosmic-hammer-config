@@ -59,7 +59,7 @@ Built incrementally — each step is independently functional.
      Each module becomes components + commands + behaviors + subscriptions.
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
-     - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
+     - [X] Migrate spoons.fnl (already removed)
      - [ ] Keep apps-filter.fnl as shared utility
      - [ ] Migrate paper-wm.fnl (867 lines, own watchers/state — needs scoping)
 
