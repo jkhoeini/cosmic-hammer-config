@@ -302,60 +302,12 @@
                   :action hs.console.clearConsole}])
         :keys []})
 
-(local slack-config
-       {:key "Slack"
-        :keys [{:mods [:cmd]
-                :key  :g
-                :action "slack:scroll-to-bottom"}
-               {:mods [:ctrl]
-                :key :r
-                :action "slack:add-reaction"}
-               {:mods [:ctrl]
-                :key :h
-                :action "slack:prev-element"}
-               {:mods [:ctrl]
-                :key :l
-                :action "slack:next-element"}
-               {:mods [:ctrl]
-                :key :t
-                :action "slack:thread"}
-               {:mods [:ctrl]
-                :key :p
-                :action "slack:prev-day"}
-               {:mods [:ctrl]
-                :key :n
-                :action "slack:next-day"}
-               {:mods [:ctrl]
-                :key :e
-                :action "slack:scroll-up"
-                :repeat true}
-               {:mods [:ctrl]
-                :key :y
-                :action "slack:scroll-down"
-                :repeat true}
-               {:mods [:ctrl]
-                :key :i
-                :action "slack:next-history"
-                :repeat true}
-               {:mods [:ctrl]
-                :key :o
-                :action "slack:prev-history"
-                :repeat true}
-               {:mods [:ctrl]
-                :key :j
-                :action "slack:down"
-                :repeat true}
-               {:mods [:ctrl]
-                :key :k
-                :action "slack:up"
-                :repeat true}]})
 
 (local apps
        [brave-config
         chrome-config
         firefox-config
-        hammerspoon-config
-        slack-config])
+        hammerspoon-config])
 
 {:title "Main Menu"
  :items menu-items

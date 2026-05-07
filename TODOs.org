@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/48]
+* Projects [3/63]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -59,7 +59,7 @@ Built incrementally — each step is independently functional.
      Each module becomes components + commands + behaviors + subscriptions.
      - [ ] Migrate windows.fnl (30 functions → commands on a window-manager component)
      - [ ] Migrate config.fnl (keybindings → hotkey source instances + subscriptions)
-     - [ ] Migrate slack.fnl (14 keystroke functions → commands + behaviors)
+     - [ ] Migrate slack.fnl (14 keystroke functions → commands + behaviors) — see Slack Integration project
      - [ ] Migrate chrome.fnl (3 nav functions → commands + behaviors)
      - [ ] Migrate multimedia.fnl (5 media key functions → commands + behaviors)
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
@@ -267,6 +267,35 @@ Route URLs to different browsers/apps based on rules. Hammerspoon acts as defaul
 
 **** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
      - Wire a hotkey to show the URL history chooser
+
+** PROJ Slack Integration [0/15]
+Migrate slack.fnl to Sheaf: commands + hotkey sources + behaviors + subscriptions.
+Proper app-context filtering requires App event source + tags (see Contextual Automation project).
+Until then behaviors guard with frontmost app check.
+
+*** TODO [#B] Implement Slack commands, behaviors, and subscriptions :feature:
+     - [ ] scroll-to-bottom — move mouse to Slack window, scroll to bottom
+     - [ ] add-reaction — Cmd+Shift+\ shortcut
+     - [ ] prev-element — Shift+F6 to focus previous panel
+     - [ ] next-element — F6 to focus next panel
+     - [ ] thread — open thread on last message (F6 + arrow + space)
+     - [ ] quick-switcher — activate Slack and open Cmd+T channel switcher
+     - [ ] prev-day — Shift+PageUp to jump to previous day
+     - [ ] next-day — Shift+PageDown to jump to next day
+     - [ ] scroll-up — scroll window up
+     - [ ] scroll-down — scroll window down
+     - [ ] prev-history — Cmd+[ back in channel history
+     - [ ] next-history — Cmd+] forward in channel history
+     - [ ] up — arrow up
+     - [ ] down — arrow down
+     - All in commands/slack.fnl, behaviors/slack.fnl; one hotkey source + subscription per binding
+     - Interim: behaviors guard with (= "Slack" (frontmostApplication):name)
+     - Clean version: use :require-tags [:tag/slack-active] once tags are implemented
+
+*** LATER [#B] Migrate Slack to tag-based app context :refactor:
+     - Replace frontmost-app guards in behaviors with :require-tags [:tag/slack-active]
+     - Add app-watcher source for Slack + context-management behavior to attach/detach tag
+     - Depends on: App event source, tag registry, require-tags filtering in subscriptions
 
 ** PROJ Virtual Workspaces [0/1]
 Replace native macOS Spaces with a reliable off-screen workspace layer.
