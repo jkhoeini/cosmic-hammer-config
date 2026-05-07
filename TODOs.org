@@ -60,9 +60,7 @@ Built incrementally — each step is independently functional.
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [X] Migrate spoons.fnl (already removed)
-     - [X] apps-filter.fnl deleted — was a shared hs.window.filter with Emacs role allowlist
-       (:AXUnknown :AXStandardWindow :AXDialog :AXSystemDialog) so Emacs windows aren't
-       silently excluded. Re-create this when implementing Window or App event sources.
+     - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [ ] Migrate paper-wm.fnl (867 lines, own watchers/state — needs scoping)
 
 **** LATER [#B] Define component concept :architecture:
@@ -190,9 +188,13 @@ Users can automate based on more system events.
 
 *** NEXT Create Window event source :feature:
     - Emit events on window create/destroy/focus/unfocus/move/resize
+    - Use hs.window.filter; apply Emacs role allowlist (:AXUnknown :AXStandardWindow
+      :AXDialog :AXSystemDialog) so Emacs windows aren't silently excluded
 
 *** NEXT Create App event source :feature:
     - Emit events on app launch/quit/activate/deactivate/hidden
+    - Use hs.window.filter; apply Emacs role allowlist (:AXUnknown :AXStandardWindow
+      :AXDialog :AXSystemDialog) so Emacs windows aren't silently excluded
 
 *** DONE Create Screen event source :feature:
     - Emit events on display add/remove/layout-change
