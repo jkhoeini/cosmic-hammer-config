@@ -193,28 +193,6 @@
          :title music-app
          :action (activator music-app)}])
 
-(local media-bindings
-       [return
-        {:key :s
-         :title "Play or Pause"
-         :action "multimedia:play-or-pause"}
-        {:key :h
-         :title "Prev Track"
-         :action "multimedia:prev-track"}
-        {:key :l
-         :title "Next Track"
-         :action "multimedia:next-track"}
-        {:key :j
-         :title "Volume Down"
-         :action "multimedia:volume-down"
-         :repeatable true}
-        {:key :k
-         :title "Volume Up"
-         :action "multimedia:volume-up"
-         :repeatable true}
-        {:key :a
-         :title (.. "Launch " music-app)
-         :action (activator music-app)}])
 
 
 (local yabai-bindings
@@ -249,9 +227,6 @@
         {:key    :j
          :title  "Jump"
          :action "windows:jump"}
-        {:key   :m
-         :title "Media"
-         :items media-bindings}
         {:key   :y
          :title "Yabai"
          :items yabai-bindings}])

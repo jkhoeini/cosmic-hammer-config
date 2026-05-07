@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/61]
+* Projects [3/60]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -60,7 +60,6 @@ Built incrementally — each step is independently functional.
      - [ ] Migrate windows.fnl (30 functions → commands on a window-manager component)
      - [ ] Migrate config.fnl (keybindings → hotkey source instances + subscriptions)
      - [ ] Migrate chrome.fnl (3 nav functions → commands + behaviors)
-     - [ ] Migrate multimedia.fnl (5 media key functions → commands + behaviors)
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
