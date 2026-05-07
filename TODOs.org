@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/65]
+* Projects [3/64]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -57,7 +57,6 @@ Built incrementally — each step is independently functional.
 
 **** LATER [#A] Migrate legacy modules to Sheaf concepts :refactor:
      Each module becomes components + commands + behaviors + subscriptions.
-     - [ ] Migrate config.fnl (keybindings → hotkey source instances + subscriptions)
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [ ] Migrate spoons.fnl (one-shot bootstrap, low value)
