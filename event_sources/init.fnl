@@ -35,7 +35,7 @@
 
 
 (start-event-source! source-registry
-                     :event-source.hotkey/emacs-hotkey
+                     :event-source.hotkey/cmd+alt+return
                      :event-source.type/hotkey
                      {:mods [:cmd :alt] :key :return})
 

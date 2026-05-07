@@ -52,7 +52,7 @@
  :sub/open-emacs-on-hotkey
  {:description "Open emacsclient frame when cmd+alt+return is pressed"
   :behavior :emacs.behaviors/open-emacs
-  :source-selector :event-source.hotkey/emacs-hotkey
+  :source-selector :event-source.hotkey/cmd+alt+return
   :event-selector :event.kind.hotkey/pressed})
 
 {: subscription-registry}

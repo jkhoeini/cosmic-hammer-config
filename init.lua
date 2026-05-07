@@ -1419,7 +1419,7 @@ package.preload["event_sources"] = package.preload["event_sources"] or function(
   add_source_type_21(source_registry, screen_watcher_source_type)
   start_event_source_21(source_registry, "event-source.file-watcher/config-dir", "event-source.type/file-watcher", {path = hs.configdir})
   start_event_source_21(source_registry, "event-source.hotkey/ctrl+cmd+e", "event-source.type/hotkey", {mods = {"ctrl", "cmd"}, key = "e"})
-  start_event_source_21(source_registry, "event-source.hotkey/emacs-hotkey", "event-source.type/hotkey", {mods = {"cmd", "alt"}, key = "return"})
+  start_event_source_21(source_registry, "event-source.hotkey/cmd+alt+return", "event-source.type/hotkey", {mods = {"cmd", "alt"}, key = "return"})
   start_event_source_21(source_registry, "event-source.space-watcher/default", "event-source.type/space-watcher", {})
   start_event_source_21(source_registry, "event-source.screen-watcher/default", "event-source.type/screen-watcher", {})
   return {["source-registry"] = source_registry}
@@ -2102,7 +2102,7 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   define_subscription_21(subscription_registry, "sub/toggle-expose-on-hotkey", {description = "Toggle Expose when ctrl+cmd+e is pressed", behavior = "expose.behaviors/toggle-expose", ["source-selector"] = "event-source.hotkey/ctrl+cmd+e", ["event-selector"] = "event.kind.hotkey/pressed"})
   define_subscription_21(subscription_registry, "sub/update-indicator-on-space-change", {description = "Update space indicator when space changes", behavior = "space-indicator.behaviors/update-on-change", ["source-selector"] = "event-source.space-watcher/default", ["event-selector"] = "event.kind.space/changed"})
   define_subscription_21(subscription_registry, "sub/update-indicator-on-screen-change", {description = "Update space indicator when screen layout changes", behavior = "space-indicator.behaviors/update-on-change", ["source-selector"] = "event-source.screen-watcher/default", ["event-selector"] = "event.kind.screen/layout-changed"})
-  define_subscription_21(subscription_registry, "sub/open-emacs-on-hotkey", {description = "Open emacsclient frame when cmd+alt+return is pressed", behavior = "emacs.behaviors/open-emacs", ["source-selector"] = "event-source.hotkey/emacs-hotkey", ["event-selector"] = "event.kind.hotkey/pressed"})
+  define_subscription_21(subscription_registry, "sub/open-emacs-on-hotkey", {description = "Open emacsclient frame when cmd+alt+return is pressed", behavior = "emacs.behaviors/open-emacs", ["source-selector"] = "event-source.hotkey/cmd+alt+return", ["event-selector"] = "event.kind.hotkey/pressed"})
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
