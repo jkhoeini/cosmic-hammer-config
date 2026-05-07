@@ -235,35 +235,20 @@
 ;; App Specific Config
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(local browser-keys
-       [{:mods [:cmd :shift]
-         :key :l
-         :action "chrome:open-location"}
-        {:mods [:alt]
-         :key :k
-         :action "chrome:next-tab"
-         :repeat true}
-        {:mods [:alt]
-         :key :j
-         :action "chrome:prev-tab"
-         :repeat true}])
-
-(local browser-items menu-items)
-
 (local brave-config
        {:key "Brave Browser"
-        :keys browser-keys
-        :items browser-items})
+        :keys []
+        :items menu-items})
 
 (local chrome-config
        {:key "Google Chrome"
-        :keys browser-keys
-        :items browser-items})
+        :keys []
+        :items menu-items})
 
 (local firefox-config
        {:key "Firefox"
-        :keys browser-keys
-        :items browser-items})
+        :keys []
+        :items menu-items})
 
 (local hammerspoon-config
        {:key "Hammerspoon"
