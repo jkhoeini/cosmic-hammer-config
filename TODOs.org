@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/59]
+* Projects [3/65]
 ** PROJ Configuration as Data [0/17]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -57,7 +57,6 @@ Built incrementally — each step is independently functional.
 
 **** LATER [#A] Migrate legacy modules to Sheaf concepts :refactor:
      Each module becomes components + commands + behaviors + subscriptions.
-     - [ ] Migrate windows.fnl (30 functions → commands on a window-manager component)
      - [ ] Migrate config.fnl (keybindings → hotkey source instances + subscriptions)
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
@@ -263,6 +262,42 @@ Route URLs to different browsers/apps based on rules. Hammerspoon acts as defaul
 
 **** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
      - Wire a hotkey to show the URL history chooser
+
+** PROJ Window Management [0/7]
+Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
+
+*** LATER [#B] Layout history / undo :feature:
+     - Track window frame geometry per window ID on a push stack
+     - Restore previous frame on undo command
+     - Notify how many undo steps remain
+
+*** LATER [#B] Monitor number overlays :feature:
+     - Show big numbered overlays on each screen corner when entering window menu
+     - Hide on exit
+     - Pair with move-to-monitor-by-number command (press 1/2/3 to move window)
+
+*** LATER [#B] Move window to adjacent monitor :feature:
+     - Commands: move-to-screen-north/south/east/west
+     - Uses hs.window:moveOneScreen* — reliable, public API, no SIP needed
+
+*** LATER [#B] Launch or focus app :feature:
+     - Command: activate-app {name}
+     - hs.application.launchOrFocus + activate + unhide
+     - Trigger highlight-active-window after short delay
+
+*** LATER [#B] Highlight active window :feature:
+     - Draw a brief colored border around the focused window via hs.drawing
+     - Auto-deletes after ~300ms
+     - Used as visual feedback by other commands
+
+*** LATER [#B] Set mouse cursor position :feature:
+     - Command: set-mouse-cursor-at {app-title}
+     - Centers mouse in the named app's focused window frame
+
+*** LATER [#B] Set arbitrary window geometry :feature:
+     - Command: set-window-rect {rect}
+     - Moves and resizes focused window to given {x y w h} frame
+     - Foundation for layout presets and other positioning commands
 
 ** PROJ Slack Integration [0/15]
 Migrate slack.fnl to Sheaf: commands + hotkey sources + behaviors + subscriptions.
