@@ -22,12 +22,12 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [3/64]
-** PROJ Configuration as Data [0/17]
+* Projects [8/65]
+** PROJ Configuration as Data [4/19]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [4/6]
+*** NOW Milestone 3: Sheaf Core [4/7]
 Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
 Built incrementally — each step is independently functional.
 
@@ -55,13 +55,13 @@ Built incrementally — each step is independently functional.
      - compile-fennel: hs.execute → command
      - Side-effects should go through the command registry for consistency and testability
 
-**** LATER [#A] Migrate legacy modules to Sheaf concepts :refactor:
+**** NOW [#A] Migrate legacy modules to Sheaf concepts :refactor:
      Each module becomes components + commands + behaviors + subscriptions.
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [X] Migrate spoons.fnl (already removed)
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
-     - [ ] Migrate paper-wm.fnl (867 lines, own watchers/state — needs scoping)
+     - [ ] Migrate paper-wm.fnl — see PROJ PaperWM Migration below
 
 **** LATER [#B] Define component concept :architecture:
      - lib/component-registry.fnl: make-component, start-component!, stop-component!
@@ -347,6 +347,54 @@ Native Spaces have no public API; every private API workaround breaks on each ma
        - [ ] Workspace ↔ monitor assignment model (one workspace per monitor, or floating?)
        - [ ] Sheaf integration: workspace switches as events, commands to move windows
      - Reference: AeroSpace source (nikitabobko/AeroSpace), FlashSpace (app-level hide/show variant)
+
+** PROJ PaperWM Migration [0/5]
+Migrate paper-wm.fnl to the Sheaf architecture in phases.
+State stays in module-level closures until the Component concept is implemented.
+move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign is the real fix.
+
+*** LATER [#A] Phase 0: Window event infrastructure :architecture:
+     - Define concrete window events in events/init.fnl:
+       window-watcher.events/created, destroyed, focused, unfocused, moved, resized
+       (derive each from :event.kind.window/*)
+     - Implement event_sources/window-watcher.fnl — wraps hs.window.filter, apply Emacs
+       role allowlist (:AXUnknown etc.), register globally like screen/space watchers
+     - Register 20+ paper-wm hotkey source instances (generate 1-9 space keys in a loop)
+     - Prerequisite for all other phases
+
+*** LATER [#A] Phase 1: Extract commands :refactor:
+     - commands/paper-wm.fnl with all user-visible actions as make-command entries
+     - Commands close over module-level state vars (pragmatic until Component lands)
+     - Include: focus-left/right/up/down, swap-*, center-window, set-full-width,
+       cycle-width/height-up/down, slurp-window, barf-window,
+       switch-to-space {index}, prev-space, next-space,
+       move-window-to-space {index} (broken on Sequoia — document as known-broken),
+       refresh-windows, stop, set-config {window-gap screen-margin window-ratios}
+     - paper-wm continues binding its own hotkeys internally for now
+     - Prerequisite: Phase 0 not required; commands can be registered independently
+
+*** LATER [#A] Phase 2: Window + screen + space behaviors :refactor:
+     - behaviors/paper-wm.fnl: on-window-created, on-window-destroyed, on-window-focused,
+       on-window-moved — wired to :event-source.window-watcher/default
+     - on-space-changed → :event-source.space-watcher/default (already running)
+     - on-screen-changed → :event-source.screen-watcher/default (already running)
+     - paper-wm start! no longer creates own window-filter or screen-watcher
+     - Prerequisite: Phase 0 (window-watcher source), Phase 1 (commands exist)
+
+*** LATER [#A] Phase 3: Hotkey behaviors + subscriptions :refactor:
+     - One behavior per user action, declared in behaviors/paper-wm.fnl
+     - Each behavior's :commands map references Phase 1 commands
+     - Subscriptions in subscriptions/paper-wm.fnl wiring hotkey sources → behaviors
+     - Space 1-9 and move-to-space-1-9: 9 behaviors each, generated in a loop
+     - paper-wm start! no longer calls bind-hotkeys!
+     - Prerequisite: Phase 0 (hotkey sources), Phase 1 (commands)
+
+*** LATER [#B] Phase 4: Per-window component instances :architecture:
+     - Each tracked window becomes a Component instance tagged :paper-wm-managed
+     - uielement watchers become per-instance source instances started dynamically
+     - Subscriptions use require-tags [:paper-wm-managed]
+     - Requires: Component concept, Tag registry, dynamic source start/stop at runtime
+     - This is the clean final state — unblocked only after those concepts are implemented
 
 * Chores [0/2]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
