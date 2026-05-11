@@ -24,9 +24,12 @@ The name resonates at three levels:
 
 ## Core Insight
 
-Components are context-blind units. Behaviors are component-blind rules.
-Subscriptions are the only concept that knows about both — they are the
-wiring that creates a system from independent parts, shaped by tags.
+Components are context-blind units with lifecycle. Behaviors are
+rules that receive candidate targets and select which to act on.
+Commands declare what component kinds they operate on. Tags select
+which components participate as sources and targets. Subscriptions
+wire a source tag to a behavior to a target tag — the only place
+all three meet.
 
 ## Atoms
 
@@ -40,83 +43,142 @@ A fact about something that happened.
 
 ### Command
 
-An action that can be invoked on a component.
+A named action that runs on a component.
 
-- **name** — unique identifier (e.g., `:window-manager/move-left`)
+- **name** — unique identifier (e.g., `:space-indicator.commands/update-menubar`)
 - **schema** — expected parameters
-- **implementation** — the function that executes the command
+- **operates-on** — list of component kinds this command can target (required)
+- **fn** — receives the resolved component and params, returns new state.
+  The dispatcher injects the component and captures the returned
+  state — the command itself never touches the registry.
 
 ### Component
 
-A concrete unit of functionality. Context-blind. Reusable.
+A concrete unit of functionality with lifecycle. Context-blind. Reusable.
+Follows a type/instance split. Components subsume event sources — every
+event source belongs to a component, and components create their source
+instances as part of their lifecycle.
 
-- **sources** — emit events into the system
-- **commands** — receive invocations from behaviors
-- **state** — mutable internal state
-- **config** — parameters that shape the component's behavior
+- **type** — a blueprint defining lifecycle (start/stop), config schema,
+  state, and event sources.
+- **instance** — a running component with config, mutable state, and
+  zero or more running event source instances
+- **kind** — position in the component kind hierarchy (enables hierarchical matching)
 
-Components don't know about each other.
+Components do NOT own commands. Commands declare which component kinds
+they `:operates-on`. Tags select which components participate as
+sources or targets. Subscriptions wire source-tag → behavior → target-tag.
+
+#### Component Kind Hierarchy
+
+Component types form a hierarchy using the same `lib/hierarchy.fnl`
+infrastructure as events. This enables hierarchical selectors — a
+command declaring `:operates-on [:component.kind/any]` can target any
+component.
+
+```
+:component.kind/any
+├── :component.kind/space-indicator
+├── :component.kind/expose
+├── :component.kind/emacs
+├── :component.kind/reload-hammerspoon
+└── ...
+```
+
+Types derive from kinds:
+
+```
+:component.type/space-indicator  derives from  :component.kind/space-indicator
+:component.type/expose           derives from  :component.kind/expose
+```
+
+A component type is a blueprint: it defines lifecycle (start/stop) and
+optionally declares which event source types it composes. When a component
+starts, it creates its owned source instances automatically. When it stops,
+owned sources are torn down first. This is how event sources fold into
+components — no separate source management needed.
 
 ### Behavior
 
-A rule with logic that maps events to commands. Blind to which specific
-components it's wired to — that's the subscription's job.
+A rule with logic that maps events to commands. Receives the set of
+candidate target components (resolved by the dispatcher from the
+subscription's target tag) and decides which to send commands to.
 
 - **name** — unique identifier
 - **responds-to** — which event kinds trigger this behavior
-- **fn [event targets send-cmd!]** — the handler function
+- **commands** — aliases mapping to registered command names
+- **fn** — the handler function
 
-The handler receives:
-- **event** — the event that triggered it
-- **targets** — resolved target components (opaque handles, resolved by the subscription)
-- **send-cmd!** — function to invoke commands on targets
-
-A behavior can invoke zero or more commands, compute parameters
-programmatically, and apply conditional logic.
+The handler receives the event, a set of candidate target components
+(resolved by the dispatcher from the subscription's target tag, grouped
+by command alias), and a send-cmd function. The behavior selects which
+candidates to act on and sends commands to them. For simple 1:1 cases
+it picks the first candidate. For fan-out, it iterates. For
+context-dependent selection, it inspects event data or candidate state.
 
 ### Tag
 
 A contextual label attached to component instances. Inherited through
-the component instance tree. Tags enable and disable subscriptions.
+the component instance tree. Tags are the primary wiring mechanism —
+they determine which components are sources and targets for a
+subscription.
 
 ### Subscription
 
-The only place where components, behaviors, and tags meet.
+The wiring between source components, behaviors, and target components.
+Uses tags to select both source and target sets.
 
 - **behavior** — which behavior to invoke
-- **source-selector** — which component(s) provide the event
-- **target-selector** — which component(s) receive commands
-- **require-tags** — tags that must be present for this subscription to be active
-- **exclude-tags** — tags that must be absent
+- **source** — tag selecting which components provide events
+- **target** — tag selecting which components are command candidates
+
+At event-time, the dispatcher:
+1. Matches the event's source component against subscriptions by source tag
+2. Resolves all components with the target tag as candidates
+3. Groups candidates by command alias (filtered by `:operates-on`)
+4. Invokes the behavior with `(fn [event candidates send-cmd] ...)`
+
+The dispatcher validates `:operates-on` when the behavior calls
+`send-cmd`, and captures the returned state back on the instance.
 
 ## Composition
 
 Built bottom-up from orthogonal primitives:
 
 ```
-Events, Commands                   (atoms)
-  → Components                     (bundle sources + commands + state)
-    → Behaviors                    (rules: event-kind → commands)
-      → Subscriptions + Tags       (wiring + context)
-        → System Map               (the complete value)
+Events, Commands                   (atoms — facts and actions)
+  → Components                    (runtime units — emit events, hold state)
+    → Behaviors                    (rules: event → select targets → send commands)
+      → Tags                       (labels — select source and target sets)
+        → Subscriptions            (wiring: source-tag → behavior → target-tag)
+          → System Map             (the complete value)
 ```
 
-Each concept is independent. The system is their composition.
+Each concept is independent. Commands declare `:operates-on` for
+affinity with component kinds, but they never reference specific
+instances. Tags select which components participate. Subscriptions
+wire tags to behaviors. The system is the composition of these values.
 
 ## Event Flow
 
 ```
-Component A (source)
-    │ emits Event
+Component A (tagged :src) emits Event via owned source
     │
-Subscription: source=A, target=[B,C], behavior=X, tags match?
+Subscription: source=:src, behavior=X, target=:tgt
     │
-Behavior X: fn [event targets send-cmd!]
-    │  examines event, decides what to do
-    │  (send-cmd! target-b :some-command {:param value})
-    │  (send-cmd! target-c :other-command {:computed (+ 1 2)})
+Dispatcher:
+    │  1. Matches: A has tag :src → subscription fires
+    │  2. Resolves behavior X
+    │  3. Finds all components tagged :tgt → [C, D]
+    │  4. Groups by command alias (filtered by :operates-on)
+    │     candidates = {:update-menubar [C D]}
+    │  5. Builds send-cmd (validates :operates-on, captures state)
     │
-Components B, C receive commands
+Behavior X: fn [event candidates send-cmd]
+    │  (let [target (. candidates.update-menubar 1)]
+    │    (send-cmd target :update-menubar {:active-spaces [1 3]}))
+    │
+Dispatcher captures returned state → updates target component
     ▼
 ```
 
@@ -130,17 +192,16 @@ The entire system is a value — inspectable, serializable, queryable.
 ## Key Properties
 
 - Components don't know about each other
-- Behaviors don't know about components
-- Subscriptions are the only point of coupling
-- Tags shape the active wiring contextually
+- Behaviors receive candidate targets and select via send-cmd
+- Commands declare `:operates-on` but never reference instances
+- All commands run on a component — no standalone commands
+- Event sources belong to components — no standadone source concept
+- Subscriptions wire source tag → behavior → target tag
+- Tags are the universal wiring mechanism for both sources and targets
 - Every concept is a simple, independent value
 - The system is the composition of these values
 
 ## Open Questions
-
-- **Selection mechanism** — should subscriptions select sources/targets
-  by component identity, or by more abstract criteria (available
-  events/commands, tags)? Leaning toward component-level selection.
 
 - **System map structure** — what defines parent-child relationships
   in the component instance tree? Explicit nesting in the system map,
