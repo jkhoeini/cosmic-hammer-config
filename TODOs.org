@@ -22,12 +22,12 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [8/65]
-** PROJ Configuration as Data [4/19]
+* Projects [9/68]
+** PROJ Configuration as Data [5/19]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [4/7]
+*** NOW Milestone 3: Sheaf Core [5/7]
 Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
 Built incrementally — each step is independently functional.
 
@@ -55,13 +55,13 @@ Built incrementally — each step is independently functional.
      - compile-fennel: hs.execute → command
      - Side-effects should go through the command registry for consistency and testability
 
-**** NOW [#A] Migrate legacy modules to Sheaf concepts :refactor:
+**** DONE Migrate legacy modules to Sheaf concepts :refactor:
      Each module becomes components + commands + behaviors + subscriptions.
      - [X] Migrate emacs.fnl (deleted; open-emacs command + behavior added for emacsclient -n -c shortcut)
      - [X] Migrate active-space-indicator.fnl (watchers → event sources, menubar → behavior)
      - [X] Migrate spoons.fnl (already removed)
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
-     - [ ] Migrate paper-wm.fnl — see PROJ PaperWM Migration below
+     - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
 **** LATER [#B] Define component concept :architecture:
      - lib/component-registry.fnl: make-component, start-component!, stop-component!
