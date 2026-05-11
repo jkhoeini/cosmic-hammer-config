@@ -2,3 +2,4 @@
 /Spoons
 .DS_Store
 .workspaces/
+*.profraw
