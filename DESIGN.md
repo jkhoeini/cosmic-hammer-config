@@ -26,7 +26,7 @@ The name resonates at three levels:
 
 Components are context-blind units with lifecycle. Behaviors are
 rules that receive candidate targets and select which to act on.
-Commands declare what component kinds they operate on. Tags select
+Commands declare which traits they require on target components. Tags select
 which components participate as sources and targets. Subscriptions
 wire a source tag to a behavior to a target tag — the only place
 all three meet.
@@ -47,7 +47,7 @@ A named action that runs on a component.
 
 - **name** — unique identifier (e.g., `:space-indicator.commands/update-menubar`)
 - **schema** — expected parameters
-- **operates-on** — list of component kinds this command can target (required)
+- **requires-traits** — list of traits the target component must implement
 - **fn** — receives the resolved component and params, returns new state.
   The dispatcher injects the component and captures the returned
   state — the command itself never touches the registry.
@@ -60,14 +60,15 @@ event source belongs to a component, and components create their source
 instances as part of their lifecycle.
 
 - **type** — a blueprint defining lifecycle (start/stop), config schema,
-  state, and event sources.
+  state, event sources, and which traits it implements
 - **instance** — a running component with config, mutable state, and
   zero or more running event source instances
-- **kind** — position in the component kind hierarchy (enables hierarchical matching)
+- **kind** — position in the component kind hierarchy
 
-Components do NOT own commands. Commands declare which component kinds
-they `:operates-on`. Tags select which components participate as
-sources or targets. Subscriptions wire source-tag → behavior → target-tag.
+Components do NOT own commands. Commands declare `:requires-traits`
+to specify which components they can target. Tags select which
+components participate as sources or targets. Subscriptions wire
+source-tag → behavior → target-tag.
 
 #### Component Kind Hierarchy
 
@@ -97,6 +98,12 @@ optionally declares which event source types it composes. When a component
 starts, it creates its owned source instances automatically. When it stops,
 owned sources are torn down first. This is how event sources fold into
 components — no separate source management needed.
+
+### Trait
+
+A named schema contract for component state. Traits define what state
+keys a component must provide. Components declare which traits they
+implement; commands declare which traits they require on targets.
 
 ### Behavior
 
@@ -135,10 +142,10 @@ Uses tags to select both source and target sets.
 At event-time, the dispatcher:
 1. Matches the event's source component against subscriptions by source tag
 2. Resolves all components with the target tag as candidates
-3. Groups candidates by command alias (filtered by `:operates-on`)
+3. Groups candidates by command alias (filtered by `:requires-traits`)
 4. Invokes the behavior with `(fn [event candidates send-cmd] ...)`
 
-The dispatcher validates `:operates-on` when the behavior calls
+The dispatcher validates `:requires-traits` when the behavior calls
 `send-cmd`, and captures the returned state back on the instance.
 
 ## Composition
@@ -154,8 +161,8 @@ Events, Commands                   (atoms — facts and actions)
           → System Map             (the complete value)
 ```
 
-Each concept is independent. Commands declare `:operates-on` for
-affinity with component kinds, but they never reference specific
+Each concept is independent. Commands declare `:requires-traits` for
+affinity with component capabilities, but they never reference specific
 instances. Tags select which components participate. Subscriptions
 wire tags to behaviors. The system is the composition of these values.
 
@@ -170,9 +177,9 @@ Dispatcher:
     │  1. Matches: A has tag :src → subscription fires
     │  2. Resolves behavior X
     │  3. Finds all components tagged :tgt → [C, D]
-    │  4. Groups by command alias (filtered by :operates-on)
+    │  4. Groups by command alias (filtered by :requires-traits)
     │     candidates = {:update-menubar [C D]}
-    │  5. Builds send-cmd (validates :operates-on, captures state)
+    │  5. Builds send-cmd (validates :requires-traits, captures state)
     │
 Behavior X: fn [event candidates send-cmd]
     │  (let [target (. candidates.update-menubar 1)]
@@ -193,7 +200,7 @@ The entire system is a value — inspectable, serializable, queryable.
 
 - Components don't know about each other
 - Behaviors receive candidate targets and select via send-cmd
-- Commands declare `:operates-on` but never reference instances
+- Commands declare `:requires-traits` but never reference instances
 - All commands run on a component — no standalone commands
 - Event sources belong to components — no standadone source concept
 - Subscriptions wire source tag → behavior → target tag
