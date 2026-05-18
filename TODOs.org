@@ -84,6 +84,12 @@ Built incrementally — each step is independently functional.
         (space-indicator, expose, reload-hammerspoon, compile-fennel, emacs)
       - Depends on Phase 1 (traits)
 
+***** TODO [#A] Phase 3: Tag system
+      - sheaf/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!, components-with-tag
+      - Tags = simple keyword labels on component instances (no inheritance)
+      - Attach tags to component instances at startup in components/init.fnl
+      - Depends on Phase 2 (components)
+
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
@@ -180,9 +186,9 @@ Users can make automations context-aware using tags and filtering.
 Enables modes, contexts, and conditional behavior.
 
 *** LATER [#A] Define tag attachment to component instances             :architecture:
-     - lib/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!, get-tags, tags-match?
-     - Tags inherited through the component instance tree
-     - Subscription filtering via tags-match? in get-subscribed-behaviors
+     - Covered by Phase 3 in Milestone 3 (sheaf/tag-registry.fnl)
+     - Tags are simple keyword labels on instances, no inheritance
+     - Subscription filtering via tags deferred to Phase 4
 
 *** LATER [#B] Disable events, behaviors, subscriptions, tags, sources :feature:
     - Add ability to pause/disable at various levels
