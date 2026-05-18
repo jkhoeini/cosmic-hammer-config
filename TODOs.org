@@ -74,6 +74,16 @@ Built incrementally — each step is independently functional.
       - Components will declare :implements [traits], commands will declare :requires-traits
       - No dependencies — can be built and tested standalone
 
+***** TODO [#A] Phase 2: Component system
+      - sheaf/component-registry.fnl: type/instance split, lifecycle (start/stop)
+      - Component type = blueprint: config schema, state, :implements [traits], kind hierarchy
+      - Component instance = running unit with config, mutable state
+      - Kind hierarchy via lib/hierarchy.fnl (:component.kind/any → :component.kind/space-indicator etc.)
+      - Validate instance state satisfies declared traits at start
+      - Create component types + instances for existing modules
+        (space-indicator, expose, reload-hammerspoon, compile-fennel, emacs)
+      - Depends on Phase 1 (traits)
+
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
