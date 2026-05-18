@@ -106,6 +106,14 @@ Built incrementally — each step is independently functional.
         into their owning component types
       - Depends on Phase 4 (tag-based routing in place)
 
+***** TODO [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic)
+      - Commands gain :requires-traits, fn becomes (fn [component params] → new-state)
+      - Behaviors become (fn [event candidates send-cmd]) — receive candidate targets
+      - Dispatcher validates :requires-traits, injects component, captures returned state
+      - Candidates grouped by command alias, filtered by trait satisfaction
+      - All three change together — atomic redesign, not incremental
+      - Depends on Phase 4 (tag routing) + Phase 2 (components)
+
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
