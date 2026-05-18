@@ -125,10 +125,10 @@ context-dependent selection, it inspects event data or candidate state.
 
 ### Tag
 
-A contextual label attached to component instances. Inherited through
-the component instance tree. Tags are the primary wiring mechanism —
-they determine which components are sources and targets for a
-subscription.
+A contextual label attached to component instances. Tags are the
+primary wiring mechanism — they determine which component instances
+are sources and targets for a subscription. Tags are assigned to
+instances, not to types or kinds.
 
 ### Subscription
 
