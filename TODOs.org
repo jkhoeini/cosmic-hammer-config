@@ -90,6 +90,14 @@ Built incrementally — each step is independently functional.
       - Attach tags to component instances at startup in components/init.fnl
       - Depends on Phase 2 (components)
 
+***** TODO [#A] Phase 4: Tag-based subscription routing
+      - Rewrite subscriptions to {:behavior B :source :tag-src :target :tag-tgt}
+      - Dispatcher matches source components by tag, resolves target set by tag
+      - Behaviors keep current (fn [event cmd]) signature — no redesign yet
+      - Update sheaf/subscription-registry.fnl and sheaf/dispatcher.fnl
+      - Migrate existing subscriptions to use tags
+      - Depends on Phase 3 (tags)
+
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
