@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [9/68]
+* Projects [9/66]
 ** PROJ Configuration as Data [5/19]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -63,12 +63,16 @@ Built incrementally — each step is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** LATER [#B] Define component concept :architecture:
-     - lib/component-registry.fnl: make-component, start-component!, stop-component!
-     - Component = {name, sources, commands, state, config}
-     - Context-blind, reusable unit — does NOT contain behaviors or subscriptions
-     - Components don't know about each other
-     - Dispatcher scopes send-cmd! to target component's commands
+**** NOW [#A] Implement component architecture [0/0] :architecture:
+     6-phase plan to realize the full component concept from DESIGN.md.
+     Each phase is independently functional and builds on the previous.
+
+***** TODO [#A] Phase 1: Trait system
+      - sheaf/trait-registry.fnl: make-trait-registry, make-trait, add-trait!, satisfies?
+      - Trait = named schema contract for component state
+        (e.g. :trait/has-menubar = {:menubar menubar?})
+      - Components will declare :implements [traits], commands will declare :requires-traits
+      - No dependencies — can be built and tested standalone
 
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
