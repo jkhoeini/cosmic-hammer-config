@@ -98,6 +98,14 @@ Built incrementally — each step is independently functional.
       - Migrate existing subscriptions to use tags
       - Depends on Phase 3 (tags)
 
+***** TODO [#A] Phase 5: Fold event sources into components
+      - Component types declare :sources (list of source type + config pairs)
+      - start-component! creates owned source instances automatically
+      - stop-component! tears down owned sources first
+      - Migrate standalone sources (space-watcher, screen-watcher, hotkeys, file-watcher)
+        into their owning component types
+      - Depends on Phase 4 (tag-based routing in place)
+
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
