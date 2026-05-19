@@ -64,8 +64,9 @@ Built incrementally — each step is independently functional.
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
 **** NOW [#A] Implement component architecture [0/0] :architecture:
-     6-phase plan to realize the full component concept from DESIGN.md.
-     Each phase is independently functional and builds on the previous.
+     Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
+     Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
+     Event sources fold into components. Built incrementally in 6 phases.
 
 ***** TODO [#A] Phase 1: Trait system
       - sheaf/trait-registry.fnl: make-trait-registry, make-trait, add-trait!, satisfies?
