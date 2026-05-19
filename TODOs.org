@@ -22,12 +22,12 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [9/66]
-** PROJ Configuration as Data [5/19]
+* Projects [9/73]
+** PROJ Configuration as Data [5/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [5/7]
+*** NOW Milestone 3: Sheaf Core [5/14]
 Realize the Sheaf pattern: traits, components, tags, subscriptions, behaviors, dispatcher.
 Built incrementally — each phase is independently functional.
 
@@ -63,56 +63,99 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [0/0] :architecture:
+**** NOW [#A] Implement component architecture [0/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
 
-***** TODO [#A] Phase 1: Trait system
-      - sheaf/trait-registry.fnl: make-trait-registry, make-trait, add-trait!, satisfies?
-      - Trait = named schema contract for component state
-        (e.g. :trait/has-menubar = {:menubar menubar?})
-      - Components will declare :implements [traits], commands will declare :requires-traits
-      - No dependencies — can be built and tested standalone
+***** NOW [#A] Phase 1: Trait system [0/4]
+      Trait = named schema contract for component state.
+      Schema is {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
+      No dependencies — can be built standalone.
 
-***** TODO [#A] Phase 2: Component system
-      - sheaf/component-registry.fnl: type/instance split, lifecycle (start/stop)
-      - Component type = blueprint: config schema, state, :implements [traits], kind hierarchy
-      - Component instance = running unit with config, mutable state
-      - Kind hierarchy via lib/hierarchy.fnl (:component.kind/any → :component.kind/space-indicator etc.)
-      - Validate instance state satisfies declared traits at start
-      - Create component types + instances for existing modules
-        (space-indicator, expose, reload-hammerspoon, compile-fennel, emacs)
+      - [ ] Implement sheaf/trait-registry.fnl: make-trait-registry (takes trait-hierarchy),
+            make-trait, add-trait!, get-trait, list-traits, trait-defined?
+      - [ ] Implement satisfies? — checks every key present and every predicate passes on state
+      - [ ] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
+      - [ ] Define initial traits: :trait/has-menubar, :trait/has-expose
+
+***** NEXT [#A] Phase 2: Component system [0/8]
+      Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
+      Separate component-hierarchy instance. Registry takes trait-registry only;
+      source-registry wired in Phase 5.
+
+      - [ ] Implement sheaf/component-registry.fnl: make-component-registry (takes trait-registry),
+            make-component-type, add-component-type!, get-component-type, list-component-types
+      - [ ] Implement start-component!: calls start-fn → state, validates trait satisfaction, stores instance
+      - [ ] Implement stop-component!, get-component-instance, list-component-instances, component-instance-exists?
+      - [ ] Create component kind hierarchy (separate from event hierarchy):
+            :component.kind/any → :component.kind/space-indicator, /expose, etc.
+      - [ ] Instance naming: component.<type>.instance/<instance-name>
+      - [ ] Create component types for existing modules:
+            space-indicator (start-fn creates menubar → {:menubar m}),
+            expose (start-fn creates hs.expose → {:expose e}),
+            reload-hammerspoon (start-fn creates timer → {:timer t :reloading? false}),
+            compile-fennel (start-fn → {}), emacs (start-fn → {})
+      - [ ] Create components/init.fnl: registry, type registration, instance startup
+      - [ ] Wire components/init.fnl into core.fnl boot sequence (after events, before commands)
       - Depends on Phase 1 (traits)
 
-***** TODO [#A] Phase 3: Tag system
-      - sheaf/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!, components-with-tag
-      - Tags = simple keyword labels on component instances (no inheritance)
-      - Attach tags to component instances at startup in components/init.fnl
+***** NEXT [#A] Phase 3: Tag system [0/3]
+      Separate tag-registry with reverse index {tag → #{instance-names}} for O(1) lookup.
+
+      - [ ] Implement sheaf/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!,
+            get-tags (instance → tags), components-with-tag (tag → instance-names)
+      - [ ] Maintain reverse index {tag → #{instance-names}} for O(1) lookup
+      - [ ] Attach initial tags in components/init.fnl:
+            :tag/space-indicator, :tag/expose, :tag/config-watcher, etc.
       - Depends on Phase 2 (components)
 
-***** TODO [#A] Phase 4: Tag-based subscription routing
-      - Rewrite subscriptions to {:behavior B :source :tag-src :target :tag-tgt}
-      - Dispatcher matches source components by tag, resolves target set by tag
-      - Behaviors keep current (fn [event cmd]) signature — no redesign yet
-      - Update sheaf/subscription-registry.fnl and sheaf/dispatcher.fnl
-      - Migrate existing subscriptions to use tags
+***** NEXT [#A] Phase 4: Tag-based subscription routing [0/6]
+      Hard-cut migration: rewrite all subscriptions and dispatcher in one step.
+      Behaviors keep current (fn [event cmd]) signature — no redesign yet.
+
+      - [ ] Explore subscription index design for tag-based routing: analyze performance of
+            tag lookup vs current instance-name lookup, consider alternative index structures,
+            document tradeoffs
+      - [ ] Replace :source-selector/:target-selector with :source-tag/:target-tag in subscription data model
+      - [ ] Rebuild subscription index: {source-tag → {event-selector → #{behaviors}}}
+      - [ ] Update dispatcher: on event, look up source component's tags →
+            for each tag check index → fire matching behaviors
+      - [ ] Migrate all 6 subscriptions to source/target tags (hard-cut, one commit)
+      - [ ] Remove instance-name-based routing code
       - Depends on Phase 3 (tags)
 
-***** TODO [#A] Phase 5: Fold event sources into components
-      - Component types declare :sources (list of source type + config pairs)
-      - start-component! creates owned source instances automatically
-      - stop-component! tears down owned sources first
-      - Migrate standalone sources (space-watcher, screen-watcher, hotkeys, file-watcher)
-        into their owning component types
+***** NEXT [#A] Phase 5: Fold event sources into components [0/6]
+      Every source must belong to a component — no standalone sources.
+      Source naming: component.<comp-type>.instance.<comp-inst>.event-source.<source-type>.instance/<name>
+
+      - [ ] Add :sources to component type: [{:type :source-type :config {} :instance-name "name"}]
+      - [ ] start-component! auto-creates owned source instances after component start
+      - [ ] stop-component! tears down owned sources before component stop
+      - [ ] Migrate standalone sources into owning components:
+            space-watcher + screen-watcher → space-indicator,
+            hotkey/ctrl+cmd+e → expose, hotkey/cmd+alt+return → emacs,
+            file-watcher/config-dir → new config-watcher component
+      - [ ] Remove manual source creation from event_sources/init.fnl (source type definitions remain)
+      - [ ] Update subscription source-tags to match new source instance names
       - Depends on Phase 4 (tag-based routing in place)
 
-***** TODO [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic)
-      - Commands gain :requires-traits, fn becomes (fn [component params] → new-state)
-      - Behaviors become (fn [event candidates send-cmd]) — receive candidate targets
-      - Dispatcher validates :requires-traits, injects component, captures returned state
-      - Candidates grouped by command alias, filtered by trait satisfaction
-      - All three change together — atomic redesign, not incremental
+***** NEXT [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic) [0/7]
+      Commands: (fn [component params] → new-state), nil = no state change.
+      Behaviors: (fn [event candidates send-cmd]), candidates = {cmd-alias → [instance-name ...]}.
+      send-cmd warns and skips on trait mismatch.
+      All three change together — atomic redesign.
+
+      - [ ] Add :requires-traits to command data model; validate against trait-registry at add-command! time
+      - [ ] Change command fn to (fn [component params] → new-state); nil means no state change
+      - [ ] Change behavior fn to (fn [event candidates send-cmd]);
+            candidates = {cmd-alias → [instance-name ...]}
+      - [ ] Update dispatcher: resolve target-tag → instances, group by command alias,
+            filter by satisfies?, build send-cmd that validates traits + injects component +
+            captures returned state (warn+skip on mismatch)
+      - [ ] Migrate all 7 commands to new signature
+      - [ ] Migrate all 5 behaviors to new signature
+      - [ ] Ensure all subscriptions declare :target-tag
       - Depends on Phase 4 (tag routing) + Phase 2 (components)
 
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:
