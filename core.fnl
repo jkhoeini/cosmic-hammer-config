@@ -17,8 +17,9 @@
 
 (local notify (require :notify))
 
-;; Load events first (creates registry), then event sources, then behaviors
+;; Load events first (creates registry), then traits, event sources, then behaviors
 (local {: event-registry} (require :events))
+(require :traits)
 (require :event_sources)
 (require :commands)
 (require :behaviors)

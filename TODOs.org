@@ -68,7 +68,7 @@ Built incrementally — each phase is independently functional.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
 
-***** NOW [#A] Phase 1: Trait system [2/4]
+***** NOW [#A] Phase 1: Trait system [3/4]
       Trait = named schema contract for component state.
       Schema is {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
       No dependencies — can be built standalone.
@@ -76,7 +76,7 @@ Built incrementally — each phase is independently functional.
       - [X] Implement sheaf/trait-registry.fnl: make-trait-registry (takes trait-hierarchy),
             make-trait, add-trait!, get-trait, list-traits, trait-defined?
       - [X] Implement satisfies? — checks every key present and every predicate passes on state
-      - [ ] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
+      - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
       - [ ] Define initial traits: :trait/has-menubar, :trait/has-expose
 
 ***** NEXT [#A] Phase 2: Component system [0/8]
