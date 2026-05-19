@@ -19,7 +19,7 @@
 
 ;; Load events first (creates registry), then traits, event sources, then behaviors
 (local {: event-registry} (require :events))
-(require :traits)
+(local {: trait-registry} (require :traits))
 (require :event_sources)
 (require :commands)
 (require :behaviors)
