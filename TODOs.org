@@ -11,7 +11,7 @@ Users configure their automation using orthogonal, composable concepts:
 - *Commands* - named actions that can be invoked on a component
 - *Components* - context-blind units bundling sources + commands + state + config
 - *Behaviors* - component-blind rules mapping events to commands via a handler function
-- *Tags* - contextual labels attached to component instances, inherited through instance tree
+- *Tags* - contextual labels attached to component instances
 - *Subscriptions* - the only place components, behaviors, and tags meet; the wiring that creates a system
 
 See DESIGN.md for the full design reference.
@@ -28,8 +28,8 @@ Users define automations declaratively using data structures, not procedural cod
 Can serialize, validate, and inspect the entire config.
 
 *** NOW Milestone 3: Sheaf Core [5/7]
-Realize the Sheaf pattern: commands, components, send-cmd!, and target-selector.
-Built incrementally — each step is independently functional.
+Realize the Sheaf pattern: traits, components, tags, subscriptions, behaviors, dispatcher.
+Built incrementally — each phase is independently functional.
 
 **** DONE Define command concept :architecture:
      - lib/command-registry.fnl: make-command-registry, make-command, add-command!, invoke-command!
@@ -164,12 +164,13 @@ Higher-level bundles of components, behaviors, subscriptions, and config that pr
      - Users can override module defaults with their own config
      - Enables fast, high-level feature composition without wiring individual atoms
 
-*** Milestone 6: Rich Subscription Matching [0/3]
-Subscriptions can match events using flexible criteria - multiple event types, hierarchical matching, timing controls.
+*** Milestone 6: Rich Event Matching & Timing [0/3]
+Behaviors and subscriptions gain richer matching and timing controls.
 
-**** LATER [#B] Consider accepting a set of event-selectors for more flexibility :feature:
-     - Currently subscribe-behavior takes a single event-selector
-     - Could allow subscribing to multiple event-selectors at once
+**** LATER [#B] Multiple respond-to profiles per behavior              :feature:
+     - Behavior declares multiple respond-to sets
+     - Subscription selects which profile to activate
+     - Enables reuse: same behavior logic, different event triggers
 
 **** LATER [#C] Add debounce/throttle/delay to subscriptions          :feature:
      - Allow subscriptions to specify timing behavior
@@ -207,8 +208,8 @@ System is performant and has comprehensive documentation for users.
 
 **** LATER [#C] Create a tutorial-style doc for the Sheaf pattern      :doc:
 
-**** LATER [#C] Create doc explaining 6 orthogonal concepts           :doc:
-     - Event, Command, Component, Behavior, Tag, Subscription
+**** LATER [#C] Create doc explaining 7 orthogonal concepts           :doc:
+     - Event, Command, Trait, Component, Behavior, Tag, Subscription
      - How they are independent but compose together
      - See DESIGN.md for current reference
 
@@ -242,14 +243,15 @@ Enables modes, contexts, and conditional behavior.
     - Add ability to pause/disable at various levels
     - Could be global or per-subscription
 
-*** LATER [#B] Implement require-tags/exclude-tags filtering in subscriptions :feature:
-    - Builds on subscription data model from Configuration as Data project
-    - Filter subscriptions based on event-source tags
+*** LATER [#B] Dynamic tag management behaviors                        :feature:
+    - Behaviors that attach/detach tags based on system events
+    - e.g. app-focus behavior attaches :tag/slack-active when Slack is frontmost
+    - Tags gate subscription routing dynamically at runtime
 
 *** LATER [#B] App-aware hotkeys via tags                               :feature:
     - Hotkeys active only when specific app is frontmost
-    - Use tags + contextual filtering instead of hs.hotkey.modal
-    - Depends on: tag attachment, require-tags filtering, App event source
+    - Use tags + tag-based subscription routing instead of hs.hotkey.modal
+    - Depends on: tag system (Phase 3), dynamic tag management, App event source
 
 ** PROJ Expand Configuration Options [2/9]
 Users can automate based on more system events.
@@ -395,9 +397,9 @@ Until then behaviors guard with frontmost app check.
      - Clean version: use :require-tags [:tag/slack-active] once tags are implemented
 
 *** LATER [#B] Migrate Slack to tag-based app context :refactor:
-     - Replace frontmost-app guards in behaviors with :require-tags [:tag/slack-active]
+     - Replace frontmost-app guards in behaviors with tag-based subscription routing
      - Add app-watcher source for Slack + context-management behavior to attach/detach tag
-     - Depends on: App event source, tag registry, require-tags filtering in subscriptions
+     - Depends on: App event source, tag system (Phase 3), dynamic tag management behaviors
 
 ** PROJ Virtual Workspaces [0/1]
 Replace native macOS Spaces with a reliable off-screen workspace layer.
@@ -432,7 +434,7 @@ move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign 
 
 *** LATER [#A] Phase 1: Extract commands :refactor:
      - commands/paper-wm.fnl with all user-visible actions as make-command entries
-     - Commands close over module-level state vars (pragmatic until Component lands)
+     - Commands close over module-level state vars until component migration
      - Include: focus-left/right/up/down, swap-*, center-window, set-full-width,
        cycle-width/height-up/down, slurp-window, barf-window,
        switch-to-space {index}, prev-space, next-space,
