@@ -22,8 +22,8 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [9/73]
-** PROJ Configuration as Data [5/26]
+* Projects [10/73]
+** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [0/6] :architecture:
+**** NOW [#A] Implement component architecture [1/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -79,12 +79,12 @@ Built incrementally — each phase is independently functional.
       - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
       - [X] Define initial traits: :trait/has-menubar, :trait/has-expose
 
-***** NEXT [#A] Phase 2: Component system [0/8]
+***** NOW [#A] Phase 2: Component system [1/8]
       Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
       Separate component-hierarchy instance. Registry takes trait-registry only;
       source-registry wired in Phase 5.
 
-      - [ ] Implement sheaf/component-registry.fnl: make-component-registry (takes trait-registry),
+      - [X] Implement sheaf/component-registry.fnl: make-component-registry (takes trait-registry),
             make-component-type, add-component-type!, get-component-type, list-component-types
       - [ ] Implement start-component!: calls start-fn → state, validates trait satisfaction, stores instance
       - [ ] Implement stop-component!, get-component-instance, list-component-instances, component-instance-exists?
