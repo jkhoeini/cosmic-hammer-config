@@ -9,7 +9,7 @@
 Users configure their automation using orthogonal, composable concepts:
 - *Events* - facts about something that happened, organized in a kind hierarchy
 - *Commands* - named actions that can be invoked on a component
-- *Components* - context-blind units bundling sources + commands + state + config
+- *Components* - context-blind units with lifecycle (start/stop), state, and config
 - *Behaviors* - component-blind rules mapping events to commands via a handler function
 - *Tags* - contextual labels attached to component instances
 - *Subscriptions* - the only place components, behaviors, and tags meet; the wiring that creates a system
