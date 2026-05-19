@@ -1400,10 +1400,31 @@ local event_registry = _local_167_["event-registry"]
 package.preload["traits"] = package.preload["traits"] or function(...)
   local _local_168_ = require("lib.hierarchy")
   local make_hierarchy = _local_168_["make-hierarchy"]
+  local derive_21 = _local_168_["derive!"]
   local _local_177_ = require("sheaf.trait-registry")
   local make_trait_registry = _local_177_["make-trait-registry"]
+  local make_trait = _local_177_["make-trait"]
+  local add_trait_21 = _local_177_["add-trait!"]
+  local function non_nil_3f(v)
+    return (nil ~= v)
+  end
   local trait_hierarchy = make_hierarchy()
+  derive_21(trait_hierarchy, "trait.kind/ui", "trait.kind/any")
+  derive_21(trait_hierarchy, "trait.kind/windowing", "trait.kind/any")
+  derive_21(trait_hierarchy, "trait.kind/scheduling", "trait.kind/any")
+  derive_21(trait_hierarchy, "trait/has-menubar", "trait.kind/ui")
+  derive_21(trait_hierarchy, "trait/has-expose", "trait.kind/ui")
+  derive_21(trait_hierarchy, "trait/has-chooser", "trait.kind/ui")
+  derive_21(trait_hierarchy, "trait/has-window-filter", "trait.kind/windowing")
+  derive_21(trait_hierarchy, "trait/has-layout", "trait.kind/windowing")
+  derive_21(trait_hierarchy, "trait/has-delayed-timer", "trait.kind/scheduling")
   local trait_registry = make_trait_registry({hierarchy = trait_hierarchy})
+  add_trait_21(trait_registry, make_trait("trait/has-menubar", "Component state includes an hs.menubar object", {schema = {menubar = non_nil_3f}}))
+  add_trait_21(trait_registry, make_trait("trait/has-expose", "Component state includes an hs.expose object", {schema = {expose = non_nil_3f}}))
+  add_trait_21(trait_registry, make_trait("trait/has-chooser", "Component state includes an hs.chooser object", {schema = {chooser = non_nil_3f}}))
+  add_trait_21(trait_registry, make_trait("trait/has-window-filter", "Component state includes an hs.window.filter", {schema = {["window-filter"] = non_nil_3f}}))
+  add_trait_21(trait_registry, make_trait("trait/has-layout", "Component state includes window layout tables", {schema = {["window-list"] = non_nil_3f, ["index-table"] = non_nil_3f}}))
+  add_trait_21(trait_registry, make_trait("trait/has-delayed-timer", "Component state includes an hs.timer.delayed", {schema = {timer = non_nil_3f}}))
   return {["trait-registry"] = trait_registry}
 end
 package.preload["sheaf.trait-registry"] = package.preload["sheaf.trait-registry"] or function(...)

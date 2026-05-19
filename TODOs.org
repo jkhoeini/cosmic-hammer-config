@@ -27,7 +27,7 @@ The system should be:
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [5/14]
+*** NOW Milestone 3: Sheaf Core [6/14]
 Realize the Sheaf pattern: traits, components, tags, subscriptions, behaviors, dispatcher.
 Built incrementally — each phase is independently functional.
 
@@ -68,7 +68,7 @@ Built incrementally — each phase is independently functional.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
 
-***** NOW [#A] Phase 1: Trait system [3/4]
+***** DONE Phase 1: Trait system [4/4]
       Trait = named schema contract for component state.
       Schema is {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
       No dependencies — can be built standalone.
@@ -77,7 +77,7 @@ Built incrementally — each phase is independently functional.
             make-trait, add-trait!, get-trait, list-traits, trait-defined?
       - [X] Implement satisfies? — checks every key present and every predicate passes on state
       - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
-      - [ ] Define initial traits: :trait/has-menubar, :trait/has-expose
+      - [X] Define initial traits: :trait/has-menubar, :trait/has-expose
 
 ***** NEXT [#A] Phase 2: Component system [0/8]
       Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
