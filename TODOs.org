@@ -119,6 +119,29 @@ Built incrementally — each step is independently functional.
      - Define execution order when multiple behaviors match
      - Handle dependencies between behaviors
 
+**** LATER [#C] Explore future trait and component extensions          :architecture:
+
+***** Expand traits to events and behaviors
+      - Event schemas expressed as traits describing their data shape
+      - Behaviors declare :requires-event-traits instead of :respond-to
+      - Unifies all schema validation under one concept
+
+***** Traits as datalog schemas
+      - State migrates from Lua tables to a datalog database
+      - Traits become datalog schemas — sets of attribute definitions
+      - Query component state via datalog queries instead of direct table access
+
+***** Commands as transactions
+      - Commands return facts (assertions/retractions) instead of new state
+      - Dispatcher applies the transaction to the DB
+      - Enables undo, history, time-travel debugging
+      - Aligns with Datomic inspiration in DESIGN.md
+
+***** Sub-components (component instance tree)
+      - Components can instantiate and own child components
+      - Parent lifecycle controls children: stopping parent stops children
+      - Enables paper-wm component owning per-window child components
+
 *** Milestone 4: System Map [0/1]
 The entire system is a single declarative value — inspectable, serializable, reconstructable.
 
