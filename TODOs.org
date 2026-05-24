@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [3/6] :architecture:
+**** NOW [#A] Implement component architecture [4/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -109,19 +109,19 @@ Built incrementally — each phase is independently functional.
             :tag/space-indicator, :tag/expose, :tag/config-watcher, etc.
       - Depends on Phase 2 (components)
 
-***** NEXT [#A] Phase 4: Tag-based subscription routing [0/6]
+***** DONE Phase 4: Tag-based subscription routing [6/6]
       Hard-cut migration: rewrite all subscriptions and dispatcher in one step.
       Behaviors keep current (fn [event cmd]) signature — no redesign yet.
 
-      - [ ] Explore subscription index design for tag-based routing: analyze performance of
+      - [X] Explore subscription index design for tag-based routing: analyze performance of
             tag lookup vs current instance-name lookup, consider alternative index structures,
             document tradeoffs
-      - [ ] Replace :source-selector/:target-selector with :source-tag/:target-tag in subscription data model
-      - [ ] Rebuild subscription index: {source-tag → {event-selector → #{behaviors}}}
-      - [ ] Update dispatcher: on event, look up source component's tags →
+      - [X] Replace :source-selector/:target-selector with :source-tag/:target-tag in subscription data model
+      - [X] Rebuild subscription index: {source-tag → {event-selector → #{behaviors}}}
+      - [X] Update dispatcher: on event, look up source component's tags →
             for each tag check index → fire matching behaviors
-      - [ ] Migrate all 6 subscriptions to source/target tags (hard-cut, one commit)
-      - [ ] Remove instance-name-based routing code
+      - [X] Migrate all 6 subscriptions to source/target tags (hard-cut, one commit)
+      - [X] Remove instance-name-based routing code
       - Depends on Phase 3 (tags)
 
 ***** NEXT [#A] Phase 5: Fold event sources into components [0/6]

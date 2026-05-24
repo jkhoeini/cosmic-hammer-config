@@ -1,58 +1,58 @@
 
 ;; subscriptions/init.fnl
-;; Creates subscription registry and wires behaviors to event sources.
+;; Creates subscription registry and wires behaviors to event sources via tags.
 
 (local {: make-subscription-registry : define-subscription!} (require :sheaf.subscription-registry))
 (local {: event-registry} (require :events))
 (local {: behavior-registry} (require :behaviors))
-(local {: source-registry} (require :event_sources))
+(local {: tag-registry} (require :components))
 
 ;; Create subscription registry
 (local subscription-registry
   (make-subscription-registry {:event-registry event-registry
                                :behavior-registry behavior-registry
-                               :source-registry source-registry}))
+                               :tag-registry tag-registry}))
 
 (define-subscription! subscription-registry
  :sub/reload-on-config-change
  {:description "Reload Hammerspoon when init.lua changes"
   :behavior :reload-hammerspoon.behaviors/reload-hammerspoon
-  :source-selector :event-source.file-watcher/config-dir
+  :source-tag :tag/config-watcher
   :event-selector :event.kind.fs/file-change})
 
 (define-subscription! subscription-registry
  :sub/compile-on-fnl-change
  {:description "Recompile Fennel when .fnl files change"
   :behavior :compile-fennel.behaviors/compile-fennel
-  :source-selector :event-source.file-watcher/config-dir
+  :source-tag :tag/config-watcher
   :event-selector :event.kind.fs/file-change})
 
 (define-subscription! subscription-registry
  :sub/toggle-expose-on-hotkey
  {:description "Toggle Expose when ctrl+cmd+e is pressed"
   :behavior :expose.behaviors/toggle-expose
-  :source-selector :event-source.hotkey/ctrl+cmd+e
+  :source-tag :tag/expose-hotkey
   :event-selector :event.kind.hotkey/pressed})
 
 (define-subscription! subscription-registry
  :sub/update-indicator-on-space-change
  {:description "Update space indicator when space changes"
   :behavior :space-indicator.behaviors/update-on-change
-  :source-selector :event-source.space-watcher/default
+  :source-tag :tag/space-watcher
   :event-selector :event.kind.space/changed})
 
 (define-subscription! subscription-registry
  :sub/update-indicator-on-screen-change
  {:description "Update space indicator when screen layout changes"
   :behavior :space-indicator.behaviors/update-on-change
-  :source-selector :event-source.screen-watcher/default
-   :event-selector :event.kind.screen/layout-changed})
+  :source-tag :tag/screen-watcher
+  :event-selector :event.kind.screen/layout-changed})
 
 (define-subscription! subscription-registry
  :sub/open-emacs-on-hotkey
  {:description "Open emacsclient frame when cmd+alt+return is pressed"
   :behavior :emacs.behaviors/open-emacs
-  :source-selector :event-source.hotkey/cmd+alt+return
+  :source-tag :tag/emacs-hotkey
   :event-selector :event.kind.hotkey/pressed})
 
 {: subscription-registry}
