@@ -1557,7 +1557,7 @@ package.preload["sheaf.component-registry"] = package.preload["sheaf.component-r
   local trait_defined_3f = _local_181_["trait-defined?"]
   local satisfies_all_3f = _local_181_["satisfies-all?"]
   local function type_name__3edescriptor(type_name)
-    return string.match(tostring(type_name), "^:component%.type/(.+)$")
+    return string.match(tostring(type_name), "^component%.type/(.+)$")
   end
   local function make_instance_name(type_name, instance_id)
     local descriptor = type_name__3edescriptor(type_name)
@@ -1565,14 +1565,14 @@ package.preload["sheaf.component-registry"] = package.preload["sheaf.component-r
       error(("make-instance-name: invalid type name format: " .. tostring(type_name) .. " (expected :component.type/<descriptor>)"))
     else
     end
-    return (":component." .. descriptor .. ".instance/" .. instance_id)
+    return ("component." .. descriptor .. ".instance/" .. instance_id)
   end
   local function valid_instance_name_3f(type_name, instance_name)
     local descriptor = type_name__3edescriptor(type_name)
     if (nil == descriptor) then
       return false
     else
-      return (nil ~= string.match(tostring(instance_name), ("^:component%." .. descriptor .. "%.instance/.+$")))
+      return (nil ~= string.match(tostring(instance_name), ("^component%." .. descriptor .. "%.instance/.+$")))
     end
   end
   local function make_component_registry(opts)

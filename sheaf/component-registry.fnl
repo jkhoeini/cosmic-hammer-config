@@ -40,7 +40,7 @@
   "Extract the descriptor from a component type name.
    :component.type/space-indicator → \"space-indicator\"
    Returns nil if type-name doesn't match the expected pattern."
-  (string.match (tostring type-name) "^:component%.type/(.+)$"))
+  (string.match (tostring type-name) "^component%.type/(.+)$"))
 
 
 (fn make-instance-name [type-name instance-id]
@@ -52,7 +52,7 @@
     (when (= nil descriptor)
       (error (.. "make-instance-name: invalid type name format: " (tostring type-name)
                  " (expected :component.type/<descriptor>)")))
-    (.. ":component." descriptor ".instance/" instance-id)))
+    (.. "component." descriptor ".instance/" instance-id)))
 
 
 (fn valid-instance-name? [type-name instance-name]
@@ -62,7 +62,7 @@
     (if (= nil descriptor)
         false
         (not= nil (string.match (tostring instance-name)
-                                (.. "^:component%." descriptor "%.instance/.+$"))))))
+                                (.. "^component%." descriptor "%.instance/.+$"))))))
 
 
 (fn make-component-registry [opts]
