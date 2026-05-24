@@ -13,7 +13,7 @@
 ;; Both indexes use hash-sets as values. The reverse index enables
 ;; O(1) lookup from tag to the set of instances carrying that tag.
 
-(local {: hash-set : conj : disj : contains?} (require :lib.cljlib-shim))
+(local {: hash-set : conj : disj : contains? : empty? : seq} (require :lib.cljlib-shim))
 
 
 ;; ============================================================================
@@ -34,6 +34,10 @@
 (fn attach-tag! [registry instance-name tag]
   "Attach a tag to a component instance. Mutates both indexes.
    Idempotent — attaching an already-attached tag is a no-op."
+  (when (= nil instance-name)
+    (error "attach-tag!: instance-name must not be nil"))
+  (when (= nil tag)
+    (error "attach-tag!: tag must not be nil"))
   (let [inst-tags (or (. registry.instance-tags instance-name) (hash-set))
         tag-insts (or (. registry.tag-instances tag) (hash-set))]
     (tset registry.instance-tags instance-name (conj inst-tags tag))
@@ -42,13 +46,18 @@
 
 (fn detach-tag! [registry instance-name tag]
   "Detach a tag from a component instance. Mutates both indexes.
-   Idempotent — detaching a non-attached tag is a no-op."
+   Idempotent — detaching a non-attached tag is a no-op.
+   Prunes empty sets to avoid tombstones."
   (let [inst-tags (. registry.instance-tags instance-name)
         tag-insts (. registry.tag-instances tag)]
     (when inst-tags
-      (tset registry.instance-tags instance-name (disj inst-tags tag)))
+      (let [new-set (disj inst-tags tag)]
+        (tset registry.instance-tags instance-name
+              (when (seq new-set) new-set))))
     (when tag-insts
-      (tset registry.tag-instances tag (disj tag-insts instance-name)))))
+      (let [new-set (disj tag-insts instance-name)]
+        (tset registry.tag-instances tag
+              (when (seq new-set) new-set))))))
 
 
 (fn get-tags [registry instance-name]
