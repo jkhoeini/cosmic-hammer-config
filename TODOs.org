@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [2/6] :architecture:
+**** NOW [#A] Implement component architecture [3/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -99,13 +99,13 @@ Built incrementally — each phase is independently functional.
       - [X] Wire components/init.fnl into core.fnl boot sequence (after events, before commands)
       - Depends on Phase 1 (traits)
 
-***** NEXT [#A] Phase 3: Tag system [0/3]
+***** DONE Phase 3: Tag system [3/3]
       Separate tag-registry with reverse index {tag → #{instance-names}} for O(1) lookup.
 
-      - [ ] Implement sheaf/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!,
+      - [X] Implement sheaf/tag-registry.fnl: make-tag-registry, attach-tag!, detach-tag!,
             get-tags (instance → tags), components-with-tag (tag → instance-names)
-      - [ ] Maintain reverse index {tag → #{instance-names}} for O(1) lookup
-      - [ ] Attach initial tags in components/init.fnl:
+      - [X] Maintain reverse index {tag → #{instance-names}} for O(1) lookup
+      - [X] Attach initial tags in components/init.fnl:
             :tag/space-indicator, :tag/expose, :tag/config-watcher, etc.
       - Depends on Phase 2 (components)
 

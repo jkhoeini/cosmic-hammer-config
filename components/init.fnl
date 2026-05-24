@@ -10,6 +10,7 @@
         : add-component-type!
         : start-component!
         : make-instance-name} (require :sheaf.component-registry))
+(local {: make-tag-registry : attach-tag!} (require :sheaf.tag-registry))
 (local {: trait-registry} (require :traits))
 
 ;; Import component type data
@@ -67,30 +68,44 @@
 
 
 ;; ============================================================================
+;; Instance Names
+;; ============================================================================
+
+(local space-indicator-name (make-instance-name :component.type/space-indicator "main"))
+(local expose-name (make-instance-name :component.type/expose "main"))
+(local emacs-name (make-instance-name :component.type/emacs "main"))
+(local reload-hammerspoon-name (make-instance-name :component.type/reload-hammerspoon "main"))
+(local compile-fennel-name (make-instance-name :component.type/compile-fennel "main"))
+
+
+;; ============================================================================
 ;; Instance Startup
 ;; ============================================================================
 
-(start-component! component-registry
-                  :component.type/space-indicator
-                  (make-instance-name :component.type/space-indicator "main")
-                  {})
-(start-component! component-registry
-                  :component.type/expose
-                  (make-instance-name :component.type/expose "main")
-                  {})
-(start-component! component-registry
-                  :component.type/emacs
-                  (make-instance-name :component.type/emacs "main")
-                  {})
-(start-component! component-registry
-                  :component.type/reload-hammerspoon
-                  (make-instance-name :component.type/reload-hammerspoon "main")
-                  {})
-(start-component! component-registry
-                  :component.type/compile-fennel
-                  (make-instance-name :component.type/compile-fennel "main")
-                  {})
+(start-component! component-registry :component.type/space-indicator space-indicator-name {})
+(start-component! component-registry :component.type/expose expose-name {})
+(start-component! component-registry :component.type/emacs emacs-name {})
+(start-component! component-registry :component.type/reload-hammerspoon reload-hammerspoon-name {})
+(start-component! component-registry :component.type/compile-fennel compile-fennel-name {})
 
 
-;; Export registry (hierarchy accessible via component-registry.hierarchy)
-{: component-registry}
+;; ============================================================================
+;; Tag Registry
+;; ============================================================================
+
+(local tag-registry (make-tag-registry))
+
+
+;; ============================================================================
+;; Tag Attachment
+;; ============================================================================
+
+(attach-tag! tag-registry space-indicator-name :tag/space-indicator)
+(attach-tag! tag-registry expose-name :tag/expose)
+(attach-tag! tag-registry emacs-name :tag/emacs)
+(attach-tag! tag-registry reload-hammerspoon-name :tag/reload-hammerspoon)
+(attach-tag! tag-registry compile-fennel-name :tag/compile-fennel)
+
+
+;; Export registries (hierarchy accessible via component-registry.hierarchy)
+{: component-registry : tag-registry}
