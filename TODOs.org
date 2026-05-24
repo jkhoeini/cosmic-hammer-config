@@ -79,7 +79,7 @@ Built incrementally — each phase is independently functional.
       - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
       - [X] Define initial traits: :trait/has-menubar, :trait/has-expose
 
-***** NOW [#A] Phase 2: Component system [3/8]
+***** NOW [#A] Phase 2: Component system [4/8]
       Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
       Separate component-hierarchy instance. Registry takes trait-registry only;
       source-registry wired in Phase 5.
@@ -87,7 +87,7 @@ Built incrementally — each phase is independently functional.
       - [X] Implement sheaf/component-registry.fnl: make-component-registry (takes trait-registry), make-component-type, add-component-type!, get-component-type, list-component-types
       - [X] Implement start-component!: calls start-fn → state, validates trait satisfaction, stores instance
       - [X] Implement stop-component!, get-component-instance, list-component-instances, component-instance-exists?
-      - [ ] Create component kind hierarchy (separate from event hierarchy):
+      - [X] Create component kind hierarchy (separate from event hierarchy):
             :component.kind/any → :component.kind/space-indicator, /expose, etc.
       - [ ] Instance naming: component.<type>.instance/<instance-name>
       - [ ] Create component types for existing modules:
