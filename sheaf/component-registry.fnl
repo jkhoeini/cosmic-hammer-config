@@ -36,6 +36,35 @@
 ;; Constructors
 ;; ============================================================================
 
+(fn type-name->descriptor [type-name]
+  "Extract the descriptor from a component type name.
+   :component.type/space-indicator → \"space-indicator\"
+   Returns nil if type-name doesn't match the expected pattern."
+  (string.match (tostring type-name) "^:component%.type/(.+)$"))
+
+
+(fn make-instance-name [type-name instance-id]
+  "Construct a canonical instance name from a component type name and instance id.
+   (make-instance-name :component.type/space-indicator \"main\")
+   → :component.space-indicator.instance/main
+   Errors if type-name doesn't match the :component.type/<descriptor> pattern."
+  (let [descriptor (type-name->descriptor type-name)]
+    (when (= nil descriptor)
+      (error (.. "make-instance-name: invalid type name format: " (tostring type-name)
+                 " (expected :component.type/<descriptor>)")))
+    (.. ":component." descriptor ".instance/" instance-id)))
+
+
+(fn valid-instance-name? [type-name instance-name]
+  "Check if instance-name follows the naming convention for the given type.
+   :component.type/space-indicator expects :component.space-indicator.instance/<id>"
+  (let [descriptor (type-name->descriptor type-name)]
+    (if (= nil descriptor)
+        false
+        (not= nil (string.match (tostring instance-name)
+                                (.. "^:component%." descriptor "%.instance/.+$"))))))
+
+
 (fn make-component-registry [opts]
   "Create a new component type registry.
    opts:
@@ -138,6 +167,11 @@
    config: configuration table for this instance"
   (when (component-instance-exists? registry instance-name)
     (error (.. "start-component!: instance already exists: " (tostring instance-name))))
+  (when (not (valid-instance-name? type-name instance-name))
+    (error (.. "start-component!: instance name '" (tostring instance-name)
+               "' does not follow naming convention for type " (tostring type-name)
+               " (expected :component.<descriptor>.instance/<id>,"
+               " use make-instance-name to construct)")))
   (let [component-type (get-component-type registry type-name)]
     (when (= nil component-type)
       (error (.. "start-component!: type not found: " (tostring type-name))))
@@ -183,7 +217,9 @@
 ;; Exports
 ;; ============================================================================
 
-{: make-component-registry
+{: make-instance-name
+ : valid-instance-name?
+ : make-component-registry
  : make-component-type
  : add-component-type!
  : component-type-defined?
