@@ -155,6 +155,21 @@
       (print (.. "[INFO] Started component instance: " (tostring instance-name))))))
 
 
+(fn stop-component! [registry instance-name]
+  "Stop a running component instance.
+   Calls the type's stop-fn (if any) with the instance state,
+   then removes the instance from the registry.
+   instance-name: the instance to stop"
+  (let [instance (get-component-instance registry instance-name)]
+    (when (= nil instance)
+      (error (.. "stop-component!: instance not found: " (tostring instance-name))))
+    (let [component-type (get-component-type registry instance.type)]
+      (when component-type.stop-fn
+        (component-type.stop-fn instance.state))
+      (tset registry.instances instance-name nil)
+      (print (.. "[INFO] Stopped component instance: " (tostring instance-name))))))
+
+
 ;; ============================================================================
 ;; Hierarchy Queries
 ;; ============================================================================
@@ -178,4 +193,5 @@
  : get-component-instance
  : list-component-instances
  : start-component!
+ : stop-component!
  : component-type-isa?}
