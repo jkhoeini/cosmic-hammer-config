@@ -1,9 +1,10 @@
 
 ;; sheaf/component-registry.fnl
-;; Data-oriented component type registry - no global state.
+;; Data-oriented component type registry with instance lifecycle - no global state.
 ;;
 ;; A component-registry is a data structure:
 ;;   {:component-types {}      ; type-name -> component-type data
+;;    :instances {}             ; instance-name -> component-instance data
 ;;    :hierarchy h             ; component kind hierarchy
 ;;    :trait-registry tr}      ; reference to trait-registry for cross-validation
 ;;
@@ -15,13 +16,20 @@
 ;;    :start-fn (fn [config] -> state)
 ;;    :stop-fn nil}
 ;;
+;; A component-instance is a data structure:
+;;   {:name :component.space-indicator.instance/main
+;;    :type :component.type/space-indicator
+;;    :config {}
+;;    :state {:menubar <hs.menubar>}}
+;;
 ;; Component types form a hierarchy via lib/hierarchy.fnl.
 ;;
-;; Naming convention:
-;;   :component.type/descriptor-name
+;; Naming conventions:
+;;   Type:     :component.type/descriptor-name
+;;   Instance: :component.descriptor-name.instance/<instance-name>
 
 (local {: isa?} (require :lib.hierarchy))
-(local {: trait-defined?} (require :sheaf.trait-registry))
+(local {: trait-defined? : satisfies-all?} (require :sheaf.trait-registry))
 
 
 ;; ============================================================================
@@ -38,6 +46,7 @@
   (when (= nil opts.trait-registry)
     (error "make-component-registry: :trait-registry is required"))
   {:component-types {}
+   :instances {}
    :hierarchy opts.hierarchy
    :trait-registry opts.trait-registry})
 
@@ -98,6 +107,55 @@
 
 
 ;; ============================================================================
+;; Component Instance API
+;; ============================================================================
+
+(fn component-instance-exists? [registry instance-name]
+  "Check if a component instance exists."
+  (not= nil (. registry.instances instance-name)))
+
+
+(fn get-component-instance [registry instance-name]
+  "Get a component instance by name."
+  (. registry.instances instance-name))
+
+
+(fn list-component-instances [registry]
+  "List all running component instance names."
+  (let [names []]
+    (each [name _ (pairs registry.instances)]
+      (table.insert names name))
+    names))
+
+
+(fn start-component! [registry type-name instance-name config]
+  "Start a new instance of a component type.
+   Calls the type's start-fn with config to obtain state, validates that
+   the returned state satisfies all traits declared by the type, and
+   stores the instance in the registry.
+   instance-name: unique name (e.g. :component.space-indicator.instance/main)
+   type-name: the component type (e.g. :component.type/space-indicator)
+   config: configuration table for this instance"
+  (when (component-instance-exists? registry instance-name)
+    (error (.. "start-component!: instance already exists: " (tostring instance-name))))
+  (let [component-type (get-component-type registry type-name)]
+    (when (= nil component-type)
+      (error (.. "start-component!: type not found: " (tostring type-name))))
+    (let [state (component-type.start-fn (or config {}))]
+      (when (and (< 0 (length component-type.traits)) (= nil state))
+        (error (.. "start-component!: start-fn for " (tostring type-name) " returned nil but type declares traits")))
+      (when (not (satisfies-all? registry.trait-registry component-type.traits (or state {})))
+        (error (.. "start-component!: state from " (tostring type-name)
+                   " does not satisfy declared traits for instance " (tostring instance-name))))
+      (tset registry.instances instance-name
+            {:name instance-name
+             :type type-name
+             :config (or config {})
+             :state state})
+      (print (.. "[INFO] Started component instance: " (tostring instance-name))))))
+
+
+;; ============================================================================
 ;; Hierarchy Queries
 ;; ============================================================================
 
@@ -116,4 +174,8 @@
  : component-type-defined?
  : get-component-type
  : list-component-types
+ : component-instance-exists?
+ : get-component-instance
+ : list-component-instances
+ : start-component!
  : component-type-isa?}
