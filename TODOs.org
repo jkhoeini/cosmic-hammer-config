@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [1/6] :architecture:
+**** NOW [#A] Implement component architecture [2/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -79,7 +79,7 @@ Built incrementally — each phase is independently functional.
       - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
       - [X] Define initial traits: :trait/has-menubar, :trait/has-expose
 
-***** NOW [#A] Phase 2: Component system [6/8]
+***** DONE Phase 2: Component system [8/8]
       Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
       Separate component-hierarchy instance. Registry takes trait-registry only;
       source-registry wired in Phase 5.
@@ -95,8 +95,8 @@ Built incrementally — each phase is independently functional.
         expose (start-fn creates hs.expose → {:expose e}),
         reload-hammerspoon (start-fn creates timer → {:timer t :reloading? false}),
         compile-fennel (start-fn → {}), emacs (start-fn → {})
-      - [ ] Create components/init.fnl: registry, type registration, instance startup
-      - [ ] Wire components/init.fnl into core.fnl boot sequence (after events, before commands)
+      - [X] Create components/init.fnl: registry, type registration, instance startup
+      - [X] Wire components/init.fnl into core.fnl boot sequence (after events, before commands)
       - Depends on Phase 1 (traits)
 
 ***** NEXT [#A] Phase 3: Tag system [0/3]
