@@ -79,7 +79,7 @@ Built incrementally — each phase is independently functional.
       - [X] Create trait hierarchy via lib/hierarchy.fnl (:trait.kind/any as root)
       - [X] Define initial traits: :trait/has-menubar, :trait/has-expose
 
-***** NOW [#A] Phase 2: Component system [5/8]
+***** NOW [#A] Phase 2: Component system [6/8]
       Type/instance split. start-fn returns state (including HS objects like menubar, expose, timers).
       Separate component-hierarchy instance. Registry takes trait-registry only;
       source-registry wired in Phase 5.
@@ -90,7 +90,7 @@ Built incrementally — each phase is independently functional.
       - [X] Create component kind hierarchy (separate from event hierarchy):
         :component.kind/any → :component.kind/space-indicator, /expose, etc.
       - [X] Instance naming: component.<type>.instance/<instance-name>
-      - [ ] Create component types for existing modules:
+      - [X] Create component types for existing modules:
         space-indicator (start-fn creates menubar → {:menubar m}),
         expose (start-fn creates hs.expose → {:expose e}),
         reload-hammerspoon (start-fn creates timer → {:timer t :reloading? false}),
