@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [12/73]
+* Projects [13/78]
 ** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -306,14 +306,14 @@ Full interactive UI with controls, SQLite persistence, event tracing.
 *** LATER [#C] Persist state into SQLite                              :tooling:
     - Save events, behaviors, subscriptions, hierarchy
 
-** PROJ Contextual Automation [0/4]
+** PROJ Contextual Automation [1/4]
 Users can make automations context-aware using tags and filtering.
 Enables modes, contexts, and conditional behavior.
 
-*** LATER [#A] Define tag attachment to component instances             :architecture:
+*** DONE Define tag attachment to component instances             :architecture:
      - Covered by Phase 3 in Milestone 3 (sheaf/tag-registry.fnl)
      - Tags are simple keyword labels on instances, no inheritance
-     - Subscription filtering via tags deferred to Phase 4
+     - Subscription filtering via tags implemented in Phase 4
 
 *** LATER [#B] Disable events, behaviors, subscriptions, tags, sources :feature:
     - Add ability to pause/disable at various levels
@@ -400,15 +400,15 @@ Users can automate based on more system events.
 ** PROJ URL Dispatch [2/9]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
 
-*** Phase 1: Core Dispatch [2/6]
+*** NOW Phase 1: Core Dispatch [2/6]
 
-**** TODO [#A] Create URL event source                                  :feature:
+**** NEXT [#A] Create URL event source                                  :feature:
      - Register as default HTTP handler via hs.urlevent.setDefaultHandler
      - Emit :url-handler.events/url-opened with {url, original, scheme, host, params, sender}
      - pcall around sender app lookup (PID may be stale)
      - stop-fn restores previous default handler
 
-**** TODO [#A] Implement decoder pipeline in URL event source            :feature:
+**** NEXT [#A] Implement decoder pipeline in URL event source            :feature:
      - Ordered list of decoders in source config
      - Each decoder operates on current (already-decoded) URL, not original
      - Decoder = {:name :match :decode-url?}
@@ -422,17 +422,17 @@ Route URLs to different browsers/apps based on rules. Hammerspoon acts as defaul
      - :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
      - Use hs.chooser (async, non-blocking)
 
-**** TODO [#A] Create URL routing behavior                              :feature:
+**** NEXT [#A] Create URL routing behavior                              :feature:
      - First-match-wins against ordered rules
      - Rule = {:patterns [...] :app "bundle.id" :sender [...]}
      - Fallback rule can invoke show-chooser
      - Dispatch via cmd.open-in-app or cmd.show-chooser
 
-**** TODO [#A] Wire subscription and integrate into core                :feature:
+**** NEXT [#A] Wire subscription and integrate into core                :feature:
      - Define events in events/init.fnl (:event.kind.url/opened hierarchy)
      - Create source instance, subscription, add to core.fnl
 
-*** Phase 2: History [0/3]
+*** LATER Phase 2: History [0/3]
 
 **** LATER [#B] Record URL history                                      :feature:
      - Store dispatched URLs with timestamp, sender, matched rule, target app
@@ -481,12 +481,71 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
+** PROJ Window Borders [1/5]
+Highlight the active window with a colored border. Replaces JankyBorders
+with a native Sheaf implementation using hs.canvas.
+Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
+
+*** DONE Implement window-border component [3/3] :feature:
+    Component holds hs.canvas objects for drawing borders.
+    Config: {:active-color "0xffe1e3e4" :inactive-color "0xff494d64" :width 5}
+
+    - [X] Add :trait/has-canvas to traits/init.fnl
+    - [X] Create components/window-border.fnl:
+          start-fn creates two hs.canvas objects (active + inactive), returns
+          {:active-canvas c1 :inactive-canvas c2 :active-window-id nil}
+          stop-fn deletes both canvases
+    - [X] Register in components/init.fnl:
+          Derive :component.kind/window-border, start instance,
+          attach :tag/window-border
+
+*** NEXT [#A] Implement window-border commands [0/3] :feature:
+    Commands that draw/move/hide borders using hs.canvas.
+
+    - [ ] :window-border.commands/show-active-border
+          Requires :trait/has-canvas. Params: {:window-id :frame}.
+          Positions active canvas around frame, shows it. Hides inactive canvas
+          on previous window if any. Returns new state with :active-window-id
+    - [ ] :window-border.commands/show-inactive-border
+          Requires :trait/has-canvas. Params: {:window-id :frame}.
+          Positions inactive canvas around frame, shows it. Returns nil
+    - [ ] :window-border.commands/hide-borders
+          Requires :trait/has-canvas. Hides both canvases. Returns state
+          with :active-window-id nil
+
+*** NEXT [#A] Implement window-border behaviors [0/2] :feature:
+    Behaviors that respond to window events and send border commands.
+
+    - [ ] :window-border.behaviors/update-on-focus
+          Responds to [:event.kind.window/focused].
+          Commands: {:show-active :window-border.commands/show-active-border
+                     :show-inactive :window-border.commands/show-inactive-border}
+          On focus: send :show-active for new window, send :show-inactive for
+          previous active window (looked up from component state via candidates)
+    - [ ] :window-border.behaviors/update-on-move
+          Responds to [:event.kind.window/focused].
+          Commands: {:show-active :window-border.commands/show-active-border}
+          On focus: also repositions border to match current frame
+          (handles move/resize that happened between focus events)
+
+*** NEXT [#A] Wire subscriptions [0/2] :feature:
+    - [ ] :sub/border-on-focus — source: :tag/window-watcher, target: :tag/window-border,
+          behavior: update-on-focus, event-selector: :event.kind.window/focused
+    - [ ] :sub/border-on-visible — source: :tag/window-watcher, target: :tag/window-border,
+          behavior: update-on-focus, event-selector: :event.kind.window/visible
+
+*** LATER [#B] Enhancements :feature:
+    - [ ] Per-app border color overrides via config
+    - [ ] Animate border on focus change (fade in/out)
+    - [ ] Hide border in fullscreen mode
+    - [ ] Support multiple monitors (border follows window across screens)
+
 ** PROJ Slack Integration [0/15]
 Migrate slack.fnl to Sheaf: commands + hotkey sources + behaviors + subscriptions.
 Proper app-context filtering requires App event source + tags (see Contextual Automation project).
 Until then behaviors guard with frontmost app check.
 
-*** TODO [#B] Implement Slack commands, behaviors, and subscriptions :feature:
+*** NEXT [#B] Implement Slack commands, behaviors, and subscriptions :feature:
      - [ ] scroll-to-bottom — move mouse to Slack window, scroll to bottom
      - [ ] add-reaction — Cmd+Shift+\ shortcut
      - [ ] prev-element — Shift+F6 to focus previous panel

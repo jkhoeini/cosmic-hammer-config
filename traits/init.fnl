@@ -20,7 +20,8 @@
 ;; ├── :trait.kind/ui                        ;; Persistent UI element in state
 ;; │   ├── :trait/has-menubar
 ;; │   ├── :trait/has-expose
-;; │   └── :trait/has-chooser
+;; │   ├── :trait/has-chooser
+;; │   └── :trait/has-canvas
 ;; │
 ;; ├── :trait.kind/windowing                 ;; Window management capabilities
 ;; │   ├── :trait/has-window-filter
@@ -40,6 +41,7 @@
 (derive! trait-hierarchy :trait/has-menubar :trait.kind/ui)
 (derive! trait-hierarchy :trait/has-expose :trait.kind/ui)
 (derive! trait-hierarchy :trait/has-chooser :trait.kind/ui)
+(derive! trait-hierarchy :trait/has-canvas :trait.kind/ui)
 
 ;; --- Windowing ---
 (derive! trait-hierarchy :trait/has-window-filter :trait.kind/windowing)
@@ -75,6 +77,11 @@
   (make-trait :trait/has-chooser
               "Component state includes an hs.chooser object"
               {:schema {:chooser non-nil?}}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-canvas
+              "Component state includes hs.canvas objects"
+              {:schema {:active-canvas non-nil?}}))
 
 ;; --- Windowing ---
 (add-trait! trait-registry
