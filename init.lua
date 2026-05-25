@@ -2755,12 +2755,17 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   local update_space_indicator_behavior = _local_401_["update-space-indicator-behavior"]
   local _local_405_ = require("behaviors.open-emacs")
   local open_emacs_behavior = _local_405_["open-emacs-behavior"]
+  local _local_411_ = require("behaviors.window-border")
+  local update_on_focus_behavior = _local_411_["update-on-focus-behavior"]
+  local update_on_move_behavior = _local_411_["update-on-move-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
   add_behavior_21(behavior_registry, toggle_expose_behavior)
   add_behavior_21(behavior_registry, update_space_indicator_behavior)
   add_behavior_21(behavior_registry, open_emacs_behavior)
+  add_behavior_21(behavior_registry, update_on_focus_behavior)
+  add_behavior_21(behavior_registry, update_on_move_behavior)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-registry"] or function(...)
@@ -2972,17 +2977,42 @@ package.preload["behaviors.open-emacs"] = package.preload["behaviors.open-emacs"
   open_emacs_behavior = make_behavior({name = "emacs.behaviors/open-emacs", description = "Open a new emacsclient frame on hotkey press", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["open-emacs"] = "emacs.commands/open-emacs"}, fn = _403_})
   return {["open-emacs-behavior"] = open_emacs_behavior}
 end
+package.preload["behaviors.window-border"] = package.preload["behaviors.window-border"] or function(...)
+  local _local_406_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_406_["make-behavior"]
+  local update_on_focus_behavior
+  local function _407_(event, candidates, send_cmd)
+    local target = candidates["show-active"][1]
+    if target then
+      return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame})
+    else
+      return nil
+    end
+  end
+  update_on_focus_behavior = make_behavior({name = "window-border.behaviors/update-on-focus", description = "Show active border around the newly focused window", ["respond-to"] = {"event.kind.window/focused"}, commands = {["show-active"] = "window-border.commands/show-active-border", ["show-inactive"] = "window-border.commands/show-inactive-border"}, fn = _407_})
+  local update_on_move_behavior
+  local function _409_(event, candidates, send_cmd)
+    local target = candidates["show-active"][1]
+    if target then
+      return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame})
+    else
+      return nil
+    end
+  end
+  update_on_move_behavior = make_behavior({name = "window-border.behaviors/update-on-move", description = "Reposition active border when a window moves or resizes", ["respond-to"] = {"event.kind.window/focused"}, commands = {["show-active"] = "window-border.commands/show-active-border"}, fn = _409_})
+  return {["update-on-focus-behavior"] = update_on_focus_behavior, ["update-on-move-behavior"] = update_on_move_behavior}
+end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_432_ = require("sheaf.subscription-registry")
-  local make_subscription_registry = _local_432_["make-subscription-registry"]
-  local define_subscription_21 = _local_432_["define-subscription!"]
-  local _local_433_ = require("events")
-  local event_registry = _local_433_["event-registry"]
-  local _local_434_ = require("behaviors")
-  local behavior_registry = _local_434_["behavior-registry"]
-  local _local_435_ = require("components")
-  local tag_registry = _local_435_["tag-registry"]
+  local _local_438_ = require("sheaf.subscription-registry")
+  local make_subscription_registry = _local_438_["make-subscription-registry"]
+  local define_subscription_21 = _local_438_["define-subscription!"]
+  local _local_439_ = require("events")
+  local event_registry = _local_439_["event-registry"]
+  local _local_440_ = require("behaviors")
+  local behavior_registry = _local_440_["behavior-registry"]
+  local _local_441_ = require("components")
+  local tag_registry = _local_441_["tag-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["tag-registry"] = tag_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/reload-hammerspoon", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/compile-fennel", ["event-selector"] = "event.kind.fs/file-change"})
@@ -2993,20 +3023,20 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
-  local _local_406_ = require("lib.cljlib-shim")
-  local hash_set = _local_406_["hash-set"]
-  local conj = _local_406_.conj
-  local disj = _local_406_.disj
-  local into = _local_406_.into
-  local seq = _local_406_.seq
-  local _local_407_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_407_["valid-event-selector?"]
-  local _local_408_ = require("sheaf.behavior-registry")
-  local behavior_defined_3f = _local_408_["behavior-defined?"]
-  local _local_409_ = require("sheaf.tag-registry")
-  local get_tags = _local_409_["get-tags"]
-  local _local_410_ = require("lib.hierarchy")
-  local ancestors = _local_410_.ancestors
+  local _local_412_ = require("lib.cljlib-shim")
+  local hash_set = _local_412_["hash-set"]
+  local conj = _local_412_.conj
+  local disj = _local_412_.disj
+  local into = _local_412_.into
+  local seq = _local_412_.seq
+  local _local_413_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_413_["valid-event-selector?"]
+  local _local_414_ = require("sheaf.behavior-registry")
+  local behavior_defined_3f = _local_414_["behavior-defined?"]
+  local _local_415_ = require("sheaf.tag-registry")
+  local get_tags = _local_415_["get-tags"]
+  local _local_416_ = require("lib.hierarchy")
+  local ancestors = _local_416_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -3043,27 +3073,27 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
     local sub_name = subscription.name
     local sub_set
     do
-      local t_416_ = registry.index
-      if (nil ~= t_416_) then
-        t_416_ = t_416_[tag]
+      local t_422_ = registry.index
+      if (nil ~= t_422_) then
+        t_422_ = t_422_[tag]
       else
       end
-      if (nil ~= t_416_) then
-        t_416_ = t_416_[event]
+      if (nil ~= t_422_) then
+        t_422_ = t_422_[event]
       else
       end
-      sub_set = t_416_
+      sub_set = t_422_
     end
     if sub_set then
       do
         local new_set = disj(sub_set, sub_name)
-        local _419_
+        local _425_
         if seq(new_set) then
-          _419_ = new_set
+          _425_ = new_set
         else
-          _419_ = nil
+          _425_ = nil
         end
-        registry.index[tag][event] = _419_
+        registry.index[tag][event] = _425_
       end
       if (nil == registry.index[tag][event]) then
         if (nil == next(registry.index[tag])) then
@@ -3179,40 +3209,40 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-matching-subscriptions"] = get_matching_subscriptions}
 end
-local _local_436_ = require("subscriptions")
-local subscription_registry = _local_436_["subscription-registry"]
+local _local_442_ = require("subscriptions")
+local subscription_registry = _local_442_["subscription-registry"]
 package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or function(...)
-  local _local_437_ = require("sheaf.event-registry")
-  local add_event_handler_21 = _local_437_["add-event-handler!"]
-  local _local_438_ = require("sheaf.behavior-registry")
-  local behavior_responds_to_3f = _local_438_["behavior-responds-to?"]
-  local get_behavior = _local_438_["get-behavior"]
-  local _local_439_ = require("sheaf.subscription-registry")
-  local get_matching_subscriptions = _local_439_["get-matching-subscriptions"]
-  local _local_440_ = require("sheaf.command-registry")
-  local get_command = _local_440_["get-command"]
-  local _local_441_ = require("sheaf.tag-registry")
-  local components_with_tag = _local_441_["components-with-tag"]
-  local _local_442_ = require("sheaf.component-registry")
-  local get_component_instance = _local_442_["get-component-instance"]
-  local _local_443_ = require("sheaf.trait-registry")
-  local satisfies_all_3f = _local_443_["satisfies-all?"]
+  local _local_443_ = require("sheaf.event-registry")
+  local add_event_handler_21 = _local_443_["add-event-handler!"]
+  local _local_444_ = require("sheaf.behavior-registry")
+  local behavior_responds_to_3f = _local_444_["behavior-responds-to?"]
+  local get_behavior = _local_444_["get-behavior"]
+  local _local_445_ = require("sheaf.subscription-registry")
+  local get_matching_subscriptions = _local_445_["get-matching-subscriptions"]
+  local _local_446_ = require("sheaf.command-registry")
+  local get_command = _local_446_["get-command"]
+  local _local_447_ = require("sheaf.tag-registry")
+  local components_with_tag = _local_447_["components-with-tag"]
+  local _local_448_ = require("sheaf.component-registry")
+  local get_component_instance = _local_448_["get-component-instance"]
+  local _local_449_ = require("sheaf.trait-registry")
+  local satisfies_all_3f = _local_449_["satisfies-all?"]
   local function build_candidates(behavior, command_registry, component_registry, trait_registry, tag_registry, target_tag)
     local candidates = {}
     local target_instances = components_with_tag(tag_registry, target_tag)
     for alias, cmd_name in pairs((behavior.commands or {})) do
       local command = get_command(command_registry, cmd_name)
       local required_traits
-      local _445_
+      local _451_
       do
-        local t_444_ = command
-        if (nil ~= t_444_) then
-          t_444_ = t_444_["requires-traits"]
+        local t_450_ = command
+        if (nil ~= t_450_) then
+          t_450_ = t_450_["requires-traits"]
         else
         end
-        _445_ = t_444_
+        _451_ = t_450_
       end
-      required_traits = (_445_ or {})
+      required_traits = (_451_ or {})
       local matching = {}
       for instance_name, _ in pairs(target_instances) do
         local instance = get_component_instance(component_registry, instance_name)
@@ -3226,7 +3256,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
     return candidates
   end
   local function make_send_cmd(behavior, command_registry, component_registry, trait_registry)
-    local function _448_(instance_name, cmd_alias, params)
+    local function _454_(instance_name, cmd_alias, params)
       local cmd_name = behavior.commands[cmd_alias]
       if (nil == cmd_name) then
         print(("[WARN] send-cmd: unknown alias '" .. tostring(cmd_alias) .. "' in behavior '" .. tostring(behavior.name) .. "'"))
@@ -3257,7 +3287,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
         return print(("[WARN] send-cmd: instance '" .. tostring(instance_name) .. "' does not satisfy traits for command '" .. tostring(cmd_name) .. "'"))
       end
     end
-    return _448_
+    return _454_
   end
   local function dispatch_to_behavior(subscription_registry, component_registry, event, behavior_name, target_tag)
     local behavior_registry = subscription_registry["behavior-registry"]
@@ -3281,27 +3311,27 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
   end
   local function start_dispatcher_21(subscription_registry, component_registry)
     local event_registry = subscription_registry["event-registry"]
-    local function _456_(event)
+    local function _462_(event)
       local sub_matches = get_matching_subscriptions(subscription_registry, event["event-source"], event["event-name"])
       for _, sub_match in ipairs((sub_matches or {})) do
         dispatch_to_behavior(subscription_registry, component_registry, event, sub_match.behavior, sub_match["target-tag"])
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _456_)
-    local function _457_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _462_)
+    local function _463_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _457_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _463_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_459_ = require("sheaf.dispatcher")
-local start_dispatcher_21 = _local_459_["start-dispatcher!"]
+local _local_465_ = require("sheaf.dispatcher")
+local start_dispatcher_21 = _local_465_["start-dispatcher!"]
 package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -3328,12 +3358,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     else
     end
     local timer
-    local function _463_()
+    local function _469_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _463_)
+    timer = hs.timer.new(0.01, _469_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -3349,9 +3379,9 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_465_ = require("sheaf.event-loop")
-local make_event_loop = _local_465_["make-event-loop"]
-local start_event_loop_21 = _local_465_["start-event-loop!"]
+local _local_471_ = require("sheaf.event-loop")
+local make_event_loop = _local_471_["make-event-loop"]
+local start_event_loop_21 = _local_471_["start-event-loop!"]
 start_dispatcher_21(subscription_registry, component_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)
