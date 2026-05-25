@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [10/73]
+* Projects [12/73]
 ** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -329,50 +329,50 @@ Enables modes, contexts, and conditional behavior.
     - Use tags + tag-based subscription routing instead of hs.hotkey.modal
     - Depends on: tag system (Phase 3), dynamic tag management, App event source
 
-** PROJ Expand Configuration Options [2/9]
+** PROJ Expand Configuration Options [4/9]
 Users can automate based on more system events.
 
-*** NEXT Create Window event sources [0/7] :feature:
+*** DONE Create Window event sources [7/7] :feature:
     Two source types: window-watcher (global hs.window.filter) and
     window-element-watcher (per-window hs.uielement.watcher for move/resize).
 
-    - [ ] Define window events in events/init.fnl:
+    - [X] Define window events in events/init.fnl:
           Kind nodes under :event.kind.window/any: /focused, /visible, /not-visible,
           /fullscreened, /unfullscreened, /moved, /resized.
           Concrete events: window-watcher.events/{focused,visible,not-visible,fullscreened,unfullscreened},
           window-element-watcher.events/{moved,resized}.
           Schema: {:window-id :app-name :window-title :frame}
-    - [ ] Implement event_sources/window-watcher.fnl:
+    - [X] Implement event_sources/window-watcher.fnl:
           Wraps hs.window.filter. Permissive filter (no fullscreen/titlebar exclusion).
           Emacs allowRoles: [:AXUnknown :AXStandardWindow :AXDialog :AXSystemDialog].
           Subscribes to 5 events, emits {:window-id :app-name :window-title :frame}
-    - [ ] Implement event_sources/window-element-watcher.fnl:
+    - [X] Implement event_sources/window-element-watcher.fnl:
           Wraps hs.uielement.watcher for a single window.
           Config: {:window-id id} — looks up hs.window, creates uielement watcher.
           Emits moved/resized with {:window-id :frame}.
           No default component owns this — PaperWM Phase 4 creates instances dynamically
-    - [ ] Register both source types in event_sources/init.fnl
-    - [ ] Create components/window-watcher.fnl:
+    - [X] Register both source types in event_sources/init.fnl
+    - [X] Create components/window-watcher.fnl:
           Stateless component owning one window-watcher source tagged :tag/window-watcher
-    - [ ] Register component in components/init.fnl:
+    - [X] Register component in components/init.fnl:
           Derive :component.kind/window-watcher, start instance, no component-level tag
-    - [ ] Update PaperWM Phase 0: remove window event and source items (now here), keep hotkey item only
+    - [X] Update PaperWM Phase 0: remove window event and source items (now here), keep hotkey item only
 
-*** NEXT Create App event source [0/5] :feature:
+*** DONE Create App event source [5/5] :feature:
     Wraps hs.application.watcher for app lifecycle events.
     Event kind hierarchy already defined in events/init.fnl.
 
-    - [ ] Define concrete app events in events/init.fnl:
+    - [X] Define concrete app events in events/init.fnl:
           app-watcher.events/{launched,terminated,activated,deactivated,hidden}.
           Each derived from existing :event.kind.app/* kinds.
           Schema: {:app-name :bundle-id :pid}
-    - [ ] Implement event_sources/app-watcher.fnl:
+    - [X] Implement event_sources/app-watcher.fnl:
           Wraps hs.application.watcher. Maps watcher event constants to concrete event names.
           Emits {:app-name :bundle-id :pid} from callback args
-    - [ ] Register source type in event_sources/init.fnl
-    - [ ] Create components/app-watcher.fnl:
+    - [X] Register source type in event_sources/init.fnl
+    - [X] Create components/app-watcher.fnl:
           Stateless component owning one app-watcher source tagged :tag/app-watcher
-    - [ ] Register component in components/init.fnl:
+    - [X] Register component in components/init.fnl:
           Derive :component.kind/app-watcher, start instance, no component-level tag
 
 *** DONE Create Screen event source :feature:
