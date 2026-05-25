@@ -167,6 +167,41 @@ Built incrementally — each phase is independently functional.
       - Behaviors declare :requires-event-traits instead of :respond-to
       - Unifies all schema validation under one concept
 
+***** Trait schema inheritance via hierarchy
+      - Traits already support multiple parents via lib/hierarchy.fnl derive!
+      - Add schema inheritance: a trait inherits all schema keys from its ancestors
+      - Concrete trait schema = merge of ancestor schemas + own schema (child overrides parent on conflict)
+      - Implement resolve-schema: given a trait, walk ancestors and merge schemas bottom-up
+      - Implement serialize-trait: returns full trait description including inherited schema keys and hierarchy path
+
+***** Migrate trait schemas from predicate functions to keyword descriptors (malli-inspired)
+      - Current: {:menubar (fn [v] (not= nil v))} — predicate functions
+      - Target: {:menubar :non-nil} or {:menubar [:map {:title :string}]} — keyword-based schemas
+      - Inspired by Clojure Malli: composable schema descriptors instead of opaque functions
+      - Benefits: serializable, inspectable, self-documenting, can generate validators
+      - Define a schema registry mapping keywords to validator fns (like malli's registry)
+      - Built-in descriptors: :non-nil, :string, :number, :table, :boolean, :function
+      - Composite descriptors: [:vector :string], [:map {:key :type}], [:enum :a :b :c]
+      - Evaluate other malli/spec ideas:
+        - Schema transformers (coerce, decode, encode)
+        - Schema generation (for testing/fuzzing)
+        - Human-readable error messages from schema validation failures
+        - Registry of reusable schema fragments
+
+***** Higher-level schema concept (role-based component profiles)
+      - A schema bundles multiple traits into named profiles describing component roles
+      - Example: (make-schema :component-profiles
+                   {:ui-indicator [:trait/has-menubar :trait/has-delayed-timer]
+                    :window-manager [:trait/has-window-filter :trait/has-layout]
+                    :simple-trigger []})
+      - A component satisfying all traits in a profile is said to "conform" to that profile
+      - Use cases: validate component type conforms to a profile at registration time,
+        commands can require a profile instead of listing individual traits,
+        documentation and introspection ("this component is a ui-indicator")
+      - Profiles can compose: {:full-ui [:ui-indicator :interactive]} where :interactive
+        is itself a profile
+      - Inspired by Clojure spec's s/keys with :req and :opt, and malli's :multi schemas
+
 ***** Traits as datalog schemas
       - State migrates from Lua tables to a datalog database
       - Traits become datalog schemas — sets of attribute definitions
@@ -297,15 +332,48 @@ Enables modes, contexts, and conditional behavior.
 ** PROJ Expand Configuration Options [2/9]
 Users can automate based on more system events.
 
-*** NEXT Create Window event source :feature:
-    - Emit events on window create/destroy/focus/unfocus/move/resize
-    - Use hs.window.filter; apply Emacs role allowlist (:AXUnknown :AXStandardWindow
-      :AXDialog :AXSystemDialog) so Emacs windows aren't silently excluded
+*** NEXT Create Window event sources [0/7] :feature:
+    Two source types: window-watcher (global hs.window.filter) and
+    window-element-watcher (per-window hs.uielement.watcher for move/resize).
 
-*** NEXT Create App event source :feature:
-    - Emit events on app launch/quit/activate/deactivate/hidden
-    - Use hs.window.filter; apply Emacs role allowlist (:AXUnknown :AXStandardWindow
-      :AXDialog :AXSystemDialog) so Emacs windows aren't silently excluded
+    - [ ] Define window events in events/init.fnl:
+          Kind nodes under :event.kind.window/any: /focused, /visible, /not-visible,
+          /fullscreened, /unfullscreened, /moved, /resized.
+          Concrete events: window-watcher.events/{focused,visible,not-visible,fullscreened,unfullscreened},
+          window-element-watcher.events/{moved,resized}.
+          Schema: {:window-id :app-name :window-title :frame}
+    - [ ] Implement event_sources/window-watcher.fnl:
+          Wraps hs.window.filter. Permissive filter (no fullscreen/titlebar exclusion).
+          Emacs allowRoles: [:AXUnknown :AXStandardWindow :AXDialog :AXSystemDialog].
+          Subscribes to 5 events, emits {:window-id :app-name :window-title :frame}
+    - [ ] Implement event_sources/window-element-watcher.fnl:
+          Wraps hs.uielement.watcher for a single window.
+          Config: {:window-id id} — looks up hs.window, creates uielement watcher.
+          Emits moved/resized with {:window-id :frame}.
+          No default component owns this — PaperWM Phase 4 creates instances dynamically
+    - [ ] Register both source types in event_sources/init.fnl
+    - [ ] Create components/window-watcher.fnl:
+          Stateless component owning one window-watcher source tagged :tag/window-watcher
+    - [ ] Register component in components/init.fnl:
+          Derive :component.kind/window-watcher, start instance, no component-level tag
+    - [ ] Update PaperWM Phase 0: remove window event and source items (now here), keep hotkey item only
+
+*** NEXT Create App event source [0/5] :feature:
+    Wraps hs.application.watcher for app lifecycle events.
+    Event kind hierarchy already defined in events/init.fnl.
+
+    - [ ] Define concrete app events in events/init.fnl:
+          app-watcher.events/{launched,terminated,activated,deactivated,hidden}.
+          Each derived from existing :event.kind.app/* kinds.
+          Schema: {:app-name :bundle-id :pid}
+    - [ ] Implement event_sources/app-watcher.fnl:
+          Wraps hs.application.watcher. Maps watcher event constants to concrete event names.
+          Emits {:app-name :bundle-id :pid} from callback args
+    - [ ] Register source type in event_sources/init.fnl
+    - [ ] Create components/app-watcher.fnl:
+          Stateless component owning one app-watcher source tagged :tag/app-watcher
+    - [ ] Register component in components/init.fnl:
+          Derive :component.kind/app-watcher, start instance, no component-level tag
 
 *** DONE Create Screen event source :feature:
     - Emit events on display add/remove/layout-change
