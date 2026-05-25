@@ -1,5 +1,5 @@
 
-;; lib/subscription-registry.fnl
+;; sheaf/subscription-registry.fnl
 ;; Manages subscription definitions - connections between behaviors and tag+event pairs.
 ;; Data-oriented subscription registry - no global state.
 ;;
@@ -18,7 +18,7 @@
 ;;    :source-tag  :tag/my-tag
 ;;    :target-tag  :tag/my-target}  ; optional, for future component targeting
 
-(local {: hash-set : conj : disj : into : seq : filter} (require :lib.cljlib-shim))
+(local {: hash-set : conj : disj : into : seq} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :sheaf.event-registry))
 (local {: behavior-defined?} (require :sheaf.behavior-registry))
 (local {: get-tags} (require :sheaf.tag-registry))

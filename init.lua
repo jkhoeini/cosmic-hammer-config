@@ -2557,7 +2557,6 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   local disj = _local_342_.disj
   local into = _local_342_.into
   local seq = _local_342_.seq
-  local filter = _local_342_.filter
   local _local_343_ = require("sheaf.event-registry")
   local valid_event_selector_3f = _local_343_["valid-event-selector?"]
   local _local_344_ = require("sheaf.behavior-registry")

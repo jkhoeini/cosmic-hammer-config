@@ -1,5 +1,5 @@
 
-;; lib/dispatcher.fnl
+;; sheaf/dispatcher.fnl
 ;; Behavior routing for events.
 ;;
 ;; Provides start-dispatcher! to register behavior routing handlers.
