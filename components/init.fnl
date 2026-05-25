@@ -21,6 +21,8 @@
 (local {: reload-hammerspoon-type} (require :components.reload-hammerspoon))
 (local {: compile-fennel-type} (require :components.compile-fennel))
 (local {: config-watcher-type} (require :components.config-watcher))
+(local {: window-watcher-type} (require :components.window-watcher))
+(local {: app-watcher-type} (require :components.app-watcher))
 
 
 ;; ============================================================================
@@ -33,7 +35,9 @@
 ;; ├── :component.kind/emacs
 ;; ├── :component.kind/reload-hammerspoon
 ;; ├── :component.kind/compile-fennel
-;; └── :component.kind/config-watcher
+;; ├── :component.kind/config-watcher
+;; ├── :component.kind/window-watcher
+;; └── :component.kind/app-watcher
 
 (local component-hierarchy (make-hierarchy))
 
@@ -43,6 +47,8 @@
 (derive! component-hierarchy :component.kind/reload-hammerspoon :component.kind/any)
 (derive! component-hierarchy :component.kind/compile-fennel :component.kind/any)
 (derive! component-hierarchy :component.kind/config-watcher :component.kind/any)
+(derive! component-hierarchy :component.kind/window-watcher :component.kind/any)
+(derive! component-hierarchy :component.kind/app-watcher :component.kind/any)
 
 ;; Derive concrete types from their kinds
 (derive! component-hierarchy :component.type/space-indicator :component.kind/space-indicator)
@@ -51,6 +57,8 @@
 (derive! component-hierarchy :component.type/reload-hammerspoon :component.kind/reload-hammerspoon)
 (derive! component-hierarchy :component.type/compile-fennel :component.kind/compile-fennel)
 (derive! component-hierarchy :component.type/config-watcher :component.kind/config-watcher)
+(derive! component-hierarchy :component.type/window-watcher :component.kind/window-watcher)
+(derive! component-hierarchy :component.type/app-watcher :component.kind/app-watcher)
 
 
 ;; ============================================================================
@@ -80,6 +88,8 @@
 (add-component-type! component-registry reload-hammerspoon-type)
 (add-component-type! component-registry compile-fennel-type)
 (add-component-type! component-registry config-watcher-type)
+(add-component-type! component-registry window-watcher-type)
+(add-component-type! component-registry app-watcher-type)
 
 
 ;; ============================================================================
@@ -92,6 +102,8 @@
 (local reload-hammerspoon-name (make-instance-name :component.type/reload-hammerspoon "main"))
 (local compile-fennel-name (make-instance-name :component.type/compile-fennel "main"))
 (local config-watcher-name (make-instance-name :component.type/config-watcher "main"))
+(local window-watcher-name (make-instance-name :component.type/window-watcher "main"))
+(local app-watcher-name (make-instance-name :component.type/app-watcher "main"))
 
 
 ;; ============================================================================
@@ -104,6 +116,8 @@
 (start-component! component-registry :component.type/reload-hammerspoon reload-hammerspoon-name {})
 (start-component! component-registry :component.type/compile-fennel compile-fennel-name {})
 (start-component! component-registry :component.type/config-watcher config-watcher-name {})
+(start-component! component-registry :component.type/window-watcher window-watcher-name {})
+(start-component! component-registry :component.type/app-watcher app-watcher-name {})
 
 
 ;; ============================================================================

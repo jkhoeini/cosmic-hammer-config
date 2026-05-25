@@ -9,6 +9,9 @@
 (local {: make-event-registry : define-event!} (require :sheaf.event-registry))
 (local {: make-hierarchy : derive!} (require :lib.hierarchy))
 
+(local number? (fn [x] (= (type x) :number)))
+(local table? (fn [x] (= (type x) :table)))
+
 
 ;; ============================================================================
 ;; Event Kind Hierarchy
@@ -20,10 +23,12 @@
 ;; │   └── :event.kind.fs/file-move
 ;; │
 ;; ├── :event.kind.window/any              ;; Window events
-;; │   ├── :event.kind.window/created
-;; │   ├── :event.kind.window/destroyed
+;; │   ├── :event.kind.window/visible
+;; │   ├── :event.kind.window/not-visible
 ;; │   ├── :event.kind.window/focused
 ;; │   ├── :event.kind.window/unfocused
+;; │   ├── :event.kind.window/fullscreened
+;; │   ├── :event.kind.window/unfullscreened
 ;; │   ├── :event.kind.window/moved
 ;; │   └── :event.kind.window/resized
 ;; │
@@ -70,10 +75,12 @@
 
 ;; --- Window ---
 (derive! event-hierarchy :event.kind.window/any :event.kind/any)
-(derive! event-hierarchy :event.kind.window/created :event.kind.window/any)
-(derive! event-hierarchy :event.kind.window/destroyed :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/visible :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/not-visible :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/focused :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/unfocused :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/fullscreened :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/unfullscreened :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/moved :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/resized :event.kind.window/any)
 
@@ -161,6 +168,85 @@
                "Screen layout changed"
                {:all-spaces table? :active-spaces table?})
 (derive! event-hierarchy :screen-watcher.events/screen-changed :event.kind.screen/layout-changed)
+
+
+;; --- Window Watcher Events ---
+(define-event! event-registry
+               :window-watcher.events/focused
+               "Window gained focus"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/focused :event.kind.window/focused)
+
+(define-event! event-registry
+               :window-watcher.events/visible
+               "Window became visible"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/visible :event.kind.window/visible)
+
+(define-event! event-registry
+               :window-watcher.events/not-visible
+               "Window is no longer visible"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/not-visible :event.kind.window/not-visible)
+
+(define-event! event-registry
+               :window-watcher.events/fullscreened
+               "Window entered fullscreen"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/fullscreened :event.kind.window/fullscreened)
+
+(define-event! event-registry
+               :window-watcher.events/unfullscreened
+               "Window exited fullscreen"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/unfullscreened :event.kind.window/unfullscreened)
+
+
+;; --- Window Element Watcher Events ---
+(define-event! event-registry
+               :window-element-watcher.events/moved
+               "Window was moved"
+               {:window-id number? :frame table?})
+(derive! event-hierarchy :window-element-watcher.events/moved :event.kind.window/moved)
+
+(define-event! event-registry
+               :window-element-watcher.events/resized
+               "Window was resized"
+               {:window-id number? :frame table?})
+(derive! event-hierarchy :window-element-watcher.events/resized :event.kind.window/resized)
+
+
+
+;; --- App Watcher Events ---
+(define-event! event-registry
+               :app-watcher.events/launched
+               "Application launched"
+               {:app-name string? :bundle-id string? :pid number?})
+(derive! event-hierarchy :app-watcher.events/launched :event.kind.app/launched)
+
+(define-event! event-registry
+               :app-watcher.events/terminated
+               "Application terminated"
+               {:app-name string? :bundle-id string? :pid number?})
+(derive! event-hierarchy :app-watcher.events/terminated :event.kind.app/terminated)
+
+(define-event! event-registry
+               :app-watcher.events/activated
+               "Application activated (brought to front)"
+               {:app-name string? :bundle-id string? :pid number?})
+(derive! event-hierarchy :app-watcher.events/activated :event.kind.app/activated)
+
+(define-event! event-registry
+               :app-watcher.events/deactivated
+               "Application deactivated (lost focus)"
+               {:app-name string? :bundle-id string? :pid number?})
+(derive! event-hierarchy :app-watcher.events/deactivated :event.kind.app/deactivated)
+
+(define-event! event-registry
+               :app-watcher.events/hidden
+               "Application hidden"
+               {:app-name string? :bundle-id string? :pid number?})
+(derive! event-hierarchy :app-watcher.events/hidden :event.kind.app/hidden)
 
 
 ;; Export registry (hierarchy accessible via event-registry.hierarchy)

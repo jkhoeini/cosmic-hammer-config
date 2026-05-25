@@ -532,12 +532,8 @@ Migrate paper-wm.fnl to the Sheaf architecture in phases.
 State stays in module-level closures until the Component concept is implemented.
 move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign is the real fix.
 
-*** LATER [#A] Phase 0: Window event infrastructure :architecture:
-     - Define concrete window events in events/init.fnl:
-       window-watcher.events/created, destroyed, focused, unfocused, moved, resized
-       (derive each from :event.kind.window/*)
-     - Implement event_sources/window-watcher.fnl — wraps hs.window.filter, apply Emacs
-       role allowlist (:AXUnknown etc.), register globally like screen/space watchers
+*** LATER [#A] Phase 0: Hotkey event infrastructure :architecture:
+     - Window events and sources now implemented under "Create Window event sources" task
      - Register 20+ paper-wm hotkey source instances (generate 1-9 space keys in a loop)
      - Prerequisite for all other phases
 
