@@ -481,7 +481,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [1/5]
+** PROJ Window Borders [2/5]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -499,17 +499,17 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
           Derive :component.kind/window-border, start instance,
           attach :tag/window-border
 
-*** NEXT [#A] Implement window-border commands [0/3] :feature:
+*** DONE Implement window-border commands [3/3] :feature:
     Commands that draw/move/hide borders using hs.canvas.
 
-    - [ ] :window-border.commands/show-active-border
+    - [X] :window-border.commands/show-active-border
           Requires :trait/has-canvas. Params: {:window-id :frame}.
           Positions active canvas around frame, shows it. Hides inactive canvas
           on previous window if any. Returns new state with :active-window-id
-    - [ ] :window-border.commands/show-inactive-border
+    - [X] :window-border.commands/show-inactive-border
           Requires :trait/has-canvas. Params: {:window-id :frame}.
           Positions inactive canvas around frame, shows it. Returns nil
-    - [ ] :window-border.commands/hide-borders
+    - [X] :window-border.commands/hide-borders
           Requires :trait/has-canvas. Hides both canvases. Returns state
           with :active-window-id nil
 
