@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [4/6] :architecture:
+**** NOW [#A] Implement component architecture [5/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -123,19 +123,19 @@ Built incrementally — each phase is independently functional.
       - [X] Remove instance-name-based routing code
       - Depends on Phase 3 (tags)
 
-***** NEXT [#A] Phase 5: Fold event sources into components [0/6]
+***** DONE [#A] Phase 5: Fold event sources into components [6/6]
       Every source must belong to a component — no standalone sources.
       Source naming: component.<comp-type>.instance.<comp-inst>.event-source.<source-type>.instance/<name>
 
-      - [ ] Add :sources to component type: [{:type :source-type :config {} :instance-name "name"}]
-      - [ ] start-component! auto-creates owned source instances after component start
-      - [ ] stop-component! tears down owned sources before component stop
-      - [ ] Migrate standalone sources into owning components:
+      - [X] Add :sources to component type: [{:type :source-type :config {} :instance-name "name"}]
+      - [X] start-component! auto-creates owned source instances after component start
+      - [X] stop-component! tears down owned sources before component stop
+      - [X] Migrate standalone sources into owning components:
             space-watcher + screen-watcher → space-indicator,
             hotkey/ctrl+cmd+e → expose, hotkey/cmd+alt+return → emacs,
             file-watcher/config-dir → new config-watcher component
-      - [ ] Remove manual source creation from event_sources/init.fnl (source type definitions remain)
-      - [ ] Update subscription source-tags to match new source instance names
+      - [X] Remove manual source creation from event_sources/init.fnl (source type definitions remain)
+      - [X] Update subscription source-tags to match new source instance names (no-op: tags preserved)
       - Depends on Phase 4 (tag-based routing in place)
 
 ***** NEXT [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic) [0/7]

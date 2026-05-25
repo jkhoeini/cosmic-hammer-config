@@ -8,6 +8,10 @@
   (make-component-type
    :component.type/emacs
    "Emacs integration component"
-   {:start-fn (fn [config] {})}))
+   {:sources [{:type :event-source.type/hotkey
+               :config {:mods [:cmd :alt] :key :return}
+               :instance-name "open"
+               :tags [:tag/emacs-hotkey]}]
+    :start-fn (fn [config] {})}))
 
 {: emacs-type}

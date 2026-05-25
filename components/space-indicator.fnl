@@ -9,6 +9,14 @@
    :component.type/space-indicator
    "Space indicator menubar component"
    {:traits [:trait/has-menubar]
+    :sources [{:type :event-source.type/space-watcher
+               :config {}
+               :instance-name "default"
+               :tags [:tag/space-watcher]}
+              {:type :event-source.type/screen-watcher
+               :config {}
+               :instance-name "default"
+               :tags [:tag/screen-watcher]}]
     :start-fn (fn [config]
                 (let [menubar (hs.menubar.new true "cosmicHammerSpaceIndicator")]
                   (when menubar

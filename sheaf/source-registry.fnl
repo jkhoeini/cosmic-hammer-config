@@ -142,8 +142,9 @@
 
 (fn stop-all-event-sources! [registry]
   "Stop all running event source instances."
-  (each [instance-name _ (pairs registry.instances)]
-    (stop-event-source! registry instance-name)))
+  (let [names (list-source-instances registry)]
+    (each [_ instance-name (ipairs names)]
+      (stop-event-source! registry instance-name))))
 
 
 {: make-source-registry

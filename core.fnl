@@ -17,11 +17,11 @@
 
 (local notify (require :notify))
 
-;; Load events first (creates registry), then traits, event sources, then behaviors
+;; Boot order: events → traits → source types → components (auto-creates sources) → commands → behaviors → subscriptions → dispatcher
 (local {: event-registry} (require :events))
 (local {: trait-registry} (require :traits))
-(require :components)
 (require :event_sources)
+(require :components)
 (require :commands)
 (require :behaviors)
 (local {: subscription-registry} (require :subscriptions))
