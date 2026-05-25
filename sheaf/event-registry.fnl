@@ -8,8 +8,7 @@
 ;;    :handlers {}         ; handler-key -> handler-fn
 ;;    :queue []}           ; pending events
 
-(local {: some : seq} (require :lib.cljlib-shim))
-(local {: descendants} (require :lib.hierarchy))
+(local {: isa?} (require :lib.hierarchy))
 
 
 (fn make-event-registry [opts]
@@ -37,10 +36,14 @@
 
 
 (fn valid-event-selector? [registry selector]
-  "Check if selector is valid (defined event or has defined descendants)."
+  "Check if selector is valid (defined event or ancestor of a defined event)."
   (or (event-defined? registry selector)
-      (some #(event-defined? registry $)
-            (seq (descendants registry.hierarchy selector)))))
+      (do
+        (var found false)
+        (each [event-name _ (pairs registry.events) &until found]
+          (when (isa? registry.hierarchy event-name selector)
+            (set found true)))
+        found)))
 
 
 (fn add-event-handler! [registry key handler]
