@@ -66,14 +66,19 @@
 
 
 (fn index-remove! [registry subscription]
-  "Remove subscription's behavior from the index."
+  "Remove subscription's behavior from the index.
+   Prunes empty sets to avoid tombstones."
   (let [tag subscription.source-tag
         event subscription.event-selector
         behavior subscription.behavior
         behavior-set (?. registry.index tag event)]
     (when behavior-set
-      (tset registry.index tag event
-            (disj behavior-set behavior)))))
+      (let [new-set (disj behavior-set behavior)]
+        (tset registry.index tag event
+              (when (seq new-set) new-set)))
+      (when (= nil (. registry.index tag event))
+        (when (= nil (next (. registry.index tag)))
+          (tset registry.index tag nil))))))
 
 
 ;; ============================================================================
@@ -174,7 +179,7 @@
                              (let [tag-subs (or (. registry.index tag) {})]
                                (accumulate [inner result
                                             _ e (pairs event-selectors)]
-                                 (into inner (or (. tag-subs e) [])))))]
+                                 (into inner (or (. tag-subs e) (hash-set))))))]
     (seq all-behavior-names)))
 
 

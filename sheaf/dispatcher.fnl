@@ -8,7 +8,6 @@
 (local {: add-event-handler!} (require :sheaf.event-registry))
 (local {: behavior-responds-to? : get-behavior} (require :sheaf.behavior-registry))
 (local {: get-subscribed-behaviors} (require :sheaf.subscription-registry))
-(local {: get-tags} (require :sheaf.tag-registry))
 (local {: invoke-command!} (require :sheaf.command-registry))
 
 
@@ -25,28 +24,23 @@
 
 (fn get-behaviors-for-event [subscription-registry event]
   "Get all behaviors for this event, resolved from registry."
-  (let [behavior-registry subscription-registry.behavior-registry]
-    (let [source-tags (get-tags subscription-registry.tag-registry event.event-source)]
-      (when (= nil (next source-tags))
-        (print (.. "[WARN] get-behaviors-for-event: source instance '"
-                   (tostring event.event-source) "' has no tags"))))
-    (let [behavior-names (or (get-subscribed-behaviors subscription-registry event.event-source event.event-name) [])
-          ;; Filter to behaviors that actually respond to this event-name
-          valid-names (filter (fn [name]
-                                (let [responds? (behavior-responds-to? behavior-registry name event.event-name)]
-                                  (when (not responds?)
-                                    (print (.. "[ERROR] get-behaviors-for-event: behavior '"
-                                               (tostring name) "' does not respond to event '"
-                                               (tostring event.event-name) "'")))
-                                  responds?))
-                              behavior-names)]
-      (mapv (fn [name]
-              (let [behavior (get-behavior behavior-registry name)]
-                (when (= nil behavior)
-                  (print (.. "[ERROR] get-behaviors-for-event: behavior '"
-                             (tostring name) "' not found in registry")))
-                behavior))
-            (or (seq valid-names) [])))))
+  (let [behavior-registry subscription-registry.behavior-registry
+        behavior-names (or (get-subscribed-behaviors subscription-registry event.event-source event.event-name) [])
+        valid-names (filter (fn [name]
+                              (let [responds? (behavior-responds-to? behavior-registry name event.event-name)]
+                                (when (not responds?)
+                                  (print (.. "[ERROR] get-behaviors-for-event: behavior '"
+                                             (tostring name) "' does not respond to event '"
+                                             (tostring event.event-name) "'")))
+                                responds?))
+                            behavior-names)]
+    (mapv (fn [name]
+            (let [behavior (get-behavior behavior-registry name)]
+              (when (= nil behavior)
+                (print (.. "[ERROR] get-behaviors-for-event: behavior '"
+                           (tostring name) "' not found in registry")))
+              behavior))
+          (or (seq valid-names) []))))
 
 
 (fn start-dispatcher! [subscription-registry]
