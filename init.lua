@@ -1581,12 +1581,15 @@ package.preload["sheaf.component-registry"] = package.preload["sheaf.component-r
     end
     return ("component." .. descriptor .. ".instance/" .. instance_id)
   end
+  local function escape_pattern(s)
+    return string.gsub(s, "([%(%)%.%%%+%-%*%?%[%^%$])", "%%%1")
+  end
   local function valid_instance_name_3f(type_name, instance_name)
     local descriptor = type_name__3edescriptor(type_name)
     if (nil == descriptor) then
       return false
     else
-      return (nil ~= string.match(tostring(instance_name), ("^component%." .. descriptor .. "%.instance/.+$")))
+      return (nil ~= string.match(tostring(instance_name), ("^component%." .. escape_pattern(descriptor) .. "%.instance/.+$")))
     end
   end
   local function make_component_registry(opts)

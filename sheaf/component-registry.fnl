@@ -55,6 +55,11 @@
     (.. "component." descriptor ".instance/" instance-id)))
 
 
+(fn escape-pattern [s]
+  "Escape Lua pattern special characters in a string."
+  (string.gsub s "([%(%)%.%%%+%-%*%?%[%^%$])" "%%%1"))
+
+
 (fn valid-instance-name? [type-name instance-name]
   "Check if instance-name follows the naming convention for the given type.
    :component.type/space-indicator expects :component.space-indicator.instance/<id>"
@@ -62,7 +67,7 @@
     (if (= nil descriptor)
         false
         (not= nil (string.match (tostring instance-name)
-                                (.. "^component%." descriptor "%.instance/.+$"))))))
+                                (.. "^component%." (escape-pattern descriptor) "%.instance/.+$"))))))
 
 
 (fn make-component-registry [opts]
