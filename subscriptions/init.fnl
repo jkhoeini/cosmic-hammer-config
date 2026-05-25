@@ -61,4 +61,20 @@
   :target-tag :tag/emacs
   :event-selector :event.kind.hotkey/pressed})
 
+(define-subscription! subscription-registry
+ :sub/border-on-focus
+ {:description "Show active border when a window gains focus"
+  :behavior :window-border.behaviors/update-on-focus
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-border
+  :event-selector :event.kind.window/focused})
+
+(define-subscription! subscription-registry
+ :sub/border-on-visible
+ {:description "Show active border when a window becomes visible"
+  :behavior :window-border.behaviors/update-on-focus
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-border
+  :event-selector :event.kind.window/visible})
+
 {: subscription-registry}
