@@ -63,7 +63,7 @@ Built incrementally — each phase is independently functional.
      - [X] apps-filter.fnl deleted (see Window + App event source items for filter note)
      - [X] Migrate paper-wm.fnl — scoped into PROJ PaperWM Migration
 
-**** NOW [#A] Implement component architecture [5/6] :architecture:
+**** DONE [#A] Implement component architecture [6/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
      Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
      Event sources fold into components. Built incrementally in 6 phases.
@@ -138,22 +138,22 @@ Built incrementally — each phase is independently functional.
       - [X] Update subscription source-tags to match new source instance names (no-op: tags preserved)
       - Depends on Phase 4 (tag-based routing in place)
 
-***** NEXT [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic) [0/7]
+***** DONE [#A] Phase 6: Command + Behavior + Dispatcher redesign (atomic) [7/7]
       Commands: (fn [component params] → new-state), nil = no state change.
       Behaviors: (fn [event candidates send-cmd]), candidates = {cmd-alias → [instance-name ...]}.
       send-cmd warns and skips on trait mismatch.
       All three change together — atomic redesign.
 
-      - [ ] Add :requires-traits to command data model; validate against trait-registry at add-command! time
-      - [ ] Change command fn to (fn [component params] → new-state); nil means no state change
-      - [ ] Change behavior fn to (fn [event candidates send-cmd]);
+      - [X] Add :requires-traits to command data model; validate against trait-registry at add-command! time
+      - [X] Change command fn to (fn [component params] → new-state); nil means no state change
+      - [X] Change behavior fn to (fn [event candidates send-cmd]);
             candidates = {cmd-alias → [instance-name ...]}
-      - [ ] Update dispatcher: resolve target-tag → instances, group by command alias,
+      - [X] Update dispatcher: resolve target-tag → instances, group by command alias,
             filter by satisfies?, build send-cmd that validates traits + injects component +
             captures returned state (warn+skip on mismatch)
-      - [ ] Migrate all 7 commands to new signature
-      - [ ] Migrate all 5 behaviors to new signature
-      - [ ] Ensure all subscriptions declare :target-tag
+      - [X] Migrate all 7 commands to new signature
+      - [X] Migrate all 5 behaviors to new signature
+      - [X] Ensure all subscriptions declare :target-tag
       - Depends on Phase 4 (tag routing) + Phase 2 (components)
 
 **** LATER [#C] Think of behavior dependency/priority/ordering strategies :architecture:

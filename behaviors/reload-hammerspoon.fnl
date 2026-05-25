@@ -10,10 +10,11 @@
     :description "When init.lua changes, reload hammerspoon."
     :respond-to [:event.kind.fs/file-change]
     :commands {:reload :reload-hammerspoon.commands/reload}
-    :fn (fn [file-change-event cmd]
-          (let [path (?. file-change-event :event-data :file-path)]
-            (when (and (not= nil path)
+    :fn (fn [file-change-event candidates send-cmd]
+          (let [path (?. file-change-event :event-data :file-path)
+                target (. candidates.reload 1)]
+            (when (and target (not= nil path)
                        (= ".hammerspoon/init.lua" (path:sub -21)))
-              (cmd.reload {}))))}))
+              (send-cmd target :reload {}))))}))
 
 {: reload-hammerspoon-behavior}

@@ -11,11 +11,12 @@
     :description "Watch fennel files in hammerspoon folder and recompile them."
     :respond-to [:event.kind.fs/file-change]
     :commands {:compile :compile-fennel.commands/compile}
-    :fn (fn [file-change-event cmd]
-          (let [path (?. file-change-event :event-data :file-path)]
-            (when (and (not= nil path)
+    :fn (fn [file-change-event candidates send-cmd]
+          (let [path (?. file-change-event :event-data :file-path)
+                target (. candidates.compile 1)]
+            (when (and target (not= nil path)
                        (= ".fnl" (path:sub -4)))
-              (cmd.compile {}))))}))
+              (send-cmd target :compile {}))))}))
 
 
 {: compile-fennel-behavior}

@@ -9,7 +9,9 @@
   (make-command
    :compile-fennel.commands/compile
    "Compile Fennel source files"
-   {:fn (fn [params] (print (hs.execute "./compile.sh" true)))}))
+   {:fn (fn [component params]
+          (print (hs.execute "./compile.sh" true))
+          nil)}))
 
 
 {: compile-command}

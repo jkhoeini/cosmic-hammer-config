@@ -8,13 +8,14 @@
    :url-dispatch.commands/show-chooser
    "Show an async browser picker dialog for a URL"
    {:schema {:url string? :choices table?}
-    :fn (fn [params]
+    :fn (fn [component params]
           (let [url params.url
                 chooser (hs.chooser.new
                          (fn [choice]
                            (when choice
                              (hs.urlevent.openURLWithBundle url choice.bundle-id))))]
             (chooser:choices params.choices)
-            (chooser:show)))}))
+            (chooser:show))
+          nil)}))
 
 {: show-chooser-command}

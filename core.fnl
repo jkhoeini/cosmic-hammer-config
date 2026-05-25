@@ -21,7 +21,7 @@
 (local {: event-registry} (require :events))
 (local {: trait-registry} (require :traits))
 (require :event_sources)
-(require :components)
+(local {: component-registry} (require :components))
 (require :commands)
 (require :behaviors)
 (local {: subscription-registry} (require :subscriptions))
@@ -30,7 +30,7 @@
 (local {: start-dispatcher!} (require :sheaf.dispatcher))
 (local {: make-event-loop : start-event-loop!} (require :sheaf.event-loop))
 
-(start-dispatcher! subscription-registry)
+(start-dispatcher! subscription-registry component-registry)
 (local event-loop (make-event-loop event-registry))
 (start-event-loop! event-loop)
 

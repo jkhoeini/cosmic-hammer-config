@@ -18,6 +18,7 @@
  {:description "Reload Hammerspoon when init.lua changes"
   :behavior :reload-hammerspoon.behaviors/reload-hammerspoon
   :source-tag :tag/config-watcher
+  :target-tag :tag/reload-hammerspoon
   :event-selector :event.kind.fs/file-change})
 
 (define-subscription! subscription-registry
@@ -25,6 +26,7 @@
  {:description "Recompile Fennel when .fnl files change"
   :behavior :compile-fennel.behaviors/compile-fennel
   :source-tag :tag/config-watcher
+  :target-tag :tag/compile-fennel
   :event-selector :event.kind.fs/file-change})
 
 (define-subscription! subscription-registry
@@ -32,6 +34,7 @@
  {:description "Toggle Expose when ctrl+cmd+e is pressed"
   :behavior :expose.behaviors/toggle-expose
   :source-tag :tag/expose-hotkey
+  :target-tag :tag/expose
   :event-selector :event.kind.hotkey/pressed})
 
 (define-subscription! subscription-registry
@@ -39,6 +42,7 @@
  {:description "Update space indicator when space changes"
   :behavior :space-indicator.behaviors/update-on-change
   :source-tag :tag/space-watcher
+  :target-tag :tag/space-indicator
   :event-selector :event.kind.space/changed})
 
 (define-subscription! subscription-registry
@@ -46,6 +50,7 @@
  {:description "Update space indicator when screen layout changes"
   :behavior :space-indicator.behaviors/update-on-change
   :source-tag :tag/screen-watcher
+  :target-tag :tag/space-indicator
   :event-selector :event.kind.screen/layout-changed})
 
 (define-subscription! subscription-registry
@@ -53,6 +58,7 @@
  {:description "Open emacsclient frame when cmd+alt+return is pressed"
   :behavior :emacs.behaviors/open-emacs
   :source-tag :tag/emacs-hotkey
+  :target-tag :tag/emacs
   :event-selector :event.kind.hotkey/pressed})
 
 {: subscription-registry}

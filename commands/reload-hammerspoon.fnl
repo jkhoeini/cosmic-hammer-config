@@ -5,17 +5,15 @@
 (local {: make-command} (require :sheaf.command-registry))
 (local notify (require :notify))
 
-(var reloading? false)
-(local reload (hs.timer.delayed.new 0.5 hs.reload))
-
 (local reload-hammerspoon-command
   (make-command
    :reload-hammerspoon.commands/reload
    "Reload Hammerspoon config with debounce"
-   {:fn (fn [params]
-          (when (not reloading?)
-            (set reloading? true)
+   {:requires-traits [:trait/has-delayed-timer]
+    :fn (fn [component params]
+          (when (not component.state.reloading?)
             (notify.warn "Reloading...")
-            (reload:start)))}))
+            (component.state.timer:start)
+            {:timer component.state.timer :reloading? true}))}))
 
 {: reload-hammerspoon-command}

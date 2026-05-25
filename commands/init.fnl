@@ -3,6 +3,7 @@
 ;; Creates command registry and registers commands.
 
 (local {: make-command-registry : add-command!} (require :sheaf.command-registry))
+(local {: trait-registry} (require :traits))
 
 ;; Import command data
 (local {: toggle-expose-command} (require :commands.toggle-expose))
@@ -14,7 +15,7 @@
 (local {: open-emacs-command} (require :commands.open-emacs))
 
 ;; Create and populate registry
-(local command-registry (make-command-registry))
+(local command-registry (make-command-registry {:trait-registry trait-registry}))
 (add-command! command-registry toggle-expose-command)
 (add-command! command-registry update-menubar-command)
 (add-command! command-registry compile-command)

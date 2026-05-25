@@ -10,7 +10,9 @@
     :description "Open a new emacsclient frame on hotkey press"
     :respond-to [:event.kind.hotkey/pressed]
     :commands {:open-emacs :emacs.commands/open-emacs}
-    :fn (fn [event cmd]
-          (cmd.open-emacs {}))}))
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.open-emacs 1)]
+            (when target
+              (send-cmd target :open-emacs {}))))}))
 
 {: open-emacs-behavior}

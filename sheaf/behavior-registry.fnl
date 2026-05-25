@@ -1,5 +1,5 @@
 
-;; lib/behavior-registry.fnl
+;; sheaf/behavior-registry.fnl
 ;; Data-oriented behavior registry - no global state.
 ;;
 ;; A behavior-registry is a data structure:
@@ -12,7 +12,7 @@
 ;;    :description "Human-readable description"
 ;;    :respond-to [:event.kind/something]
 ;;    :commands {:local-alias :namespace.commands/action}
-;;    :fn (fn [event cmd] ...)}
+;;    :fn (fn [event candidates send-cmd] ...)}
 
 (local {: some} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :sheaf.event-registry))
@@ -45,7 +45,7 @@
      :description - human-readable description (required)
      :respond-to  - list of event-names or event-kinds this behavior responds to (required)
      :commands    - map of {local-alias -> command-registry-name} (default {})
-     :fn          - (fn [event cmd] ...) - called when matching event occurs (required)
+     :fn          - (fn [event candidates send-cmd] ...) - called when matching event occurs (required)
    Returns: {:name :description :respond-to :commands :fn}"
   (when (= nil opts.name)
     (error "make-behavior: :name is required"))

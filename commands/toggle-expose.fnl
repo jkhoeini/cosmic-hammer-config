@@ -5,14 +5,14 @@
 (local {: make-command} (require :sheaf.command-registry))
 
 
-(local expose (hs.expose.new))
-
-
 (local toggle-expose-command
   (make-command
    :expose.commands/toggle-show
    "Toggle the Hammerspoon Expose window picker"
-   {:fn (fn [params] (expose:toggleShow))}))
+   {:requires-traits [:trait/has-expose]
+    :fn (fn [component params]
+          (component.state.expose:toggleShow)
+          nil)}))
 
 
 {: toggle-expose-command}

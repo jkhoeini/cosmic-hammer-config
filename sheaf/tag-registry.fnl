@@ -13,7 +13,7 @@
 ;; Both indexes use hash-sets as values. The reverse index enables
 ;; O(1) lookup from tag to the set of instances carrying that tag.
 
-(local {: hash-set : conj : disj : contains? : empty? : seq} (require :lib.cljlib-shim))
+(local {: hash-set : conj : disj : contains? : seq} (require :lib.cljlib-shim))
 
 
 ;; ============================================================================

@@ -5,7 +5,7 @@
 ;;
 ;; A subscription-registry is a data structure:
 ;;   {:subscriptions {}        ; subscription name -> subscription data
-;;    :index {}                ; tag -> event-selector -> #{behavior-names}
+;;    :index {}                ; source-tag -> event-selector -> #{subscription-names}
 ;;    :event-registry er       ; for hierarchy lookups and event validation
 ;;    :behavior-registry br    ; for behavior validation
 ;;    :tag-registry tr}        ; for tag lookups
@@ -16,7 +16,7 @@
 ;;    :behavior    :my-behavior
 ;;    :event-selector  :event.kind/something
 ;;    :source-tag  :tag/my-tag
-;;    :target-tag  :tag/my-target}  ; optional, for future component targeting
+;;    :target-tag  :tag/my-target}
 
 (local {: hash-set : conj : disj : into : seq} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :sheaf.event-registry))
@@ -53,27 +53,27 @@
 ;; ============================================================================
 
 (fn index-add! [registry subscription]
-  "Add subscription's behavior to the index."
+  "Add subscription name to the index under its source-tag and event-selector."
   (let [tag subscription.source-tag
         event subscription.event-selector
-        behavior subscription.behavior]
+        sub-name subscription.name]
     (when (= nil (. registry.index tag))
       (tset registry.index tag {}))
     (when (= nil (. registry.index tag event))
       (tset registry.index tag event (hash-set)))
     (tset registry.index tag event
-          (conj (. registry.index tag event) behavior))))
+          (conj (. registry.index tag event) sub-name))))
 
 
 (fn index-remove! [registry subscription]
-  "Remove subscription's behavior from the index.
+  "Remove subscription name from the index.
    Prunes empty sets to avoid tombstones."
   (let [tag subscription.source-tag
         event subscription.event-selector
-        behavior subscription.behavior
-        behavior-set (?. registry.index tag event)]
-    (when behavior-set
-      (let [new-set (disj behavior-set behavior)]
+        sub-name subscription.name
+        sub-set (?. registry.index tag event)]
+    (when sub-set
+      (let [new-set (disj sub-set sub-name)]
         (tset registry.index tag event
               (when (seq new-set) new-set)))
       (when (= nil (. registry.index tag event))
@@ -99,6 +99,7 @@
   (validate-required-field! name opts :behavior)
   (validate-required-field! name opts :event-selector)
   (validate-required-field! name opts :source-tag)
+  (validate-required-field! name opts :target-tag)
 
   ;; Check name is unique
   (when (not= nil (. registry.subscriptions name))
@@ -126,7 +127,7 @@
      :behavior        - behavior name to invoke (required)
      :event-selector  - event name or kind to match (required)
      :source-tag      - tag to match on source instances (required)
-     :target-tag      - target tag for commands (optional)"
+     :target-tag      - tag selecting command target components (required)"
   (validate-subscription! registry name opts)
   (let [subscription {:name name
                       :description opts.description
@@ -167,20 +168,26 @@
   (not= nil (. registry.subscriptions name)))
 
 
-(fn get-subscribed-behaviors [registry source-instance-name event-name]
-  "Get behavior names subscribed to this source+event.
-   Looks up the source instance's tags, then checks subscriptions for each tag
+(fn get-matching-subscriptions [registry source-instance-name event-name]
+  "Get matching subscription data for this source+event.
+   Looks up the source instance's tags, then finds subscriptions for each tag
    and all ancestor event-selectors.
-   Returns a sequence of behavior names (deduplicated)."
+   Returns [{:behavior name :target-tag tag} ...] or nil."
   (let [tags (get-tags registry.tag-registry source-instance-name)
         event-selectors (conj (ancestors registry.event-registry.hierarchy event-name) event-name)
-        all-behavior-names (accumulate [result (hash-set)
-                                        tag _ (pairs tags)]
-                             (let [tag-subs (or (. registry.index tag) {})]
-                               (accumulate [inner result
-                                            _ e (pairs event-selectors)]
-                                 (into inner (or (. tag-subs e) (hash-set))))))]
-    (seq all-behavior-names)))
+        all-sub-names (accumulate [result (hash-set)
+                                   tag _ (pairs tags)]
+                        (let [tag-subs (or (. registry.index tag) {})]
+                          (accumulate [inner result
+                                       _ e (pairs event-selectors)]
+                            (into inner (or (. tag-subs e) (hash-set))))))
+        names (seq all-sub-names)]
+    (when names
+      (icollect [_ sub-name (ipairs names)]
+        (let [sub (. registry.subscriptions sub-name)]
+          (when sub
+            {:behavior sub.behavior
+             :target-tag sub.target-tag}))))))
 
 
 {: make-subscription-registry
@@ -189,4 +196,4 @@
  : get-subscription
  : list-subscriptions
  : subscription-defined?
- : get-subscribed-behaviors}
+ : get-matching-subscriptions}

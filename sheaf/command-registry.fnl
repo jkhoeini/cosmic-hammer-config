@@ -1,28 +1,36 @@
 
-;; lib/command-registry.fnl
+;; sheaf/command-registry.fnl
 ;; Data-oriented command registry - no global state.
 ;;
 ;; A command-registry is a data structure:
-;;   {:commands {}}  ; command-name -> command data
+;;   {:commands {}            ; command-name -> command data
+;;    :trait-registry tr}     ; for requires-traits validation
 ;;
 ;; A command is a data structure:
 ;;   {:name :expose.commands/toggle-show
 ;;    :description "Toggle the Expose window picker"
 ;;    :schema {}
-;;    :fn (fn [params] ...)}
+;;    :requires-traits [:trait/has-expose]
+;;    :fn (fn [component params] → new-state|nil)}
 ;;
 ;; Naming convention:
 ;;   :namespace.commands/action-name
+
+(local {: trait-defined?} (require :sheaf.trait-registry))
 
 
 ;; ============================================================================
 ;; Constructors
 ;; ============================================================================
 
-(fn make-command-registry []
+(fn make-command-registry [opts]
   "Create a new command registry.
-   Commands are self-contained — no dependencies on other registries."
-  {:commands {}})
+   opts:
+     :trait-registry - for requires-traits validation (required)"
+  (when (= nil opts.trait-registry)
+    (error "make-command-registry: :trait-registry is required"))
+  {:commands {}
+   :trait-registry opts.trait-registry})
 
 
 (fn make-command [name description opts]
@@ -31,13 +39,15 @@
    description: human-readable description
    opts:
      :schema - table describing expected params shape (for documentation/validation)
-     :fn - (fn [params] ...) - the command implementation (required)
-   Returns: {:name :description :schema :fn}"
+     :requires-traits - list of traits target component must implement (default [])
+     :fn - (fn [component params] → new-state|nil) - the command implementation (required)
+   Returns: {:name :description :schema :requires-traits :fn}"
   (when (= nil opts.fn)
     (error (.. "make-command: :fn is required for " (tostring name))))
   {:name name
    :description description
    :schema (or opts.schema {})
+   :requires-traits (or opts.requires-traits [])
    :fn opts.fn})
 
 
@@ -47,12 +57,15 @@
 
 (fn add-command! [registry command]
   "Add a command to the registry. Mutates registry.
-   command must have a :name field."
+   Validates requires-traits against trait-registry."
   (let [name command.name]
     (when (= nil name)
       (error "add-command!: command must have a :name"))
     (when (not= nil (. registry.commands name))
       (error (.. "Command already registered: " (tostring name))))
+    (each [_ trait-name (ipairs (or command.requires-traits []))]
+      (when (not (trait-defined? registry.trait-registry trait-name))
+        (error (.. "add-command! " (tostring name) ": trait '" (tostring trait-name) "' not found in trait-registry"))))
     (tset registry.commands name command)))
 
 
@@ -74,15 +87,6 @@
     names))
 
 
-(fn invoke-command! [registry name params]
-  "Invoke a command by name with the given params.
-   Errors if the command is not found."
-  (let [command (get-command registry name)]
-    (when (= nil command)
-      (error (.. "invoke-command!: command not found: " (tostring name))))
-    (command.fn (or params {}))))
-
-
 ;; ============================================================================
 ;; Exports
 ;; ============================================================================
@@ -92,5 +96,4 @@
  : add-command!
  : command-defined?
  : get-command
- : list-commands
- : invoke-command!}
+ : list-commands}

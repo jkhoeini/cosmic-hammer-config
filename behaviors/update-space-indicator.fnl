@@ -29,11 +29,13 @@
     :description "Update space indicator menubar when spaces or screens change"
     :respond-to [:event.kind.space/changed :event.kind.screen/any]
     :commands {:update-menubar :space-indicator.commands/update-menubar}
-    :fn (fn [event cmd]
-          (let [indices (compute-active-space-indices
-                          event.event-data.all-spaces
-                          event.event-data.active-spaces)]
-            (cmd.update-menubar {:active-spaces indices})))}))
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.update-menubar 1)]
+            (when target
+              (let [indices (compute-active-space-indices
+                              event.event-data.all-spaces
+                              event.event-data.active-spaces)]
+                (send-cmd target :update-menubar {:active-spaces indices})))))}))
 
 
 {: update-space-indicator-behavior}
