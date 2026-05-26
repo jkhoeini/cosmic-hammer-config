@@ -9,7 +9,7 @@
   (make-behavior
    {:name :window-border.behaviors/update-on-focus
     :description "Show active border around the newly focused window"
-    :respond-to [:event.kind.window/focused]
+    :respond-to [:event.kind.window/focused :event.kind.window/visible]
     :commands {:show-active :window-border.commands/show-active-border
                :show-inactive :window-border.commands/show-inactive-border}
     :fn (fn [event candidates send-cmd]
