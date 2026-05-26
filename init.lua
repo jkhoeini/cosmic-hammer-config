@@ -2444,10 +2444,10 @@ package.preload["components.window-border"] = package.preload["components.window
   local make_component_type = _local_308_["make-component-type"]
   local function parse_argb_hex(hex_str)
     local n = tonumber(hex_str)
-    local a = (bit.band(bit.rshift(n, 24), 255) / 255)
-    local r = (bit.band(bit.rshift(n, 16), 255) / 255)
-    local g = (bit.band(bit.rshift(n, 8), 255) / 255)
-    local b = (bit.band(n, 255) / 255)
+    local a = (((n >> 24) & 255) / 255)
+    local r = (((n >> 16) & 255) / 255)
+    local g = (((n >> 8) & 255) / 255)
+    local b = ((n & 255) / 255)
     return {red = r, green = g, blue = b, alpha = a}
   end
   local function make_border_canvas(color, width)

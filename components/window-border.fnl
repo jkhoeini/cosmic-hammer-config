@@ -7,10 +7,10 @@
 (fn parse-argb-hex [hex-str]
   "Parse '0xAARRGGBB' hex color string into {red green blue alpha} table (0.0-1.0)"
   (let [n (tonumber hex-str)
-        a (/ (bit.band (bit.rshift n 24) 0xFF) 255)
-        r (/ (bit.band (bit.rshift n 16) 0xFF) 255)
-        g (/ (bit.band (bit.rshift n 8) 0xFF) 255)
-        b (/ (bit.band n 0xFF) 255)]
+        a (/ (band (rshift n 24) 0xFF) 255)
+        r (/ (band (rshift n 16) 0xFF) 255)
+        g (/ (band (rshift n 8) 0xFF) 255)
+        b (/ (band n 0xFF) 255)]
     {:red r :green g :blue b :alpha a}))
 
 (fn make-border-canvas [color width]
