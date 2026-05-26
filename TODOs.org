@@ -534,11 +534,110 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [X] :sub/border-on-visible — source: :tag/window-watcher, target: :tag/window-border,
           behavior: update-on-focus, event-selector: :event.kind.window/visible
 
-*** LATER [#B] Enhancements :feature:
-    - [ ] Per-app border color overrides via config
-    - [ ] Animate border on focus change (fade in/out)
-    - [ ] Hide border in fullscreen mode
-    - [ ] Support multiple monitors (border follows window across screens)
+*** LATER [#B] Rounded corners :feature:
+    hs.canvas already supports =roundedRectRadii= with =xRadius= / =yRadius= on rectangle elements.
+    Currently hardcoded to ={:xRadius 0 :yRadius 0}= in =make-border-canvas=.
+    - [ ] Make corner radius configurable (add =:corner-radius= to component config, default 9.0 points — macOS default)
+    - [ ] Pass radius through to =:roundedRectRadii= in the canvas element
+    - [ ] Inner radius = outer radius minus stroke width (prevents gap at corners)
+    JankyBorders detects per-window radius via =SLSWindowIteratorGetCornerRadii()= (private API).
+    We can't do that from Hammerspoon — use a fixed configurable value instead.
+
+*** LATER [#B] Glow / shadow effect :feature:
+    hs.canvas elements support a =shadow= attribute: ={:blurRadius N :color {r g b a} :offset {h w}}=.
+    This maps to =NSShadow= under the hood — same visual result as =CGContextSetShadowWithColor=.
+    - [ ] Add =:glow= boolean and =:glow-color= / =:glow-radius= to component config
+    - [ ] When glow enabled, set =shadow= attribute on the rectangle element before drawing
+    - [ ] Shadow offset should be ={:h 0 :w 0}= for uniform glow (centered, no directional bias)
+    - [ ] Glow color defaults to active border color at ~50% alpha for a subtle halo
+    - [ ] Ensure shadow renders outside the canvas frame (may need to inflate canvas rect by glow-radius)
+    JankyBorders uses =COLOR_STYLE_GLOW= which applies shadow as part of stroke/fill rendering.
+
+*** LATER [#B] Gradient borders :feature:
+    hs.canvas does not natively support gradient strokes on rectangles.
+    JankyBorders uses =CGGradientRef= with =CGContextDrawLinearGradient()= and directional config:
+    =gradient(top_left=0xAARRGGBB,bottom_right=0xAARRGGBB)=.
+    Possible approaches in Hammerspoon:
+    - [ ] Approach A: render border as 4 separate =line= elements, each with interpolated colors
+    - [ ] Approach B: use an =image= element with a programmatically-generated gradient NSImage
+    - [ ] Approach C: use canvas =:compositeRule= with layered fills
+    - [ ] Add =:gradient= config option: ={:from-color "0xAARRGGBB" :to-color "0xAARRGGBB" :direction :diagonal}=
+    - [ ] Parse gradient direction (top-left→bottom-right, top-right→bottom-left, horizontal, vertical)
+    This is the hardest feature — may require =hs.drawing= or custom ObjC bridge via =hs.canvas=.
+
+*** LATER [#B] Event coalescing :feature:
+    Rapid-fire window events (move/resize during drag) cause redundant border redraws.
+    JankyBorders uses dispatch queue timers with different delays per event type:
+    - Focus/title changes: 50ms delay
+    - Space changes: 20ms delay
+    - Window reordering: 10ms delay
+    - [ ] Add =hs.timer.delayed= to update-on-focus behavior (coalesce within 50ms window)
+    - [ ] Add =hs.timer.delayed= to update-on-move behavior (coalesce within 10ms window)
+    - [ ] Timer restarts on each new event — only the last event in a burst actually triggers a redraw
+    - [ ] Store timer in component state so it can be cancelled on stop
+    - [ ] Filter self-generated events (canvas show/hide can trigger window callbacks)
+
+*** LATER [#B] Track all windows (active + inactive borders) :feature:
+    Currently we only show a border on the focused window. JankyBorders tracks ALL windows
+    via a hash table keyed by window-id, rendering active color on focused and inactive color on rest.
+    - [ ] Maintain a Lua table =window-borders= mapping =window-id → canvas= in component state
+    - [ ] On focus event: recolor previous active to inactive, recolor new to active
+    - [ ] On window-visible event: create new border canvas, add to table
+    - [ ] On window-not-visible event: delete border canvas, remove from table
+    - [ ] On move/resize event: reposition the specific window's border by window-id lookup
+    - [ ] Use =hs.window.filter:getWindows()= on start to bootstrap borders for all existing windows
+    - [ ] Requires new behavior: =update-all-on-change= that manages the full border table
+    This is a significant redesign — the current single-active-canvas model becomes a canvas-per-window model.
+
+*** LATER [#C] Hide border in fullscreen mode :feature:
+    JankyBorders detects fullscreen via space ID tracking with =SLSCopyManagedDisplaySpaces()=.
+    In Hammerspoon we can use =hs.window:isFullScreen()= which checks the accessibility attribute.
+    - [ ] Guard border show commands: skip if =hs.window.get(window-id):isFullScreen()= returns true
+    - [ ] Subscribe to =:event.kind.window/fullscreened= and =:event.kind.window/unfullscreened= events
+    - [ ] On fullscreened: hide that window's border
+    - [ ] On unfullscreened: restore that window's border
+    - [ ] Edge case: window may briefly report wrong state during fullscreen transition (add small delay)
+
+*** LATER [#C] Per-app border color overrides :feature:
+    JankyBorders supports app-specific rules via whitelist/blacklist with =app_allowed()= checks.
+    - [ ] Add =:app-overrides= config: table of ={:app-name {:active-color ... :inactive-color ... :width ...}}=
+    - [ ] Match by =hs.application:name()= or =hs.application:bundleID()= (bundleID more stable)
+    - [ ] Merge override config with defaults — only specified fields override
+    - [ ] Look up app from window-id via =hs.window.get(window-id):application()=
+    - [ ] Support =:hidden true= per-app to disable borders entirely for specific apps (e.g., Finder desktop)
+
+*** LATER [#C] Multi-monitor support :feature:
+    Border canvas must appear on the correct screen when windows span multiple monitors.
+    - [ ] Ensure canvas frame coordinates are absolute (hs.canvas uses screen-absolute coords, so this may work already)
+    - [ ] Test: move window between screens, verify border follows
+    - [ ] Handle screen layout changes (subscribe to =:event.kind.screen/layout-changed=)
+    - [ ] Rebuild/reposition all borders on layout change
+    - [ ] Edge case: window straddling two screens — border should still render correctly
+
+*** LATER [#C] Animate border transitions :feature:
+    JankyBorders uses =CVDisplayLink= for display-synchronized animation timing.
+    =CVDisplayLink= provides hardware-synced callbacks at the monitor's refresh rate (60/120Hz).
+    - [ ] Fade in new active border: animate alpha from 0→1 over ~150ms
+    - [ ] Fade out old active→inactive transition: animate color over ~150ms
+    - [ ] Use =hs.timer.doEvery(1/60, fn)= to approximate 60fps frame updates
+    - [ ] Interpolate color channels linearly between active and inactive colors per frame
+    - [ ] Alternative: use =hs.canvas:alpha()= method for simple opacity animations
+    - [ ] Cancel animation timer when a new focus event arrives mid-animation
+
+*** LATER [#C] HiDPI / Retina rendering :feature:
+    JankyBorders has a =hidpi=on= option that recreates borders at retina resolution.
+    hs.canvas is backed by =NSView= which handles Retina natively in most cases.
+    - [ ] Verify border crispness on Retina displays (hs.canvas may handle this automatically)
+    - [ ] If blurry: check =hs.screen:currentMode().scale= and multiply stroke width accordingly
+    - [ ] Test with mixed-DPI setups (e.g., Retina laptop + non-Retina external)
+    - [ ] Ensure glow/shadow blur radius scales correctly on HiDPI
+
+*** LATER [#C] Window-too-small threshold :feature:
+    JankyBorders hides borders on very small windows via =window_suitable()= validation.
+    - [ ] Define minimum dimensions (e.g., 50x50 points) below which borders are hidden
+    - [ ] Add =:min-window-size= to component config (default ={:w 50 :h 50}=)
+    - [ ] Check frame dimensions in show-active/show-inactive commands before rendering
+    - [ ] Re-check on move/resize events (window may shrink below threshold)
 
 ** PROJ Slack Integration [0/15]
 Migrate slack.fnl to Sheaf: commands + hotkey sources + behaviors + subscriptions.

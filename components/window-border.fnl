@@ -13,17 +13,23 @@
         b (/ (band n 0xFF) 255)]
     {:red r :green g :blue b :alpha a}))
 
-(fn make-border-canvas [color width]
-  "Create a hidden canvas with a stroke-only rectangle for use as a window border"
-  (let [canvas (hs.canvas.new {:x 0 :y 0 :w 100 :h 100})]
+(fn make-border-canvas [color width corner-radius]
+  "Create a hidden canvas with two filled rects: outer fill + inner cutout via destinationOut"
+  (let [outer-radius (+ corner-radius width)
+        canvas (hs.canvas.new {:x 0 :y 0 :w 100 :h 100})]
     (canvas:insertElement {:type "rectangle"
-                           :action "stroke"
-                           :strokeWidth width
-                           :strokeColor (parse-argb-hex color)
-                           :roundedRectRadii {:xRadius 0 :yRadius 0}})
+                           :action "fill"
+                           :fillColor (parse-argb-hex color)
+                           :roundedRectRadii {:xRadius outer-radius :yRadius outer-radius}})
+    (canvas:insertElement {:type "rectangle"
+                           :action "fill"
+                           :fillColor {:red 0 :green 0 :blue 0 :alpha 1}
+                           :compositeRule "destinationOut"
+                           :frame {:x width :y width :w 80 :h 80}
+                           :roundedRectRadii {:xRadius corner-radius :yRadius corner-radius}})
     (canvas:level (. hs.canvas.windowLevels :overlay))
-    (canvas:behavior (+ (. hs.canvas.windowBehaviors :canJoinAllSpaces)
-                        (. hs.canvas.windowBehaviors :stationary)))
+    (canvas:behavior (bor (. hs.canvas.windowBehaviors :canJoinAllSpaces)
+                         (. hs.canvas.windowBehaviors :stationary)))
     canvas))
 
 (local window-border-type
@@ -32,11 +38,14 @@
    "Draws colored borders around active and inactive windows"
    {:traits [:trait/has-canvas]
     :start-fn (fn [config]
-                (let [active (make-border-canvas config.active-color config.width)
-                      inactive (make-border-canvas config.inactive-color config.width)]
+                (let [cr (or config.corner-radius 9)
+                      active (make-border-canvas config.active-color config.width cr)
+                      inactive (make-border-canvas config.inactive-color config.width cr)]
                   {:active-canvas active
                    :inactive-canvas inactive
-                   :active-window-id nil}))
+                   :active-window-id nil
+                   :border-width config.width
+                   :default-corner-radius cr}))
     :stop-fn (fn [state]
                (when state.active-canvas
                  (state.active-canvas:delete))

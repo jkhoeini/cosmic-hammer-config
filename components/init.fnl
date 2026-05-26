@@ -125,7 +125,7 @@
 (start-component! component-registry :component.type/window-watcher window-watcher-name {})
 (start-component! component-registry :component.type/app-watcher app-watcher-name {})
 (start-component! component-registry :component.type/window-border window-border-name
-                  {:active-color "0xffe1e3e4" :inactive-color "0xff494d64" :width 5})
+                  {:active-color "0xffe1e3e4" :inactive-color "0xff494d64" :width 5 :corner-radius 9})
 
 
 ;; ============================================================================
