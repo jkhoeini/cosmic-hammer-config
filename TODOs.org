@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [13/78]
+* Projects [14/91]
 ** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -481,7 +481,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [4/5]
+** PROJ Window Borders [5/18]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -534,14 +534,57 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [X] :sub/border-on-visible — source: :tag/window-watcher, target: :tag/window-border,
           behavior: update-on-focus, event-selector: :event.kind.window/visible
 
-*** LATER [#B] Rounded corners :feature:
-    hs.canvas already supports =roundedRectRadii= with =xRadius= / =yRadius= on rectangle elements.
-    Currently hardcoded to ={:xRadius 0 :yRadius 0}= in =make-border-canvas=.
-    - [ ] Make corner radius configurable (add =:corner-radius= to component config, default 9.0 points — macOS default)
-    - [ ] Pass radius through to =:roundedRectRadii= in the canvas element
-    - [ ] Inner radius = outer radius minus stroke width (prevents gap at corners)
-    JankyBorders detects per-window radius via =SLSWindowIteratorGetCornerRadii()= (private API).
-    We can't do that from Hammerspoon — use a fixed configurable value instead.
+*** DONE Rounded corners :feature:
+    Two-rect fill+cutout approach: outer filled rounded rect + inner =destinationOut= cutout.
+    Crisp anti-aliased edges on both inner and outer curves (replaces rough stroked rectangle).
+    Dynamic corner radius via =hs.window.cornerRadiusForID= (SkyLight private API in CosmicHammer)
+    with =pcall= guard and fallback to configurable default (9pt).
+    - [X] Make corner radius configurable (=:corner-radius= in component config, default 9)
+    - [X] Two-rect compositing: outer fill + inner =destinationOut= cutout (no stroke)
+    - [X] Canvas frame inflated by =border-width= so border wraps outside the window
+    - [X] Dynamic radius detection via =hs.window.cornerRadiusForID= with =pcall= fallback
+    - [X] =position-border-canvas= helper updates element radii per window
+
+*** NOW [#A] Fix window level — border blocks menus and panels :feature:
+    Border canvas uses =hs.canvas.windowLevels.overlay= (level 102), which is above
+    =popUpMenu= (101), =mainMenu= (24), and all other UI. Menus, panels, and overlays
+    render behind the border.
+    JankyBorders solves this by querying the target window's own level via
+    =SLSWindowIteratorGetLevel()= and setting the border to the same level, then
+    ordering it relative to the target with =SLSTransactionOrderWindow()=.
+    We can't do per-window level matching from hs.canvas, but =floating= (level 3)
+    sits above normal windows and below menus/panels/dock/status — a pragmatic fix.
+    - [ ] Change =make-border-canvas= to use =(. hs.canvas.windowLevels :floating)= instead of =:overlay=
+    - [ ] Test: verify menus, Spotlight, panels render above the border
+    - [ ] Test: verify border still renders above normal (non-floating) windows
+    - [ ] Edge case: floating/utility windows (e.g., color picker, calculator) may overlap the border
+    - [ ] Future: add =hs.window.setCanvasLevel(canvasID, targetWindowID)= to CosmicHammer
+          for true per-window level matching via SkyLight API
+
+*** NOW [#A] Update border on move/resize — not just focus :feature:
+    Border only updates on focus and visible events. Moving or resizing a window
+    leaves the border in its old position until the next focus change.
+    =hs.window.filter= supports =windowMoved= subscription. Our window-watcher source
+    already subscribes to 5 events but NOT =windowMoved=. Adding it would fire after
+    moves/resizes complete (not during live drag).
+    - [ ] Add =windowMoved= subscription to =event_sources/window-watcher.fnl=
+    - [ ] Define =window-watcher.events/moved= concrete event (already exists in events/init.fnl)
+          but derive from the right kind — check if =hs.window.filter='s =windowMoved= fires
+          for both move AND resize or just move
+    - [ ] Wire =update-on-move-behavior= to respond to =:event.kind.window/moved=
+          (currently responds to =:event.kind.window/focused= — placeholder)
+    - [ ] Add subscription =sub/border-on-move=: source =:tag/window-watcher=,
+          target =:tag/window-border=, event-selector =:event.kind.window/moved=
+
+*** LATER [#B] Live border tracking during drag via uielement watchers :feature:
+    =hs.window.filter='s =windowMoved= fires after moves complete, not during live drag.
+    =hs.uielement.watcher= fires AXMoved/AXResized continuously during drag, but requires
+    a per-window watcher instance. The =window-element-watcher= source type exists
+    but has no default component — it's designed for PaperWM Phase 4 dynamic use.
+    - [ ] Create a behavior that spawns per-window =window-element-watcher= instances
+          when windows become visible and tears them down when windows disappear
+    - [ ] Wire those instances' moved/resized events to =update-on-move-behavior=
+    - [ ] Requires dynamic component/source lifecycle at runtime (architectural change)
 
 *** LATER [#B] Glow / shadow effect :feature:
     hs.canvas elements support a =shadow= attribute: ={:blurRadius N :color {r g b a} :offset {h w}}=.
