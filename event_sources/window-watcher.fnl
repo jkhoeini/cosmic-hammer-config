@@ -35,13 +35,16 @@
                         WindowFilter.windowFullscreened
                         (emit :window-watcher.events/fullscreened data)
                         WindowFilter.windowUnfullscreened
-                        (emit :window-watcher.events/unfullscreened data)))))]
+                        (emit :window-watcher.events/unfullscreened data)
+                        WindowFilter.windowMoved
+                        (emit :window-watcher.events/moved data)))))]
     (wf:subscribe
      [WindowFilter.windowFocused
       WindowFilter.windowVisible
       WindowFilter.windowNotVisible
       WindowFilter.windowFullscreened
-      WindowFilter.windowUnfullscreened]
+      WindowFilter.windowUnfullscreened
+      WindowFilter.windowMoved]
      handler)
     wf))
 
@@ -63,7 +66,8 @@
             :window-watcher.events/visible
             :window-watcher.events/not-visible
             :window-watcher.events/fullscreened
-            :window-watcher.events/unfullscreened]
+            :window-watcher.events/unfullscreened
+            :window-watcher.events/moved]
     :start-fn start-window-watcher
     :stop-fn stop-window-watcher}))
 

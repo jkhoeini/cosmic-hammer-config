@@ -32,6 +32,9 @@
    "Position and show the active window border around a window frame"
    {:requires-traits [:trait/has-canvas]
     :fn (fn [component params]
+          (when (and params.only-if-active
+                     (not= params.window-id component.state.active-window-id))
+            (lua "return nil"))
           (let [bw component.state.border-width
                 cr (resolve-corner-radius params.window-id
                                           component.state.default-corner-radius)]

@@ -23,13 +23,14 @@
   (make-behavior
    {:name :window-border.behaviors/update-on-move
     :description "Reposition active border when a window moves or resizes"
-    :respond-to [:event.kind.window/focused]
+    :respond-to [:event.kind.window/moved]
     :commands {:show-active :window-border.commands/show-active-border}
     :fn (fn [event candidates send-cmd]
           (let [target (. candidates.show-active 1)]
             (when target
               (send-cmd target :show-active {:window-id event.event-data.window-id
-                                             :frame event.event-data.frame}))))}))
+                                             :frame event.event-data.frame
+                                             :only-if-active true}))))}))
 
 
 {: update-on-focus-behavior

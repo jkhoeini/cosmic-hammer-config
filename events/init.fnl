@@ -201,6 +201,12 @@
                {:window-id number? :app-name string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/unfullscreened :event.kind.window/unfullscreened)
 
+(define-event! event-registry
+               :window-watcher.events/moved
+               "Window was moved or resized"
+               {:window-id number? :app-name string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/moved :event.kind.window/moved)
+
 
 ;; --- Window Element Watcher Events ---
 (define-event! event-registry

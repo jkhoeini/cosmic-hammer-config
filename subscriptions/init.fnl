@@ -77,4 +77,12 @@
   :target-tag :tag/window-border
   :event-selector :event.kind.window/visible})
 
+(define-subscription! subscription-registry
+ :sub/border-on-move
+ {:description "Reposition active border when a window moves or resizes"
+  :behavior :window-border.behaviors/update-on-move
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-border
+  :event-selector :event.kind.window/moved})
+
 {: subscription-registry}
