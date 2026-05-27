@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [14/91]
+* Projects [15/91]
 ** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -481,7 +481,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [5/18]
+** PROJ Window Borders [6/18]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -561,20 +561,16 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [ ] Future: add =hs.window.setCanvasLevel(canvasID, targetWindowID)= to CosmicHammer
           for true per-window level matching via SkyLight API
 
-*** NOW [#A] Update border on move/resize — not just focus :feature:
-    Border only updates on focus and visible events. Moving or resizing a window
-    leaves the border in its old position until the next focus change.
-    =hs.window.filter= supports =windowMoved= subscription. Our window-watcher source
-    already subscribes to 5 events but NOT =windowMoved=. Adding it would fire after
-    moves/resizes complete (not during live drag).
-    - [ ] Add =windowMoved= subscription to =event_sources/window-watcher.fnl=
-    - [ ] Define =window-watcher.events/moved= concrete event (already exists in events/init.fnl)
-          but derive from the right kind — check if =hs.window.filter='s =windowMoved= fires
-          for both move AND resize or just move
-    - [ ] Wire =update-on-move-behavior= to respond to =:event.kind.window/moved=
-          (currently responds to =:event.kind.window/focused= — placeholder)
-    - [ ] Add subscription =sub/border-on-move=: source =:tag/window-watcher=,
+*** DONE Update border on move/resize — not just focus :feature:
+    Added =windowMoved= to window-watcher (fires for both move AND resize).
+    Command guards with =:only-if-active= flag — skips reposition when the
+    moved window is not the currently focused one.
+    - [X] Add =windowMoved= subscription to =event_sources/window-watcher.fnl=
+    - [X] Define =window-watcher.events/moved= concrete event derived from =:event.kind.window/moved=
+    - [X] Wire =update-on-move-behavior= to respond to =:event.kind.window/moved=
+    - [X] Add subscription =sub/border-on-move=: source =:tag/window-watcher=,
           target =:tag/window-border=, event-selector =:event.kind.window/moved=
+    - [X] Guard: command skips reposition via =:only-if-active= when moved window ≠ focused window
 
 *** LATER [#B] Live border tracking during drag via uielement watchers :feature:
     =hs.window.filter='s =windowMoved= fires after moves complete, not during live drag.

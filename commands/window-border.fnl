@@ -67,6 +67,9 @@
    "Hide both active and inactive window border overlays"
    {:requires-traits [:trait/has-canvas]
     :fn (fn [component params]
+          (when (and params.only-if-active
+                     (not= params.window-id component.state.active-window-id))
+            (lua "return nil"))
           (when component.state.active-canvas
             (component.state.active-canvas:hide))
           (when component.state.inactive-canvas

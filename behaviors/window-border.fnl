@@ -33,5 +33,19 @@
                                              :only-if-active true}))))}))
 
 
+(local hide-on-disappear-behavior
+  (make-behavior
+   {:name :window-border.behaviors/hide-on-disappear
+    :description "Hide active border when the focused window disappears"
+    :respond-to [:event.kind.window/not-visible]
+    :commands {:hide :window-border.commands/hide-borders}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.hide 1)]
+            (when target
+              (send-cmd target :hide {:window-id event.event-data.window-id
+                                       :only-if-active true}))))}))
+
+
 {: update-on-focus-behavior
- : update-on-move-behavior}
+ : update-on-move-behavior
+ : hide-on-disappear-behavior}

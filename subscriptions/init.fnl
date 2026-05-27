@@ -85,4 +85,12 @@
   :target-tag :tag/window-border
   :event-selector :event.kind.window/moved})
 
+(define-subscription! subscription-registry
+ :sub/border-on-disappear
+ {:description "Hide active border when the focused window disappears"
+  :behavior :window-border.behaviors/hide-on-disappear
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-border
+  :event-selector :event.kind.window/not-visible})
+
 {: subscription-registry}
