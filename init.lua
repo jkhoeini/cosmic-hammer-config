@@ -2459,7 +2459,7 @@ package.preload["components.window-border"] = package.preload["components.window
     local canvas = hs.canvas.new({x = 0, y = 0, w = 100, h = 100})
     canvas:insertElement({type = "rectangle", action = "fill", fillColor = parse_argb_hex(color), roundedRectRadii = {xRadius = outer_radius, yRadius = outer_radius}})
     canvas:insertElement({type = "rectangle", action = "fill", fillColor = {red = 0, green = 0, blue = 0, alpha = 1}, compositeRule = "destinationOut", frame = {x = width, y = width, w = 80, h = 80}, roundedRectRadii = {xRadius = corner_radius, yRadius = corner_radius}})
-    canvas:level(hs.canvas.windowLevels.overlay)
+    canvas:level(hs.canvas.windowLevels.floating)
     canvas:behavior((hs.canvas.windowBehaviors.canJoinAllSpaces | hs.canvas.windowBehaviors.stationary))
     return canvas
   end

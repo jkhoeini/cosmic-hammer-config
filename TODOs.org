@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [15/91]
+* Projects [16/92]
 ** PROJ Configuration as Data [6/26]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -481,7 +481,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [6/18]
+** PROJ Window Borders [7/19]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -545,21 +545,32 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [X] Dynamic radius detection via =hs.window.cornerRadiusForID= with =pcall= fallback
     - [X] =position-border-canvas= helper updates element radii per window
 
-*** NOW [#A] Fix window level — border blocks menus and panels :feature:
+*** DONE [#A] Fix window level — border blocks menus and panels :feature:
     Border canvas uses =hs.canvas.windowLevels.overlay= (level 102), which is above
     =popUpMenu= (101), =mainMenu= (24), and all other UI. Menus, panels, and overlays
     render behind the border.
-    JankyBorders solves this by querying the target window's own level via
-    =SLSWindowIteratorGetLevel()= and setting the border to the same level, then
-    ordering it relative to the target with =SLSTransactionOrderWindow()=.
-    We can't do per-window level matching from hs.canvas, but =floating= (level 3)
-    sits above normal windows and below menus/panels/dock/status — a pragmatic fix.
-    - [ ] Change =make-border-canvas= to use =(. hs.canvas.windowLevels :floating)= instead of =:overlay=
+    Use =floating= (level 3) — above normal windows, below menus/panels/dock/status.
+    - [X] Change =make-border-canvas= to use =(. hs.canvas.windowLevels :floating)= instead of =:overlay=
     - [ ] Test: verify menus, Spotlight, panels render above the border
     - [ ] Test: verify border still renders above normal (non-floating) windows
     - [ ] Edge case: floating/utility windows (e.g., color picker, calculator) may overlap the border
-    - [ ] Future: add =hs.window.setCanvasLevel(canvasID, targetWindowID)= to CosmicHammer
-          for true per-window level matching via SkyLight API
+
+*** LATER [#B] Per-window level matching via SkyLight API :feature:
+    The =floating= level is a pragmatic fix but not pixel-perfect. JankyBorders queries
+    the target window's own level via =SLSWindowIteratorGetLevel()= and sets the border
+    to the same level, then orders it relative to the target with =SLSTransactionOrderWindow()=.
+    This ensures borders never interfere with any system UI regardless of window type.
+    Requires new CosmicHammer APIs:
+    - [ ] Add =hs.window:windowLevel()= / =hs.window.windowLevelForID(windowID)= to CosmicHammer
+          Query via =SLSWindowIteratorGetLevel()= (same iterator pattern as =cornerRadiusForID=)
+    - [ ] Add =hs.canvas:setWindowLevel(level)= to set canvas window level to an arbitrary integer
+          (currently hs.canvas only accepts named level constants, not raw integers)
+    - [ ] Add =hs.canvas:orderRelativeTo(windowID, order)= wrapping =SLSTransactionOrderWindow()=
+          to position the canvas just above/below a specific target window
+    - [ ] Update =position-border-canvas= to query target window level and set canvas to match
+    - [ ] Update =show-active-border= command to call =orderRelativeTo= after positioning
+    - [ ] Handle edge case: window level changes (e.g., app enters/exits fullscreen) —
+          re-query level on each border update
 
 *** DONE Update border on move/resize — not just focus :feature:
     Added =windowMoved= to window-watcher (fires for both move AND resize).

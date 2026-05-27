@@ -27,7 +27,7 @@
                            :compositeRule "destinationOut"
                            :frame {:x width :y width :w 80 :h 80}
                            :roundedRectRadii {:xRadius corner-radius :yRadius corner-radius}})
-    (canvas:level (. hs.canvas.windowLevels :overlay))
+    (canvas:level (. hs.canvas.windowLevels :floating))
     (canvas:behavior (bor (. hs.canvas.windowBehaviors :canJoinAllSpaces)
                          (. hs.canvas.windowBehaviors :stationary)))
     canvas))
