@@ -397,53 +397,250 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-** PROJ URL Dispatch [2/9]
+** PROJ URL Dispatch [3/19]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
+Depends on: event hierarchy (done), source registry (done), component architecture (done),
+tag-based subscription routing (done), dispatcher (done).
 
-*** NOW Phase 1: Core Dispatch [2/6]
+*** NOW Phase 0: Design Decisions [1/4]
+Architectural decisions that must be resolved before implementation.
+
+**** DONE [#A] Decide routing rule storage strategy                     :architecture:
+     Decision: behavior inputs via tagged component state.
+
+     Routing rules are owned by a dedicated component, not by the behavior
+     module, a separate ambient config module, or the subscription. The
+     component owns the rules in its state and declares a trait describing
+     the shape, e.g. :trait/has-url-routing-rules.
+
+     Behaviors declare the component-state inputs they need:
+
+     #+begin_src fennel
+     (make-behavior
+      {:name :url-dispatch.behaviors/route-url
+       :respond-to [:event.kind.url/opened]
+       :commands {:open-in-app :url-dispatch.commands/open-in-app
+                  :show-chooser :url-dispatch.commands/show-chooser}
+       :inputs {:rules [:trait/has-url-routing-rules]}
+       :fn (fn [event candidates send-cmd inputs]
+             ;; inputs.rules is raw state from the tagged routing-rules component
+             ...)})
+     #+end_src
+
+     Subscriptions remain routing/wiring only. They select the event source,
+     command target, and input component via tags:
+
+     #+begin_src fennel
+     {:behavior :url-dispatch.behaviors/route-url
+      :source-tag :tag/url-handler
+      :target-tag :tag/url-dispatch
+      :input-tag :tag/url-routing-rules
+      :event-selector :event.kind.url/opened}
+     #+end_src
+
+     The dispatcher resolves :input-tag to component state, validates that
+     the selected component satisfies the behavior's declared input traits,
+     and invokes the behavior as (fn [event candidates send-cmd inputs]).
+     No separate cardinality field: the trait describes the state shape, and
+     tag assignment controls which component participates.
+
+     For now inputs pass raw component state. Later, add trait-projected or
+     read-only protected inputs so behaviors only see the fields guaranteed
+     by the requested traits.
+
+**** NEXT [#A] Decide pattern matching syntax for URL rules             :architecture:
+     Rule = {:patterns [...]} — but what syntax and what does it match against?
+
+     Options:
+     - A: Lua patterns against full URL — built-in, no deps, limited (no alternation)
+     - B: String prefix/contains matching — simplest, covers most cases (e.g. "github.com")
+     - C: Structured matching — separate fields {:host "pattern" :path "pattern" :scheme "pattern"}
+     - D: Predicate functions — most flexible, not serializable
+
+     - [ ] Decide whether :sender matches app name, bundle ID, or both
+     - [ ] Decide whether one rule can target multiple apps and show chooser
+           among that subset
+
+**** NEXT [#A] Decide decoder pipeline contract                         :architecture:
+     Current schema Decoder = {:name :match :decode-url?} is ambiguous.
+
+     Clarify:
+     - [ ] :match — predicate fn (fn [url] → bool)? Or data pattern against host/URL?
+     - [ ] :decode-url? — name suggests predicate but should be transformer.
+       Actual need: (fn [url] → decoded-url-or-nil)
+     - [ ] Chain semantics: when decoder returns nil, pass through unchanged?
+           Or stop chain?
+
+     Suggested schema (decide between):
+     - A: {:name string :match-fn (fn [url] → bool) :decode-fn (fn [url] → url)}
+       Two functions — explicit match gate, separate transform
+     - B: {:name string :decode-fn (fn [url] → url-or-nil)}
+       Single function — nil return means "didn't match, pass through"
+     - C: {:name string :host-pattern string :decode-fn (fn [url] → url)}
+       Data-oriented match (Lua pattern on host), function transform
+
+**** NEXT [#A] Decide fallback and chooser browser list strategy        :architecture:
+     When no routing rule matches, what happens?
+
+     Options for fallback:
+     - A: Always show chooser — safe but annoying for frequent use
+     - B: Configurable default browser bundle ID — practical for daily use,
+       chooser only on explicit fallback rule
+     - C: Both — default browser + hotkey to force chooser
+
+     Where does the chooser's browser list come from?
+     - A: Hardcoded list of known browsers
+     - B: Discovered via hs.application.infoForBundleID for a configured list
+     - C: All installed apps that handle http URLs (may be noisy)
+     - [ ] Decide fallback behavior when no rule matches
+     - [ ] Decide source of chooser browser list
+
+*** NOW Phase 1: Core Dispatch [2/11]
+
+**** NEXT [#A] Define URL event hierarchy and concrete events           :feature:
+     - [ ] Add to events/init.fnl:
+       Kind hierarchy:
+         :event.kind.url/any → :event.kind/any
+         :event.kind.url/opened → :event.kind.url/any
+       Concrete event:
+         :url-handler.events/url-opened → :event.kind.url/opened
+         Schema: {:url string? :original string? :scheme string? :host string?
+                  :params table? :sender string?}
+     - [ ] :sender is nil when PID lookup fails (not "unknown" — nil is idiomatic Lua)
+
+**** NEXT [#A] Add behavior input dispatch support                      :architecture:
+     - [ ] Extend make-behavior data with optional :inputs
+           {:alias [:trait/name ...]}
+     - [ ] Validate input traits in add-behavior!
+     - [ ] Extend subscription data with optional :input-tag
+     - [ ] Dispatcher resolves :input-tag via tags, validates the selected
+           component state against the behavior's input traits, and passes raw
+           state as inputs.alias
+     - [ ] Preserve backwards compatibility for existing 3-arg behaviors
 
 **** NEXT [#A] Create URL event source                                  :feature:
-     - Register as default HTTP handler via hs.urlevent.setDefaultHandler
-     - Emit :url-handler.events/url-opened with {url, original, scheme, host, params, sender}
-     - pcall around sender app lookup (PID may be stale)
-     - stop-fn restores previous default handler
+     - [ ] event_sources/url-handler.fnl, :event-source.type/url-handler
+     - [ ] Config schema: {:decoders table?} (ordered list, see decoder pipeline item)
+     - [ ] start-fn:
+       Save previous default handlers via hs.urlevent.getDefaultHandler("http")
+       and hs.urlevent.getDefaultHandler("https")
+       Register for BOTH http AND https via hs.urlevent.setDefaultHandler
+       Set hs.urlevent.httpCallback to emit function
+       Callback receives (scheme, host, params, fullURL, senderPID)
+       pcall around hs.application.applicationForPID(senderPID) for sender name
+       Run decoder pipeline on fullURL before emitting
+       Emit :url-handler.events/url-opened with {url, original, scheme, host, params, sender}
+     - [ ] stop-fn: restore both previous default handlers
+     - [ ] Register source type in event_sources/init.fnl
+     - [ ] Note: macOS shows "set as default browser" confirmation dialog on first registration
 
 **** NEXT [#A] Implement decoder pipeline in URL event source            :feature:
-     - Ordered list of decoders in source config
-     - Each decoder operates on current (already-decoded) URL, not original
-     - Decoder = {:name :match :decode-url?}
-     - Built-in cases: Slack redir, Outlook SafeLinks
+     - [ ] Ordered list of decoders in source config {:decoders [...]}
+     - [ ] Each decoder operates on current (already-decoded) URL, not original
+     - [ ] Decoder schema: decided in Phase 0 design decisions
+     - [ ] Pipeline runs in start-fn before emit — source emits already-decoded URL
+     - [ ] Built-in decoders:
+       Slack redirect: URLs matching slack-redir.net → extract real URL from query param
+       Outlook SafeLinks: URLs matching safelinks.protection.outlook.com → extract real URL
+     - [ ] Decoders defined in event_sources/url-decoders.fnl, imported by source
+
+**** NEXT [#A] Create url-dispatch component                            :feature:
+     - [ ] components/url-dispatch.fnl with make-component-type :component.type/url-dispatch
+     - [ ] Derive :component.kind/url-dispatch from :component.kind/any
+     - [ ] Owned source: {:type :event-source.type/url-handler
+                      :config {:decoders [slack-redir-decoder outlook-decoder]}
+                      :instance-name "main"
+                      :tags [:tag/url-handler]}
+     - [ ] start-fn: returns {} (stateless in Phase 1; Phase 2 adds history state)
+     - [ ] No traits required in Phase 1
+     - [ ] Register in components/init.fnl:
+       Derive component kind, add type, start instance, attach :tag/url-dispatch
+
+**** NEXT [#A] Create URL routing-rules component                       :feature:
+     - [ ] Add :trait/has-url-routing-rules to traits/init.fnl
+     - [ ] Create components/url-routing-rules.fnl with
+           :component.type/url-routing-rules
+     - [ ] start-fn returns raw state containing ordered rules, fallback policy,
+           and chooser browser list
+     - [ ] Register component kind/type in components/init.fnl
+     - [ ] Start routing-rules instance and attach :tag/url-routing-rules
 
 **** DONE Create open-in-app command                                    :feature:
-     - :url-dispatch.commands/open-in-app {url, bundle-id}
-     - Wraps hs.urlevent.openURLWithBundle
+     - [X] :url-dispatch.commands/open-in-app {url, bundle-id}
+     - [X] Wraps hs.urlevent.openURLWithBundle
 
 **** DONE Create show-chooser command                                   :feature:
-     - :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
-     - Use hs.chooser (async, non-blocking)
+     - [X] :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
+     - [X] Use hs.chooser (async, non-blocking)
 
 **** NEXT [#A] Create URL routing behavior                              :feature:
-     - First-match-wins against ordered rules
-     - Rule = {:patterns [...] :app "bundle.id" :sender [...]}
-     - Fallback rule can invoke show-chooser
-     - Dispatch via cmd.open-in-app or cmd.show-chooser
+     - [ ] behaviors/url-routing.fnl
+     - [ ] :url-dispatch.behaviors/route-url
+     - [ ] Responds to [:event.kind.url/opened]
+     - [ ] Commands: {:open-in-app :url-dispatch.commands/open-in-app
+                  :show-chooser :url-dispatch.commands/show-chooser}
+     - [ ] Inputs: {:rules [:trait/has-url-routing-rules]}
+     - [ ] First-match-wins against ordered rules (rule format per Phase 0 decisions)
+     - [ ] Fallback strategy per Phase 0 decisions
+     - [ ] Dispatch via send-cmd target :open-in-app or send-cmd target :show-chooser
+     - [ ] Depends on: Phase 0 design decisions resolved and behavior inputs implemented
 
-**** NEXT [#A] Wire subscription and integrate into core                :feature:
-     - Define events in events/init.fnl (:event.kind.url/opened hierarchy)
-     - Create source instance, subscription, add to core.fnl
+**** NEXT [#A] Wire subscription and integrate into core [0/3]          :feature:
+     - [ ] Define subscription in subscriptions/init.fnl:
+           :sub/route-url-on-open
+           source-tag: :tag/url-handler
+           target-tag: :tag/url-dispatch
+           input-tag: :tag/url-routing-rules
+           behavior: :url-dispatch.behaviors/route-url
+           event-selector: :event.kind.url/opened
+     - [ ] Register behavior in behaviors/init.fnl
+     - [ ] Verify boot order in core.fnl (no changes expected — follows existing pattern)
 
-*** LATER Phase 2: History [0/3]
+**** LATER [#C] Add trait-projected/read-only behavior inputs            :architecture:
+     - [ ] Project input state to fields guaranteed by requested traits
+     - [ ] Prevent behavior code from mutating injected component state
+     - [ ] Keep raw-state inputs as the initial implementation
+
+*** LATER Phase 2: History [0/4]
+
+**** LATER [#B] Decide history persistence format                       :architecture:
+     - [ ] Option A: Lua table serialized to JSON file — simple, no deps
+     - [ ] Option B: SQLite via hs.sqlite3 — queryable, aligns with PROJ Visibility & Debugging
+     - [ ] Option C: Append-only log file — simplest, grep-friendly, no random access
+     - [ ] Decision affects component state shape, startup cost, and query capabilities
+     - [ ] If SQLite: aligns with the "Persist state into SQLite" item in Visibility & Debugging
 
 **** LATER [#B] Record URL history                                      :feature:
-     - Store dispatched URLs with timestamp, sender, matched rule, target app
-     - Persist to file or SQLite
+     - [ ] Add :trait/has-url-history to traits/init.fnl
+     - [ ] Update url-dispatch component start-fn to initialize history storage
+     - [ ] Create :url-dispatch.commands/record-url command
+       Requires :trait/has-url-history
+       Params: {:url :sender :matched-rule :target-app :timestamp}
+       Returns new state with appended history entry
+     - [ ] Create :url-dispatch.behaviors/record-on-dispatch behavior
+       Responds to [:event.kind.url/opened]
+       Sends :record-url after routing completes
+     - [ ] Wire subscription: :sub/record-url-on-open
+     - [ ] Depends on: Phase 1 complete, persistence format decided
 
 **** LATER [#B] Create history browser via hs.chooser                   :feature:
-     - Searchable list of past URLs
-     - Reopen in original or different app
+     - [ ] Create :url-dispatch.commands/show-history command
+       Requires :trait/has-url-history
+       Reads history from component state, populates hs.chooser
+       On selection: opens URL in original or user-selected app
+     - [ ] Searchable list of past URLs with timestamp, sender, target app
+     - [ ] Depends on: Record URL history
 
 **** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
-     - Wire a hotkey to show the URL history chooser
+     - [ ] Add hotkey source to url-dispatch component :sources array
+       {:type :event-source.type/hotkey :config {:mods [...] :key "..."} :instance-name "history-hotkey" :tags [:tag/url-history-hotkey]}
+     - [ ] Create :url-dispatch.behaviors/show-history-on-hotkey behavior
+       Responds to [:event.kind.hotkey/pressed]
+       Commands: {:show-history :url-dispatch.commands/show-history}
+     - [ ] Wire subscription: :sub/show-history-on-hotkey
+       source-tag: :tag/url-history-hotkey, target-tag: :tag/url-dispatch
+     - [ ] Depends on: history browser command
+     - [ ] Wire a hotkey to show the URL history chooser
 
 ** PROJ Window Management [0/7]
 Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
