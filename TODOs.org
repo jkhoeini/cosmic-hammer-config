@@ -397,12 +397,12 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-** PROJ URL Dispatch [3/19]
+** PROJ URL Dispatch [6/19]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
 Depends on: event hierarchy (done), source registry (done), component architecture (done),
 tag-based subscription routing (done), dispatcher (done).
 
-*** NOW Phase 0: Design Decisions [1/4]
+*** DONE Phase 0: Design Decisions [4/4]
 Architectural decisions that must be resolved before implementation.
 
 **** DONE [#A] Decide routing rule storage strategy                     :architecture:
@@ -448,52 +448,107 @@ Architectural decisions that must be resolved before implementation.
      read-only protected inputs so behaviors only see the fields guaranteed
      by the requested traits.
 
-**** NEXT [#A] Decide pattern matching syntax for URL rules             :architecture:
-     Rule = {:patterns [...]} — but what syntax and what does it match against?
+**** DONE [#A] Decide pattern matching syntax for URL rules             :architecture:
+     Decision: structured URL matching with simple wildcard strings.
 
-     Options:
-     - A: Lua patterns against full URL — built-in, no deps, limited (no alternation)
-     - B: String prefix/contains matching — simplest, covers most cases (e.g. "github.com")
-     - C: Structured matching — separate fields {:host "pattern" :path "pattern" :scheme "pattern"}
-     - D: Predicate functions — most flexible, not serializable
+     Rules match against parsed URL fields rather than the full URL string.
+     This keeps routing data serializable and readable while avoiding Lua
+     pattern escaping as the primary user-facing syntax.
 
-     - [ ] Decide whether :sender matches app name, bundle ID, or both
-     - [ ] Decide whether one rule can target multiple apps and show chooser
-           among that subset
+     #+begin_src fennel
+     {:id :work-github
+      :match {:urls [{:scheme [:http :https]
+                      :host "*.github.com"
+                      :path "/my-org/*"}]
+              :sender-bundle-ids ["com.tinyspeck.slackmacgap"]}
+      :action {:type :open-in-app
+               :browser-id :chrome}}
+     #+end_src
 
-**** NEXT [#A] Decide decoder pipeline contract                         :architecture:
-     Current schema Decoder = {:name :match :decode-url?} is ambiguous.
+     URL match semantics:
+     - [X] :scheme matches one scheme or a list of schemes
+     - [X] :host supports exact host or leading wildcard subdomain match
+           ("github.com", "*.github.com")
+     - [X] :path supports "*" wildcards
+     - [X] Missing URL fields mean "any"
+     - [X] Multiple :match.urls entries are ORed
+     - [X] Different keys inside one :match map are ANDed
+     - [X] Rules are evaluated first-match-wins
 
-     Clarify:
-     - [ ] :match — predicate fn (fn [url] → bool)? Or data pattern against host/URL?
-     - [ ] :decode-url? — name suggests predicate but should be transformer.
-       Actual need: (fn [url] → decoded-url-or-nil)
-     - [ ] Chain semantics: when decoder returns nil, pass through unchanged?
-           Or stop chain?
+     Sender match semantics:
+     - [X] Match sender primarily by bundle ID, not app name
+     - [X] Keep sender app name in events for display/debugging only
 
-     Suggested schema (decide between):
-     - A: {:name string :match-fn (fn [url] → bool) :decode-fn (fn [url] → url)}
-       Two functions — explicit match gate, separate transform
-     - B: {:name string :decode-fn (fn [url] → url-or-nil)}
-       Single function — nil return means "didn't match, pass through"
-     - C: {:name string :host-pattern string :decode-fn (fn [url] → url)}
-       Data-oriented match (Lua pattern on host), function transform
+     Action semantics:
+     - [X] Single target app: {:type :open-in-app :browser-id :safari}
+     - [X] Multiple target apps / subset chooser:
+           {:type :choose :browser-ids [:safari :chrome]}
+     - [X] Predicate-function rules are deferred as a future escape hatch,
+           not part of the initial data format
 
-**** NEXT [#A] Decide fallback and chooser browser list strategy        :architecture:
-     When no routing rule matches, what happens?
+**** DONE [#A] Decide decoder pipeline contract                         :architecture:
+     Decision: data-oriented match plus transformer function.
 
-     Options for fallback:
-     - A: Always show chooser — safe but annoying for frequent use
-     - B: Configurable default browser bundle ID — practical for daily use,
-       chooser only on explicit fallback rule
-     - C: Both — default browser + hotkey to force chooser
+     Decoders are ordered URL wrapper transformers. They use structured
+     match data, aligned with routing-rule URL matching, and keep only the
+     service-specific extraction logic in code.
 
-     Where does the chooser's browser list come from?
-     - A: Hardcoded list of known browsers
-     - B: Discovered via hs.application.infoForBundleID for a configured list
-     - C: All installed apps that handle http URLs (may be noisy)
-     - [ ] Decide fallback behavior when no rule matches
-     - [ ] Decide source of chooser browser list
+     #+begin_src fennel
+     {:name :outlook-safelinks
+      :match {:host "*.safelinks.protection.outlook.com"}
+      :decode-fn (fn [ctx] ...)}
+     #+end_src
+
+     Decoder context:
+
+     #+begin_src fennel
+     {:url current-url
+      :parts (hs.http.urlParts current-url)}
+     #+end_src
+
+     Pipeline semantics:
+     - [X] Ordered decoders run against the current URL
+     - [X] :match is structured data: :scheme, :host, :path
+     - [X] :decode-fn receives ctx and returns decoded-url-or-nil
+     - [X] nil means "no transform"; keep current URL and continue
+     - [X] Returned string replaces current URL
+     - [X] Continue until stable or max depth, default 5
+     - [X] No network redirect expansion in the initial pipeline
+     - [X] Built-in decoders handle known wrappers such as Slack redirects
+           and Outlook Safe Links
+
+**** DONE [#A] Decide fallback and chooser browser list strategy        :architecture:
+     Decision: configured default fallback action plus configured ordered
+     browser list.
+
+     The routing-rules component owns the browser list, fallback action, and
+     rules together. Browser IDs are local aliases resolved to bundle IDs at
+     behavior time.
+
+     #+begin_src fennel
+     {:browsers [{:id :safari :bundle-id "com.apple.Safari"}
+                 {:id :chrome :bundle-id "com.google.Chrome"}]
+      :fallback {:type :open-in-app :browser-id :safari}
+      :rules [...]}
+     #+end_src
+
+     Rule actions use browser IDs rather than repeating bundle IDs:
+
+     #+begin_src fennel
+     {:type :open-in-app :browser-id :chrome}
+     {:type :choose :browser-ids [:safari :chrome]}
+     {:type :choose :browser-ids :all}
+     #+end_src
+
+     Browser list semantics:
+     - [X] Browser list is explicit and ordered by preference
+     - [X] Each browser entry has stable :id and :bundle-id
+     - [X] Runtime can enrich entries with hs.application.nameForBundleID,
+           pathForBundleID, infoForBundleID, and hs.image.imageFromAppBundle
+     - [X] Do not auto-discover every app that handles http(s) in Phase 1
+     - [X] No-match fallback opens configured default browser
+     - [X] Explicit rule action can show chooser for all or a subset
+     - [X] Force-chooser hotkey is deferred to later work, not part of fallback
 
 *** NOW Phase 1: Core Dispatch [2/11]
 
@@ -505,8 +560,10 @@ Architectural decisions that must be resolved before implementation.
        Concrete event:
          :url-handler.events/url-opened → :event.kind.url/opened
          Schema: {:url string? :original string? :scheme string? :host string?
-                  :params table? :sender string?}
-     - [ ] :sender is nil when PID lookup fails (not "unknown" — nil is idiomatic Lua)
+                  :path string? :params table? :sender string?
+                  :sender-bundle-id string?}
+     - [ ] :sender and :sender-bundle-id are nil when PID lookup fails
+           (not "unknown" — nil is idiomatic Lua)
 
 **** NEXT [#A] Add behavior input dispatch support                      :architecture:
      - [ ] Extend make-behavior data with optional :inputs
@@ -520,7 +577,7 @@ Architectural decisions that must be resolved before implementation.
 
 **** NEXT [#A] Create URL event source                                  :feature:
      - [ ] event_sources/url-handler.fnl, :event-source.type/url-handler
-     - [ ] Config schema: {:decoders table?} (ordered list, see decoder pipeline item)
+     - [ ] Config schema: {:decoders table? :decoder-max-depth number?}
      - [ ] start-fn:
        Save previous default handlers via hs.urlevent.getDefaultHandler("http")
        and hs.urlevent.getDefaultHandler("https")
@@ -528,8 +585,11 @@ Architectural decisions that must be resolved before implementation.
        Set hs.urlevent.httpCallback to emit function
        Callback receives (scheme, host, params, fullURL, senderPID)
        pcall around hs.application.applicationForPID(senderPID) for sender name
+       and bundle ID
        Run decoder pipeline on fullURL before emitting
-       Emit :url-handler.events/url-opened with {url, original, scheme, host, params, sender}
+       Parse the decoded URL with hs.http.urlParts to populate :path
+       Emit :url-handler.events/url-opened with
+       {url, original, scheme, host, path, params, sender, sender-bundle-id}
      - [ ] stop-fn: restore both previous default handlers
      - [ ] Register source type in event_sources/init.fnl
      - [ ] Note: macOS shows "set as default browser" confirmation dialog on first registration
@@ -537,7 +597,15 @@ Architectural decisions that must be resolved before implementation.
 **** NEXT [#A] Implement decoder pipeline in URL event source            :feature:
      - [ ] Ordered list of decoders in source config {:decoders [...]}
      - [ ] Each decoder operates on current (already-decoded) URL, not original
-     - [ ] Decoder schema: decided in Phase 0 design decisions
+     - [ ] Decoder schema:
+           {:name :decoder-name
+            :match {:scheme :https :host "*.example.com" :path "/*"}
+            :decode-fn (fn [ctx] decoded-url-or-nil)}
+     - [ ] Decoder ctx is {:url current-url :parts (hs.http.urlParts current-url)}
+     - [ ] nil return means no transform; keep current URL and continue
+     - [ ] Returned string replaces current URL
+     - [ ] Continue until stable or :decoder-max-depth, default 5
+     - [ ] Do not perform network redirect expansion
      - [ ] Pipeline runs in start-fn before emit — source emits already-decoded URL
      - [ ] Built-in decoders:
        Slack redirect: URLs matching slack-redir.net → extract real URL from query param
@@ -560,8 +628,20 @@ Architectural decisions that must be resolved before implementation.
      - [ ] Add :trait/has-url-routing-rules to traits/init.fnl
      - [ ] Create components/url-routing-rules.fnl with
            :component.type/url-routing-rules
-     - [ ] start-fn returns raw state containing ordered rules, fallback policy,
-           and chooser browser list
+     - [ ] start-fn returns raw state containing ordered browsers, fallback
+           action, and ordered rules
+     - [ ] Browser list uses stable IDs:
+           {:browsers [{:id :safari :bundle-id "com.apple.Safari"}]}
+     - [ ] Fallback uses browser ID:
+           {:fallback {:type :open-in-app :browser-id :safari}}
+     - [ ] Rules use structured matching:
+           {:id :rule-id
+            :match {:urls [{:scheme [:http :https] :host "*.example.com" :path "/*"}]
+                    :sender-bundle-ids ["com.example.App"]}
+            :action {:type :open-in-app :browser-id :chrome}}
+     - [ ] Support chooser actions:
+           {:type :choose :browser-ids [:safari :chrome]}
+           {:type :choose :browser-ids :all}
      - [ ] Register component kind/type in components/init.fnl
      - [ ] Start routing-rules instance and attach :tag/url-routing-rules
 
@@ -580,10 +660,25 @@ Architectural decisions that must be resolved before implementation.
      - [ ] Commands: {:open-in-app :url-dispatch.commands/open-in-app
                   :show-chooser :url-dispatch.commands/show-chooser}
      - [ ] Inputs: {:rules [:trait/has-url-routing-rules]}
-     - [ ] First-match-wins against ordered rules (rule format per Phase 0 decisions)
-     - [ ] Fallback strategy per Phase 0 decisions
-     - [ ] Dispatch via send-cmd target :open-in-app or send-cmd target :show-chooser
-     - [ ] Depends on: Phase 0 design decisions resolved and behavior inputs implemented
+     - [ ] First-match-wins against ordered structured rules
+     - [ ] Match URL fields with simple wildcard semantics
+     - [ ] Match sender using event.event-data.sender-bundle-id
+     - [ ] Apply configured fallback action when no rule matches
+     - [ ] Resolve :browser-id through inputs.rules.browsers before dispatch
+     - [ ] Resolve :browser-ids :all to all configured browsers
+     - [ ] Dispatch :open-in-app for {:type :open-in-app :browser-id ...}
+     - [ ] Dispatch :show-chooser for {:type :choose :browser-ids ...}
+     - [ ] Depends on: behavior inputs implemented
+
+**** NEXT [#A] Add browser choice resolution helpers                    :feature:
+     - [ ] Build browser lookup table from inputs.rules.browsers by :id
+     - [ ] Resolve :browser-id to {:id :bundle-id :name :path :image?}
+     - [ ] Enrich configured bundle IDs using hs.application.nameForBundleID
+           and hs.application.pathForBundleID
+     - [ ] Add app icon with hs.image.imageFromAppBundle when available
+     - [ ] Convert resolved browsers to hs.chooser choices with
+           {:text name :subText bundle-id :image image :bundle-id bundle-id}
+     - [ ] Warn and skip missing browser IDs or unresolved bundle IDs
 
 **** NEXT [#A] Wire subscription and integrate into core [0/3]          :feature:
      - [ ] Define subscription in subscriptions/init.fnl:
