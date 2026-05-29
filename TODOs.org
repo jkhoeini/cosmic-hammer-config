@@ -65,11 +65,12 @@ Built incrementally — each phase is independently functional.
 
 **** DONE [#A] Implement component architecture [6/6] :architecture:
      Type/instance split with kind hierarchy, trait contracts, and tag-based wiring.
-     Commands declare :requires-traits. Subscriptions wire source-tag → behavior → target-tag.
+     Commands declare :requires-traits. Subscriptions wire source/target tags;
+     behavior inputs extend this with :input-tag.
      Event sources fold into components. Built incrementally in 6 phases.
 
 ***** DONE Phase 1: Trait system [4/4]
-      Trait = named schema contract for component state.
+      Trait = atomic state contract, initially represented as a schema map.
       Schema is {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
       No dependencies — can be built standalone.
 
@@ -188,19 +189,11 @@ Built incrementally — each phase is independently functional.
         - Human-readable error messages from schema validation failures
         - Registry of reusable schema fragments
 
-***** Higher-level schema concept (role-based component profiles)
-      - A schema bundles multiple traits into named profiles describing component roles
-      - Example: (make-schema :component-profiles
-                   {:ui-indicator [:trait/has-menubar :trait/has-delayed-timer]
-                    :window-manager [:trait/has-window-filter :trait/has-layout]
-                    :simple-trigger []})
-      - A component satisfying all traits in a profile is said to "conform" to that profile
-      - Use cases: validate component type conforms to a profile at registration time,
-        commands can require a profile instead of listing individual traits,
-        documentation and introspection ("this component is a ui-indicator")
-      - Profiles can compose: {:full-ui [:ui-indicator :interactive]} where :interactive
-        is itself a profile
-      - Inspired by Clojure spec's s/keys with :req and :opt, and malli's :multi schemas
+***** Extend shapes beyond behavior inputs
+      - Use shapes for command requirements instead of raw :requires-traits lists
+      - Use shapes for component role documentation and introspection
+      - Allow nested/composed shapes after PROJ Sheaf Shapes lands
+      - Inspired by Clojure spec's s/keys, malli :multi schemas, and SHACL-style shapes
 
 ***** Traits as datalog schemas
       - State migrates from Lua tables to a datalog database
@@ -284,10 +277,39 @@ System is performant and has comprehensive documentation for users.
 
 **** LATER [#C] Create a tutorial-style doc for the Sheaf pattern      :doc:
 
-**** LATER [#C] Create doc explaining 7 orthogonal concepts           :doc:
-     - Event, Command, Trait, Component, Behavior, Tag, Subscription
+**** LATER [#C] Create doc explaining 8 orthogonal concepts           :doc:
+     - Event, Command, Trait, Shape, Component, Behavior, Tag, Subscription
      - How they are independent but compose together
      - See DESIGN.md for current reference
+
+** PROJ Sheaf Shapes [0/6]
+Logical composition of traits for behavior inputs and future Datalog-style state.
+
+*** NEXT [#A] Define shape concept                                      :architecture:
+    - Trait = atomic attr predicate: (make-trait :trait/name "desc" {:attr pred})
+    - Shape = OR of named alternatives, AND of traits inside each alternative
+    - Example: (make-shape :shape/name "desc" [{:name :alt1 :traits [:trait/a :trait/b]}])
+
+*** NEXT [#A] Simplify trait constructor form                           :refactor:
+    - [ ] Support (make-trait :trait/name "desc" {:attr pred})
+    - [ ] Migrate existing callers away from {:schema {...}}
+
+*** NEXT [#A] Implement shape registry                                  :feature:
+    - [ ] sheaf/shape-registry.fnl
+    - [ ] make-shape-registry, make-shape, add-shape!, get-shape, shape-defined?
+    - [ ] Validate referenced traits exist
+
+*** NEXT [#A] Implement shape conformance                               :feature:
+    - [ ] conforms? returns matched alternative or nil
+    - [ ] uses existing satisfies-all? for trait checks
+
+*** NEXT [#A] Migrate behavior input design to shapes                   :architecture:
+    - [ ] Behavior inputs become {:alias :shape/name}
+    - [ ] Dispatcher resolves input candidates by :input-tag, then conforms? by shape
+
+*** LATER [#C] Explore fact/Datalog-backed traits and shapes             :architecture:
+    - [ ] Traits become inferred/asserted facts over entities
+    - [ ] Shapes become queries/constraints over facts
 
 ** PROJ Visibility & Debugging [0/6]
 Users can see what's configured, what's happening, and why.
@@ -410,8 +432,8 @@ Architectural decisions that must be resolved before implementation.
 
      Routing rules are owned by a dedicated component, not by the behavior
      module, a separate ambient config module, or the subscription. The
-     component owns the rules in its state and declares a trait describing
-     the shape, e.g. :trait/has-url-routing-rules.
+     component owns the rules in its state and declares traits describing
+     its attrs. A shape composes those traits for behavior input matching.
 
      Behaviors declare the component-state inputs they need:
 
@@ -421,7 +443,7 @@ Architectural decisions that must be resolved before implementation.
        :respond-to [:event.kind.url/opened]
        :commands {:open-in-app :url-dispatch.commands/open-in-app
                   :show-chooser :url-dispatch.commands/show-chooser}
-       :inputs {:rules [:trait/has-url-routing-rules]}
+       :inputs {:rules :shape/url-routing-rules}
        :fn (fn [event candidates send-cmd inputs]
              ;; inputs.rules is raw state from the tagged routing-rules component
              ...)})
@@ -438,11 +460,11 @@ Architectural decisions that must be resolved before implementation.
       :event-selector :event.kind.url/opened}
      #+end_src
 
-     The dispatcher resolves :input-tag to component state, validates that
-     the selected component satisfies the behavior's declared input traits,
+     The dispatcher resolves :input-tag to input candidates, validates that
+     the selected component conforms to the behavior's declared input shape,
      and invokes the behavior as (fn [event candidates send-cmd inputs]).
-     No separate cardinality field: the trait describes the state shape, and
-     tag assignment controls which component participates.
+     No separate cardinality field: the shape describes conformance, and tag
+     assignment controls which components participate.
 
      For now inputs pass raw component state. Later, add trait-projected or
      read-only protected inputs so behaviors only see the fields guaranteed
@@ -552,6 +574,17 @@ Architectural decisions that must be resolved before implementation.
 
 *** NOW Phase 1: Core Dispatch [2/11]
 
+**** NEXT [#A] Add behavior input dispatch support                      :architecture:
+     - [ ] Extend make-behavior data with optional :inputs
+           {:alias :shape/name}
+     - [ ] Validate input shapes in add-behavior!
+     - [ ] Extend subscription data with optional :input-tag
+     - [ ] Dispatcher resolves :input-tag to the input candidate set via tags
+     - [ ] For each behavior input alias, find a candidate that conforms to
+           the declared shape and pass that raw state as inputs.alias
+     - [ ] Preserve backwards compatibility for existing 3-arg behaviors
+     - [ ] Depends on: PROJ Sheaf Shapes
+
 **** NEXT [#A] Define URL event hierarchy and concrete events           :feature:
      - [ ] Add to events/init.fnl:
        Kind hierarchy:
@@ -564,16 +597,6 @@ Architectural decisions that must be resolved before implementation.
                   :sender-bundle-id string?}
      - [ ] :sender and :sender-bundle-id are nil when PID lookup fails
            (not "unknown" — nil is idiomatic Lua)
-
-**** NEXT [#A] Add behavior input dispatch support                      :architecture:
-     - [ ] Extend make-behavior data with optional :inputs
-           {:alias [:trait/name ...]}
-     - [ ] Validate input traits in add-behavior!
-     - [ ] Extend subscription data with optional :input-tag
-     - [ ] Dispatcher resolves :input-tag via tags, validates the selected
-           component state against the behavior's input traits, and passes raw
-           state as inputs.alias
-     - [ ] Preserve backwards compatibility for existing 3-arg behaviors
 
 **** NEXT [#A] Create URL event source                                  :feature:
      - [ ] event_sources/url-handler.fnl, :event-source.type/url-handler
@@ -626,6 +649,7 @@ Architectural decisions that must be resolved before implementation.
 
 **** NEXT [#A] Create URL routing-rules component                       :feature:
      - [ ] Add :trait/has-url-routing-rules to traits/init.fnl
+     - [ ] Add :shape/url-routing-rules to shapes/init.fnl
      - [ ] Create components/url-routing-rules.fnl with
            :component.type/url-routing-rules
      - [ ] start-fn returns raw state containing ordered browsers, fallback
@@ -653,23 +677,6 @@ Architectural decisions that must be resolved before implementation.
      - [X] :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
      - [X] Use hs.chooser (async, non-blocking)
 
-**** NEXT [#A] Create URL routing behavior                              :feature:
-     - [ ] behaviors/url-routing.fnl
-     - [ ] :url-dispatch.behaviors/route-url
-     - [ ] Responds to [:event.kind.url/opened]
-     - [ ] Commands: {:open-in-app :url-dispatch.commands/open-in-app
-                  :show-chooser :url-dispatch.commands/show-chooser}
-     - [ ] Inputs: {:rules [:trait/has-url-routing-rules]}
-     - [ ] First-match-wins against ordered structured rules
-     - [ ] Match URL fields with simple wildcard semantics
-     - [ ] Match sender using event.event-data.sender-bundle-id
-     - [ ] Apply configured fallback action when no rule matches
-     - [ ] Resolve :browser-id through inputs.rules.browsers before dispatch
-     - [ ] Resolve :browser-ids :all to all configured browsers
-     - [ ] Dispatch :open-in-app for {:type :open-in-app :browser-id ...}
-     - [ ] Dispatch :show-chooser for {:type :choose :browser-ids ...}
-     - [ ] Depends on: behavior inputs implemented
-
 **** NEXT [#A] Add browser choice resolution helpers                    :feature:
      - [ ] Build browser lookup table from inputs.rules.browsers by :id
      - [ ] Resolve :browser-id to {:id :bundle-id :name :path :image?}
@@ -679,6 +686,23 @@ Architectural decisions that must be resolved before implementation.
      - [ ] Convert resolved browsers to hs.chooser choices with
            {:text name :subText bundle-id :image image :bundle-id bundle-id}
      - [ ] Warn and skip missing browser IDs or unresolved bundle IDs
+
+**** NEXT [#A] Create URL routing behavior                              :feature:
+     - [ ] behaviors/url-routing.fnl
+     - [ ] :url-dispatch.behaviors/route-url
+     - [ ] Responds to [:event.kind.url/opened]
+     - [ ] Commands: {:open-in-app :url-dispatch.commands/open-in-app
+                  :show-chooser :url-dispatch.commands/show-chooser}
+     - [ ] Inputs: {:rules :shape/url-routing-rules}
+     - [ ] First-match-wins against ordered structured rules
+     - [ ] Match URL fields with simple wildcard semantics
+     - [ ] Match sender using event.event-data.sender-bundle-id
+     - [ ] Apply configured fallback action when no rule matches
+     - [ ] Resolve :browser-id through inputs.rules.browsers before dispatch
+     - [ ] Resolve :browser-ids :all to all configured browsers
+     - [ ] Dispatch :open-in-app for {:type :open-in-app :browser-id ...}
+     - [ ] Dispatch :show-chooser for {:type :choose :browser-ids ...}
+     - [ ] Depends on: behavior inputs implemented
 
 **** NEXT [#A] Wire subscription and integrate into core [0/3]          :feature:
      - [ ] Define subscription in subscriptions/init.fnl:
