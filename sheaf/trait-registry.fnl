@@ -9,10 +9,11 @@
 ;; A trait is a data structure:
 ;;   {:name :trait/has-menubar
 ;;    :description "Component state includes a menubar object"
-;;    :schema {:menubar (fn [v] (not= nil v))}}
+;;    :attrs {:menubar (fn [v] (not= nil v))}
+;;    :pred nil}
 ;;
-;; Schema is a map of {key -> predicate-fn}. satisfies? checks that every
-;; key is present in state and every predicate passes.
+;; Attrs is a map of {key -> predicate-fn}. satisfies? checks that every
+;; attr predicate passes, then checks optional whole-state :pred.
 ;;
 ;; Traits form a hierarchy via lib/hierarchy.fnl, rooted at :trait.kind/any.
 ;;
@@ -36,18 +37,36 @@
    :hierarchy opts.hierarchy})
 
 
-(fn make-trait [name description opts]
+(fn trait-attrs [trait]
+  "Return a trait's attr contract. Supports legacy :schema trait data."
+  (or trait.attrs trait.schema))
+
+
+(fn normalize-attrs [attrs]
+  "Return attrs from the new direct form or legacy {:schema attrs} form."
+  (or (?. attrs :attrs) (?. attrs :schema) attrs))
+
+
+(fn normalize-pred [attrs pred]
+  "Return the optional whole-state predicate from the new or legacy form."
+  (or pred (?. attrs :pred)))
+
+
+(fn make-trait [name description attrs ?pred]
   "Create a trait data structure (pure, no validation).
    name: unique identifier (e.g. :trait/has-menubar)
    description: human-readable description
-   opts:
-     :schema - {key -> predicate-fn} defining required state keys (required)
-   Returns: {:name :description :schema}"
-  (when (= nil opts.schema)
-    (error (.. "make-trait: :schema is required for " (tostring name))))
-  {:name name
-   :description description
-   :schema opts.schema})
+   attrs: {key -> predicate-fn} defining required state attrs (required)
+   ?pred: optional predicate over the whole state
+   Returns: {:name :description :attrs :pred}"
+  (let [normalized-attrs (normalize-attrs attrs)
+        normalized-pred (normalize-pred attrs ?pred)]
+    (when (= nil normalized-attrs)
+      (error (.. "make-trait: attrs are required for " (tostring name))))
+    {:name name
+     :description description
+     :attrs normalized-attrs
+     :pred normalized-pred}))
 
 
 ;; ============================================================================
@@ -83,17 +102,19 @@
 
 
 (fn satisfies? [registry trait-name state]
-  "Check if state satisfies a trait's schema.
-   Every key in the schema must be present in state and its predicate must pass.
+  "Check if state satisfies a trait's attr contract.
+   Every attr predicate must pass, then optional :pred must pass.
    Returns true if all checks pass, false otherwise."
   (let [trait (get-trait registry trait-name)]
     (when (= nil trait)
       (error (.. "satisfies?: trait not found: " (tostring trait-name))))
     (var ok true)
-    (each [key pred (pairs trait.schema) &until (not ok)]
-      (let [val (. state key)]
+    (each [key pred (pairs (trait-attrs trait)) &until (not ok)]
+      (let [val (. (or state {}) key)]
         (when (not (pred val))
           (set ok false))))
+    (when (and ok trait.pred (not (trait.pred (or state {}))))
+      (set ok false))
     ok))
 
 

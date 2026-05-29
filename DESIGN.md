@@ -101,9 +101,10 @@ components — no separate source management needed.
 
 ### Trait
 
-A named atomic contract over component state attributes. Traits say
-"this state has this property"; components declare which traits they
-implement. Commands require traits on targets.
+A named state property. A trait can require multiple attributes using
+per-attribute predicates, and may also include a predicate over the
+whole state to express relationships between those attributes. Components
+declare which traits they implement. Commands require traits on targets.
 
 ### Shape
 

@@ -70,8 +70,8 @@ Built incrementally — each phase is independently functional.
      Event sources fold into components. Built incrementally in 6 phases.
 
 ***** DONE Phase 1: Trait system [4/4]
-      Trait = atomic state contract, initially represented as a schema map.
-      Schema is {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
+      Trait = state property over one or more attrs, represented as an attrs map.
+      Attrs are {key → predicate-fn}. Traits form a hierarchy via lib/hierarchy.fnl.
       No dependencies — can be built standalone.
 
       - [X] Implement sheaf/trait-registry.fnl: make-trait-registry (takes trait-hierarchy),
@@ -286,13 +286,26 @@ System is performant and has comprehensive documentation for users.
 Logical composition of traits for behavior inputs and future Datalog-style state.
 
 *** NEXT [#A] Define shape concept                                      :architecture:
-    - Trait = atomic attr predicate: (make-trait :trait/name "desc" {:attr pred})
-    - Shape = OR of named alternatives, AND of traits inside each alternative
-    - Example: (make-shape :shape/name "desc" [{:name :alt1 :traits [:trait/a :trait/b]}])
+    - [X] Define trait data contract:
+          {:name kw :description string :attrs {attr pred} :pred ?state-pred}
+    - [X] Define trait satisfaction semantics:
+          every attr predicate must pass, then optional :pred checks cross-attr invariants
+    - [ ] Define shape data contract:
+          {:name kw :description string :alts [{:name kw :traits [trait-kw ...]}]}
+    - [ ] Define shape conformance semantics:
+          alternatives are OR, traits inside an alternative are AND
+    - [ ] Define conforms? return shape:
+          nil on no match, matched alternative data on success
+    - [ ] Decide validation errors for duplicate alt names, missing traits,
+          empty :alts, and empty :traits
+    - [ ] Add examples:
+          (make-trait :trait/users "..." {:users pred :length number?} rel-pred)
+          (make-shape :shape/url-routing-rules "..." [{:name :default :traits [...]}])
 
 *** NEXT [#A] Simplify trait constructor form                           :refactor:
-    - [ ] Support (make-trait :trait/name "desc" {:attr pred})
-    - [ ] Migrate existing callers away from {:schema {...}}
+    - [X] Support (make-trait :trait/name "desc" {:attr pred ...})
+    - [X] Support optional relation predicate over the state attrs
+    - [X] Migrate existing callers away from {:schema {...}}
 
 *** NEXT [#A] Implement shape registry                                  :feature:
     - [ ] sheaf/shape-registry.fnl

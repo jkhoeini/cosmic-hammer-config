@@ -66,39 +66,39 @@
 (add-trait! trait-registry
   (make-trait :trait/has-menubar
               "Component state includes an hs.menubar object"
-              {:schema {:menubar non-nil?}}))
+              {:menubar non-nil?}))
 
 (add-trait! trait-registry
   (make-trait :trait/has-expose
               "Component state includes an hs.expose object"
-              {:schema {:expose non-nil?}}))
+              {:expose non-nil?}))
 
 (add-trait! trait-registry
   (make-trait :trait/has-chooser
               "Component state includes an hs.chooser object"
-              {:schema {:chooser non-nil?}}))
+              {:chooser non-nil?}))
 
 (add-trait! trait-registry
   (make-trait :trait/has-canvas
               "Component state includes hs.canvas objects"
-              {:schema {:active-canvas non-nil?}}))
+              {:active-canvas non-nil?}))
 
 ;; --- Windowing ---
 (add-trait! trait-registry
   (make-trait :trait/has-window-filter
               "Component state includes an hs.window.filter"
-              {:schema {:window-filter non-nil?}}))
+              {:window-filter non-nil?}))
 
 (add-trait! trait-registry
   (make-trait :trait/has-layout
               "Component state includes window layout tables"
-              {:schema {:window-list non-nil? :index-table non-nil?}}))
+              {:window-list non-nil? :index-table non-nil?}))
 
 ;; --- Scheduling ---
 (add-trait! trait-registry
   (make-trait :trait/has-delayed-timer
               "Component state includes an hs.timer.delayed"
-              {:schema {:timer non-nil?}}))
+              {:timer non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)

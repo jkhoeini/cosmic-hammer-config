@@ -17,6 +17,11 @@ A **Hammerspoon configuration** using **Fennel** (Lisp that compiles to Lua). Da
 
 **Requirements:** [mise](https://mise.jdx.dev/) for tool management, `deps` tool (from deps.fnl project)
 
+### Shell / Tooling Notes
+
+- The user's interactive shell is `zsh`; if a tool is missing in a non-interactive command, retry with `zsh -ic '<cmd>'` before investigating PATH or mise.
+- Prefer project scripts directly, especially `./compile.sh`. Do not install tools, edit shell startup files, or change mise/env config unless the user explicitly asks.
+
 **No test framework.** Testing done manually via Hammerspoon console.
 **No linter.** Use Fennel compiler errors for feedback.
 
