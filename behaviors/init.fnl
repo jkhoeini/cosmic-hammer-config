@@ -5,6 +5,7 @@
 (local {: make-behavior-registry : add-behavior!} (require :sheaf.behavior-registry))
 (local {: event-registry} (require :events))
 (local {: command-registry} (require :commands))
+(local {: shape-registry} (require :shapes))
 
 ;; Import behavior data
 (local {: compile-fennel-behavior} (require :behaviors.compile-fennel))
@@ -16,7 +17,8 @@
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
-                                                  :command-registry command-registry}))
+                                                  :command-registry command-registry
+                                                  :shape-registry shape-registry}))
 (add-behavior! behavior-registry compile-fennel-behavior)
 (add-behavior! behavior-registry reload-hammerspoon-behavior)
 (add-behavior! behavior-registry toggle-expose-behavior)

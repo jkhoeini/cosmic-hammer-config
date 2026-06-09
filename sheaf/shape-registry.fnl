@@ -20,8 +20,8 @@
 ;; Naming convention:
 ;;   :shape/descriptor-name
 ;;
-;; NOTE: Dispatcher and behavior-registry wiring for shaped inputs is a
-;; separate TODO (see "Migrate behavior input design to shapes").
+;; Dispatcher and behavior-registry wiring for shaped inputs is implemented
+;; in sheaf/dispatcher.fnl (build-inputs) and sheaf/behavior-registry.fnl (:inputs).
 
 (local {: satisfies-all? : trait-defined?} (require :sheaf.trait-registry))
 

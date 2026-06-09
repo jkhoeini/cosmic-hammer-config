@@ -5,18 +5,21 @@
 ;; A behavior-registry is a data structure:
 ;;   {:behaviors {}          ; behavior-name -> behavior data
 ;;    :event-registry r      ; for event-selector validation
-;;    :command-registry cr}  ; for command validation
+;;    :command-registry cr   ; for command validation
+;;    :shape-registry sr}    ; for input shape validation (optional)
 ;;
 ;; A behavior is a data structure:
 ;;   {:name :my-behavior
 ;;    :description "Human-readable description"
 ;;    :respond-to [:event.kind/something]
 ;;    :commands {:local-alias :namespace.commands/action}
-;;    :fn (fn [event candidates send-cmd] ...)}
+;;    :inputs {:alias :shape/name}  ; optional - shaped state inputs
+;;    :fn (fn [event candidates send-cmd inputs] ...)}
 
 (local {: some} (require :lib.cljlib-shim))
 (local {: valid-event-selector?} (require :sheaf.event-registry))
 (local {: command-defined?} (require :sheaf.command-registry))
+(local {: shape-defined?} (require :sheaf.shape-registry))
 (local {: isa?} (require :lib.hierarchy))
 
 
@@ -28,14 +31,16 @@
   "Create a new behavior registry.
    opts:
      :event-registry    - for event-selector validation (required)
-     :command-registry  - for command validation (required)"
+     :command-registry  - for command validation (required)
+     :shape-registry    - for input shape validation (optional)"
   (when (= nil opts.event-registry)
     (error "make-behavior-registry: :event-registry is required"))
   (when (= nil opts.command-registry)
     (error "make-behavior-registry: :command-registry is required"))
   {:behaviors {}
    :event-registry opts.event-registry
-   :command-registry opts.command-registry})
+   :command-registry opts.command-registry
+   :shape-registry opts.shape-registry})
 
 
 (fn make-behavior [opts]
@@ -45,8 +50,10 @@
      :description - human-readable description (required)
      :respond-to  - list of event-names or event-kinds this behavior responds to (required)
      :commands    - map of {local-alias -> command-registry-name} (default {})
-     :fn          - (fn [event candidates send-cmd] ...) - called when matching event occurs (required)
-   Returns: {:name :description :respond-to :commands :fn}"
+     :inputs      - map of {alias -> shape-name} for shaped state inputs (default {})
+     :fn          - (fn [event candidates send-cmd inputs] ...) - called when matching event occurs (required)
+                    inputs is nil when the behavior declares no :inputs or the subscription has no :input-tag
+   Returns: {:name :description :respond-to :commands :inputs :fn}"
   (when (= nil opts.name)
     (error "make-behavior: :name is required"))
   (when (= nil opts.description)
@@ -59,6 +66,7 @@
    :description opts.description
    :respond-to opts.respond-to
    :commands (or opts.commands {})
+   :inputs (or opts.inputs {})
    :fn opts.fn})
 
 
@@ -69,8 +77,10 @@
 (fn add-behavior! [registry behavior]
   "Add a behavior to the registry. Mutates registry.
    Validates event-selectors against registry.event-registry.
-   Validates command references against registry.command-registry."
-  (let [name behavior.name]
+   Validates command references against registry.command-registry.
+   Validates input shape references against registry.shape-registry (when inputs declared)."
+  (let [name behavior.name
+        inputs (or behavior.inputs {})]
     (when (= nil name)
       (error "add-behavior!: behavior must have a :name"))
     (when (not= nil (. registry.behaviors name))
@@ -88,6 +98,17 @@
                    ": command '" (tostring cmd-name)
                    "' (alias '" (tostring alias)
                    "') not found in command-registry"))))
+    ;; Validate input shape references
+    (when (next inputs)
+      (when (= nil registry.shape-registry)
+        (error (.. "add-behavior! " (tostring name)
+                   ": behavior declares :inputs but registry has no :shape-registry")))
+      (each [alias shape-name (pairs inputs)]
+        (when (not (shape-defined? registry.shape-registry shape-name))
+          (error (.. "add-behavior! " (tostring name)
+                     ": input shape '" (tostring shape-name)
+                     "' (alias '" (tostring alias)
+                     "') not found in shape-registry")))))
     (tset registry.behaviors name behavior)))
 
 

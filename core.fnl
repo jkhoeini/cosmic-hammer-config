@@ -31,7 +31,7 @@
 (local {: start-dispatcher!} (require :sheaf.dispatcher))
 (local {: make-event-loop : start-event-loop!} (require :sheaf.event-loop))
 
-(start-dispatcher! subscription-registry component-registry)
+(start-dispatcher! subscription-registry component-registry shape-registry)
 (local event-loop (make-event-loop event-registry))
 (start-event-loop! event-loop)
 

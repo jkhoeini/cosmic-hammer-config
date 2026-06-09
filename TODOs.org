@@ -282,7 +282,7 @@ System is performant and has comprehensive documentation for users.
      - How they are independent but compose together
      - See DESIGN.md for current reference
 
-** PROJ Sheaf Shapes [4/6]
+** PROJ Sheaf Shapes [5/6]
 Logical composition of traits for behavior inputs and future Datalog-style state.
 
 *** DONE [#A] Define shape concept                                      :architecture:
@@ -321,9 +321,9 @@ Logical composition of traits for behavior inputs and future Datalog-style state
     - [X] conforms? returns matched alternative or nil
     - [X] uses existing satisfies-all? for trait checks
 
-*** NEXT [#A] Migrate behavior input design to shapes                   :architecture:
-    - [ ] Behavior inputs become {:alias :shape/name}
-    - [ ] Dispatcher resolves input candidates by :input-tag, then conforms? by shape
+*** DONE [#A] Migrate behavior input design to shapes                   :architecture:
+    - [X] Behavior inputs become {:alias :shape/name}
+    - [X] Dispatcher resolves input candidates by :input-tag, then conforms? by shape
 
 *** LATER [#C] Explore fact/Datalog-backed traits and shapes             :architecture:
     - [ ] Traits become inferred/asserted facts over entities
@@ -590,18 +590,18 @@ Architectural decisions that must be resolved before implementation.
      - [X] Explicit rule action can show chooser for all or a subset
      - [X] Force-chooser hotkey is deferred to later work, not part of fallback
 
-*** NOW Phase 1: Core Dispatch [2/11]
+*** NOW Phase 1: Core Dispatch [3/11]
 
-**** NEXT [#A] Add behavior input dispatch support                      :architecture:
-     - [ ] Extend make-behavior data with optional :inputs
+**** DONE [#A] Add behavior input dispatch support                      :architecture:
+     - [X] Extend make-behavior data with optional :inputs
            {:alias :shape/name}
-     - [ ] Validate input shapes in add-behavior!
-     - [ ] Extend subscription data with optional :input-tag
-     - [ ] Dispatcher resolves :input-tag to the input candidate set via tags
-     - [ ] For each behavior input alias, find a candidate that conforms to
+     - [X] Validate input shapes in add-behavior!
+     - [X] Extend subscription data with optional :input-tag
+     - [X] Dispatcher resolves :input-tag to the input candidate set via tags
+     - [X] For each behavior input alias, find a candidate that conforms to
            the declared shape and pass that raw state as inputs.alias
-     - [ ] Preserve backwards compatibility for existing 3-arg behaviors
-     - [ ] Depends on: PROJ Sheaf Shapes
+     - [X] Preserve backwards compatibility for existing 3-arg behaviors
+     - [X] Depends on: PROJ Sheaf Shapes (DONE)
 
 **** NEXT [#A] Define URL event hierarchy and concrete events           :feature:
      - [ ] Add to events/init.fnl:
