@@ -14,7 +14,7 @@
           (let [path (?. file-change-event :event-data :file-path)
                 target (. candidates.reload 1)]
             (when (and target (not= nil path)
-                       (= ".hammerspoon/init.lua" (path:sub -21)))
+                       (= "/init.lua" (path:sub -9)))
               (send-cmd target :reload {}))))}))
 
 {: reload-hammerspoon-behavior}

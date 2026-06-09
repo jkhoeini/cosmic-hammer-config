@@ -963,7 +963,7 @@ package.preload["notify"] = package.preload["notify"] or function(...)
   local notification_duration = 30
   local margin = 64
   local stack_gap = 8
-  local icons_dir = (os.getenv("HOME") .. "/.hammerspoon/icons")
+  local icons_dir = (hs.configdir .. "/icons")
   local icon_paths = {info = (icons_dir .. "/info.png"), warn = (icons_dir .. "/warn.png"), error = (icons_dir .. "/error.png")}
   local header_colors = {info = {red = 0.2, green = 0.4, blue = 0.6, alpha = 1}, warn = {red = 0.7, green = 0.5, blue = 0.1, alpha = 1}, error = {red = 0.7, green = 0.2, blue = 0.2, alpha = 1}}
   local active_notifications = {}
@@ -2985,7 +2985,7 @@ package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.rel
       path = t_402_
     end
     local target = candidates.reload[1]
-    if (target and (nil ~= path) and (".hammerspoon/init.lua" == path:sub(-21))) then
+    if (target and (nil ~= path) and ("/init.lua" == path:sub(-9))) then
       return send_cmd(target, "reload", {})
     else
       return nil

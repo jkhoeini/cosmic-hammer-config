@@ -9,8 +9,8 @@
 ;; Gap between stacked notifications
 (local stack-gap 8)
 
-;; Path to icons directory
-(local icons-dir (.. (os.getenv "HOME") "/.hammerspoon/icons"))
+;; Path to icons directory (resolved relative to the config dir, not a fixed name)
+(local icons-dir (.. hs.configdir "/icons"))
 
 ;; Icon paths for each notification type
 (local icon-paths

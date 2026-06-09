@@ -1108,7 +1108,7 @@ move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign 
      - Requires: Component concept, Tag registry, dynamic source start/stop at runtime
      - This is the clean final state — unblocked only after those concepts are implemented
 
-* Chores [0/2]
+* Chores [0/3]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
     - For now linked manually
     - Need to investigate proper permission handling for hs.ipc.cliInstall
@@ -1116,6 +1116,22 @@ move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign 
 *** LATER [#C] Make thumbnail height advisable when #102 lands        :feature:
     - Related to GitHub issue #102
     - Thumbnail height calculation should be configurable/advisable
+
+*** LATER [#C] Review archived Spoons online before discarding         :tooling:
+    Local copies lived in Spoons/ (untracked, gitignored) and were removed
+    2026-06-09 during the move off the Hammerspoon app. Look each up at
+    https://www.hammerspoon.org/Spoons/ (or its source repo) and decide whether
+    any are worth reimplementing as a Sheaf component. PaperWM and
+    ReloadConfiguration are already covered natively
+    (paper-wm.fnl; reload-hammerspoon + config-watcher).
+    - Calendar — a calendar inset into the desktop
+    - CircleClock — a clock inset into the desktop
+    - ClipboardTool — clipboard history for text, managed via a context menu
+    - Emojis — choose emojis by name/keyword
+    - HSKeybindings — display keybindings registered with bindHotkeys() and Spoons
+    - KSheet — keybindings cheatsheet for the current application
+    - PaperWM — tile windows horizontally (already ported → paper-wm.fnl)
+    - ReloadConfiguration — reload hotkey + pathwatcher auto-reload (already covered)
 
 * DONE Archived [16/16]
 
