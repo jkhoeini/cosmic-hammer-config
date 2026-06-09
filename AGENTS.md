@@ -24,6 +24,14 @@ A **Hammerspoon configuration** written in **Fennel** (a Lisp that compiles to L
 - The interactive shell is `zsh`; if a tool is missing in a non-interactive command, retry with `zsh -ic '<cmd>'` before investigating PATH or mise.
 - Prefer project scripts directly (`./compile.sh`). Do not install tools, edit shell startup files, or change mise/env config unless explicitly asked.
 
+### Version Control
+
+This project uses **Jujutsu (jj)**, not Git. Use `jj` commands for all VCS operations.
+
+- `jj commit -m "message"` — finalize the current change and create a new empty working copy on top. Prefer this over `jj describe` + `jj new`.
+- `jj describe -m "message"` — only to update a message without finalizing.
+- Do not push unless explicitly asked.
+
 ## Project Structure
 
 ```
