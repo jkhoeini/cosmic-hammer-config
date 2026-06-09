@@ -36,7 +36,7 @@ paper-wm.fnl        # PaperWM tiling port (started directly in core.fnl)
 notify.fnl          # On-screen notification helper
 
 sheaf/              # The ENGINE — generic, domain-agnostic
-  {event,trait,source,component,command,behavior,subscription,tag}-registry.fnl
+  {event,trait,source,component,command,behavior,subscription,tag,shape}-registry.fnl
   dispatcher.fnl    # Event-time: resolves candidates by tag, runs behaviors
   event-loop.fnl    # Event processing loop
 
@@ -47,6 +47,7 @@ lib/
 # CONTENT — each dir's init.fnl builds that domain's registry:
 events/init.fnl        # Event definitions + event-kind hierarchy
 traits/init.fnl        # Trait definitions (state contracts) + trait-kind hierarchy
+shapes/init.fnl        # Shape definitions (logical compositions of traits)
 event_sources/         # Source types (file/window/app/space/screen/hotkey watchers)
 components/            # Component types + instance startup + tag attachment
 commands/              # Commands (actions on components; declare :requires-traits)
@@ -65,7 +66,7 @@ See `DESIGN.md` for the concepts (Events, Commands, Components, Traits, Shapes, 
 **Boot order** (`core.fnl`), each registry feeding the next:
 
 ```
-events → traits → event_sources → components → commands → behaviors → subscriptions
+events → traits → shapes → event_sources → components → commands → behaviors → subscriptions
        → start-dispatcher! → start-event-loop!
 ```
 

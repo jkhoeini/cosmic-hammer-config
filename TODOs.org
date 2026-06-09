@@ -22,12 +22,12 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [16/92]
-** PROJ Configuration as Data [6/26]
+* Projects [31/123]
+** PROJ Configuration as Data [12/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
 
-*** NOW Milestone 3: Sheaf Core [6/14]
+*** LATER Milestone 3: Sheaf Core [6/14]
 Realize the Sheaf pattern: traits, components, tags, subscriptions, behaviors, dispatcher.
 Built incrementally — each phase is independently functional.
 
@@ -211,7 +211,7 @@ Built incrementally — each phase is independently functional.
       - Parent lifecycle controls children: stopping parent stops children
       - Enables paper-wm component owning per-window child components
 
-*** Milestone 4: System Map [0/1]
+*** LATER Milestone 4: System Map [0/1]
 The entire system is a single declarative value — inspectable, serializable, reconstructable.
 
 **** LATER [#B] Define system map concept                              :architecture:
@@ -220,7 +220,7 @@ The entire system is a single declarative value — inspectable, serializable, r
      - Replaces procedural boot sequence in core.fnl
      - Capstone of the Sheaf pattern
 
-*** Milestone 5: Modules [0/1]
+*** LATER Milestone 5: Modules [0/1]
 Higher-level bundles of components, behaviors, subscriptions, and config that provide a complete feature.
 
 **** LATER [#B] Define module concept                                  :architecture:
@@ -233,7 +233,7 @@ Higher-level bundles of components, behaviors, subscriptions, and config that pr
      - Users can override module defaults with their own config
      - Enables fast, high-level feature composition without wiring individual atoms
 
-*** Milestone 6: Rich Event Matching & Timing [0/3]
+*** LATER Milestone 6: Rich Event Matching & Timing [0/3]
 Behaviors and subscriptions gain richer matching and timing controls.
 
 **** LATER [#B] Multiple respond-to profiles per behavior              :feature:
@@ -249,7 +249,7 @@ Behaviors and subscriptions gain richer matching and timing controls.
      - Event-kinds define schemas
      - Child events inherit and extend parent schemas
 
-*** Milestone 7: Optimized & Documented [0/5]
+*** LATER Milestone 7: Optimized & Documented [0/5]
 System is performant and has comprehensive documentation for users.
 
 **** LATER [#B] Standardize registry constructors and define-*! functions :refactor:
@@ -282,39 +282,44 @@ System is performant and has comprehensive documentation for users.
      - How they are independent but compose together
      - See DESIGN.md for current reference
 
-** PROJ Sheaf Shapes [0/6]
+** PROJ Sheaf Shapes [4/6]
 Logical composition of traits for behavior inputs and future Datalog-style state.
 
-*** NEXT [#A] Define shape concept                                      :architecture:
+*** DONE [#A] Define shape concept                                      :architecture:
     - [X] Define trait data contract:
           {:name kw :description string :attrs {attr pred} :pred ?state-pred}
     - [X] Define trait satisfaction semantics:
           every attr predicate must pass, then optional :pred checks cross-attr invariants
-    - [ ] Define shape data contract:
+    - [X] Define shape data contract:
           {:name kw :description string :alts [{:name kw :traits [trait-kw ...]}]}
-    - [ ] Define shape conformance semantics:
+    - [X] Define shape conformance semantics:
           alternatives are OR, traits inside an alternative are AND
-    - [ ] Define conforms? return shape:
+          Empty :traits in an alt = always matches (useful as fallback)
+    - [X] Define conforms? return shape:
           nil on no match, matched alternative data on success
-    - [ ] Decide validation errors for duplicate alt names, missing traits,
+          Errors on unknown shape-name (like satisfies? errors on unknown traits)
+    - [X] Decide validation errors for duplicate alt names, missing traits,
           empty :alts, and empty :traits
-    - [ ] Add examples:
+          make-shape: validates name, description, non-empty alts, alt structure, no dup alt names
+          add-shape!: validates trait references exist, no dup shape names
+          Empty :traits is allowed (empty AND = true, useful as fallback alt)
+    - [X] Add examples:
           (make-trait :trait/users "..." {:users pred :length number?} rel-pred)
           (make-shape :shape/url-routing-rules "..." [{:name :default :traits [...]}])
 
-*** NEXT [#A] Simplify trait constructor form                           :refactor:
+*** DONE [#A] Simplify trait constructor form                           :refactor:
     - [X] Support (make-trait :trait/name "desc" {:attr pred ...})
     - [X] Support optional relation predicate over the state attrs
     - [X] Migrate existing callers away from {:schema {...}}
 
-*** NEXT [#A] Implement shape registry                                  :feature:
-    - [ ] sheaf/shape-registry.fnl
-    - [ ] make-shape-registry, make-shape, add-shape!, get-shape, shape-defined?
-    - [ ] Validate referenced traits exist
+*** DONE [#A] Implement shape registry                                  :feature:
+    - [X] sheaf/shape-registry.fnl
+    - [X] make-shape-registry, make-shape, add-shape!, get-shape, shape-defined?
+    - [X] Validate referenced traits exist
 
-*** NEXT [#A] Implement shape conformance                               :feature:
-    - [ ] conforms? returns matched alternative or nil
-    - [ ] uses existing satisfies-all? for trait checks
+*** DONE [#A] Implement shape conformance                               :feature:
+    - [X] conforms? returns matched alternative or nil
+    - [X] uses existing satisfies-all? for trait checks
 
 *** NEXT [#A] Migrate behavior input design to shapes                   :architecture:
     - [ ] Behavior inputs become {:alias :shape/name}

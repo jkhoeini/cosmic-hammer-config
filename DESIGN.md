@@ -113,6 +113,13 @@ component-state inputs as alternatives: each alternative is a set of
 traits that must all hold. Shapes let behaviors ask for "state matching
 this role" without binding to a specific component.
 
+- **name** — unique identifier (e.g., `:shape/displayable`)
+- **alts** — ordered list of alternatives (OR semantics between alts)
+  - each alt has a `:name` and a `:traits` list (AND semantics within)
+  - an alt with empty `:traits` always matches (useful as a fallback)
+- **conformance** — `conforms?` tries each alt in order; first where
+  all traits are satisfied wins. Returns the matched alt or nil.
+
 ### Behavior
 
 A rule with logic that maps events to commands. Receives the set of
