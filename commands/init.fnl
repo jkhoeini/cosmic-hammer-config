@@ -16,6 +16,7 @@
 (local {: show-active-border-command
         : show-inactive-border-command
         : hide-borders-command} (require :commands.window-border))
+(local {: record-url-command} (require :commands.record-url))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry {:trait-registry trait-registry}))
@@ -29,6 +30,7 @@
 (add-command! command-registry show-active-border-command)
 (add-command! command-registry show-inactive-border-command)
 (add-command! command-registry hide-borders-command)
+(add-command! command-registry record-url-command)
 
 
 {: command-registry}

@@ -26,6 +26,7 @@
 (local {: window-border-type} (require :components.window-border))
 (local {: url-dispatch-type} (require :components.url-dispatch))
 (local {: url-routing-rules-type} (require :components.url-routing-rules))
+(local {: url-history-type} (require :components.url-history))
 
 
 ;; ============================================================================
@@ -43,7 +44,8 @@
 ;; ├── :component.kind/app-watcher
 ;; ├── :component.kind/window-border
 ;; ├── :component.kind/url-dispatch
-;; └── :component.kind/url-routing-rules
+;; ├── :component.kind/url-routing-rules
+;; └── :component.kind/url-history
 
 (local component-hierarchy (make-hierarchy))
 
@@ -58,6 +60,7 @@
 (derive! component-hierarchy :component.kind/window-border :component.kind/any)
 (derive! component-hierarchy :component.kind/url-dispatch :component.kind/any)
 (derive! component-hierarchy :component.kind/url-routing-rules :component.kind/any)
+(derive! component-hierarchy :component.kind/url-history :component.kind/any)
 
 ;; Derive concrete types from their kinds
 (derive! component-hierarchy :component.type/space-indicator :component.kind/space-indicator)
@@ -71,6 +74,7 @@
 (derive! component-hierarchy :component.type/window-border :component.kind/window-border)
 (derive! component-hierarchy :component.type/url-dispatch :component.kind/url-dispatch)
 (derive! component-hierarchy :component.type/url-routing-rules :component.kind/url-routing-rules)
+(derive! component-hierarchy :component.type/url-history :component.kind/url-history)
 
 
 ;; ============================================================================
@@ -105,6 +109,7 @@
 (add-component-type! component-registry window-border-type)
 (add-component-type! component-registry url-dispatch-type)
 (add-component-type! component-registry url-routing-rules-type)
+(add-component-type! component-registry url-history-type)
 
 
 ;; ============================================================================
@@ -122,6 +127,7 @@
 (local window-border-name (make-instance-name :component.type/window-border "main"))
 (local url-dispatch-name (make-instance-name :component.type/url-dispatch "main"))
 (local url-routing-rules-name (make-instance-name :component.type/url-routing-rules "default"))
+(local url-history-name (make-instance-name :component.type/url-history "main"))
 
 
 ;; ============================================================================
@@ -140,6 +146,7 @@
                   {:active-color "0xffe1e3e4" :inactive-color "0xff494d64" :width 5 :corner-radius 9})
 (start-component! component-registry :component.type/url-dispatch url-dispatch-name {})
 (start-component! component-registry :component.type/url-routing-rules url-routing-rules-name {})
+(start-component! component-registry :component.type/url-history url-history-name {})
 
 
 ;; ============================================================================
@@ -154,6 +161,7 @@
 (attach-tag! tag-registry window-border-name :tag/window-border)
 (attach-tag! tag-registry url-dispatch-name :tag/url-dispatch)
 (attach-tag! tag-registry url-routing-rules-name :tag/url-routing-rules)
+(attach-tag! tag-registry url-history-name :tag/url-history)
 
 
 ;; Export registries (hierarchy accessible via component-registry.hierarchy)

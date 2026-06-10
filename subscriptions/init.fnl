@@ -102,4 +102,12 @@
   :input-tag :tag/url-routing-rules
   :event-selector :event.kind.url/opened})
 
+(define-subscription! subscription-registry
+ :sub/record-url-on-dispatch
+ {:description "Record dispatched URLs into history"
+  :behavior :url-history.behaviors/record-on-dispatch
+  :source-tag :tag/url-handler
+  :target-tag :tag/url-history
+  :event-selector :event.kind.url/opened})
+
 {: subscription-registry}

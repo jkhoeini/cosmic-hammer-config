@@ -31,7 +31,8 @@
 ;; │   └── :trait/has-delayed-timer
 ;; │
 ;; └── :trait.kind/data                      ;; Pure config/data in state
-;;     └── :trait/has-url-routing-rules
+;;     ├── :trait/has-url-routing-rules
+;;     └── :trait/has-url-history
 
 (local trait-hierarchy (make-hierarchy))
 
@@ -56,6 +57,7 @@
 ;; --- Data ---
 (derive! trait-hierarchy :trait.kind/data :trait.kind/any)
 (derive! trait-hierarchy :trait/has-url-routing-rules :trait.kind/data)
+(derive! trait-hierarchy :trait/has-url-history :trait.kind/data)
 
 
 ;; ============================================================================
@@ -113,6 +115,12 @@
   (make-trait :trait/has-url-routing-rules
               "Component state includes URL routing configuration: browsers, fallback, and rules"
               {:browsers non-nil? :fallback non-nil? :rules non-nil?}))
+
+
+(add-trait! trait-registry
+  (make-trait :trait/has-url-history
+              "Component state includes URL visit history"
+              {:history non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)
