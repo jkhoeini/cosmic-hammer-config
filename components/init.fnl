@@ -24,6 +24,7 @@
 (local {: window-watcher-type} (require :components.window-watcher))
 (local {: app-watcher-type} (require :components.app-watcher))
 (local {: window-border-type} (require :components.window-border))
+(local {: url-dispatch-type} (require :components.url-dispatch))
 
 
 ;; ============================================================================
@@ -39,7 +40,8 @@
 ;; ├── :component.kind/config-watcher
 ;; ├── :component.kind/window-watcher
 ;; ├── :component.kind/app-watcher
-;; └── :component.kind/window-border
+;; ├── :component.kind/window-border
+;; └── :component.kind/url-dispatch
 
 (local component-hierarchy (make-hierarchy))
 
@@ -52,6 +54,7 @@
 (derive! component-hierarchy :component.kind/window-watcher :component.kind/any)
 (derive! component-hierarchy :component.kind/app-watcher :component.kind/any)
 (derive! component-hierarchy :component.kind/window-border :component.kind/any)
+(derive! component-hierarchy :component.kind/url-dispatch :component.kind/any)
 
 ;; Derive concrete types from their kinds
 (derive! component-hierarchy :component.type/space-indicator :component.kind/space-indicator)
@@ -63,6 +66,7 @@
 (derive! component-hierarchy :component.type/window-watcher :component.kind/window-watcher)
 (derive! component-hierarchy :component.type/app-watcher :component.kind/app-watcher)
 (derive! component-hierarchy :component.type/window-border :component.kind/window-border)
+(derive! component-hierarchy :component.type/url-dispatch :component.kind/url-dispatch)
 
 
 ;; ============================================================================
@@ -95,6 +99,7 @@
 (add-component-type! component-registry window-watcher-type)
 (add-component-type! component-registry app-watcher-type)
 (add-component-type! component-registry window-border-type)
+(add-component-type! component-registry url-dispatch-type)
 
 
 ;; ============================================================================
@@ -110,6 +115,7 @@
 (local window-watcher-name (make-instance-name :component.type/window-watcher "main"))
 (local app-watcher-name (make-instance-name :component.type/app-watcher "main"))
 (local window-border-name (make-instance-name :component.type/window-border "main"))
+(local url-dispatch-name (make-instance-name :component.type/url-dispatch "main"))
 
 
 ;; ============================================================================
@@ -126,6 +132,7 @@
 (start-component! component-registry :component.type/app-watcher app-watcher-name {})
 (start-component! component-registry :component.type/window-border window-border-name
                   {:active-color "0xffe1e3e4" :inactive-color "0xff494d64" :width 5 :corner-radius 9})
+(start-component! component-registry :component.type/url-dispatch url-dispatch-name {})
 
 
 ;; ============================================================================
@@ -138,6 +145,7 @@
 (attach-tag! tag-registry reload-hammerspoon-name :tag/reload-hammerspoon)
 (attach-tag! tag-registry compile-fennel-name :tag/compile-fennel)
 (attach-tag! tag-registry window-border-name :tag/window-border)
+(attach-tag! tag-registry url-dispatch-name :tag/url-dispatch)
 
 
 ;; Export registries (hierarchy accessible via component-registry.hierarchy)
