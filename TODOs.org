@@ -437,7 +437,7 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-** PROJ URL Dispatch [6/19]
+** PROJ URL Dispatch [17/19]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
 Depends on: event hierarchy (done), source registry (done), component architecture (done),
 tag-based subscription routing (done), dispatcher (done).
@@ -590,7 +590,7 @@ Architectural decisions that must be resolved before implementation.
      - [X] Explicit rule action can show chooser for all or a subset
      - [X] Force-chooser hotkey is deferred to later work, not part of fallback
 
-*** NOW Phase 1: Core Dispatch [3/11]
+*** DONE Phase 1: Core Dispatch [11/11]
 
 **** DONE [#A] Add behavior input dispatch support                      :architecture:
      - [X] Extend make-behavior data with optional :inputs
@@ -603,8 +603,8 @@ Architectural decisions that must be resolved before implementation.
      - [X] Preserve backwards compatibility for existing 3-arg behaviors
      - [X] Depends on: PROJ Sheaf Shapes (DONE)
 
-**** NEXT [#A] Define URL event hierarchy and concrete events           :feature:
-     - [ ] Add to events/init.fnl:
+**** DONE [#A] Define URL event hierarchy and concrete events           :feature:
+     - [X] Add to events/init.fnl:
        Kind hierarchy:
          :event.kind.url/any → :event.kind/any
          :event.kind.url/opened → :event.kind.url/any
@@ -613,13 +613,13 @@ Architectural decisions that must be resolved before implementation.
          Schema: {:url string? :original string? :scheme string? :host string?
                   :path string? :params table? :sender string?
                   :sender-bundle-id string?}
-     - [ ] :sender and :sender-bundle-id are nil when PID lookup fails
+     - [X] :sender and :sender-bundle-id are nil when PID lookup fails
            (not "unknown" — nil is idiomatic Lua)
 
-**** NEXT [#A] Create URL event source                                  :feature:
-     - [ ] event_sources/url-handler.fnl, :event-source.type/url-handler
-     - [ ] Config schema: {:decoders table? :decoder-max-depth number?}
-     - [ ] start-fn:
+**** DONE [#A] Create URL event source                                  :feature:
+     - [X] event_sources/url-handler.fnl, :event-source.type/url-handler
+     - [X] Config schema: {:decoders table? :decoder-max-depth number?}
+     - [X] start-fn:
        Save previous default handlers via hs.urlevent.getDefaultHandler("http")
        and hs.urlevent.getDefaultHandler("https")
        Register for BOTH http AND https via hs.urlevent.setDefaultHandler
@@ -631,44 +631,44 @@ Architectural decisions that must be resolved before implementation.
        Parse the decoded URL with hs.http.urlParts to populate :path
        Emit :url-handler.events/url-opened with
        {url, original, scheme, host, path, params, sender, sender-bundle-id}
-     - [ ] stop-fn: restore both previous default handlers
-     - [ ] Register source type in event_sources/init.fnl
-     - [ ] Note: macOS shows "set as default browser" confirmation dialog on first registration
+     - [X] stop-fn: restore both previous default handlers
+     - [X] Register source type in event_sources/init.fnl
+     - [X] Note: macOS shows "set as default browser" confirmation dialog on first registration
 
-**** NEXT [#A] Implement decoder pipeline in URL event source            :feature:
-     - [ ] Ordered list of decoders in source config {:decoders [...]}
-     - [ ] Each decoder operates on current (already-decoded) URL, not original
-     - [ ] Decoder schema:
+**** DONE [#A] Implement decoder pipeline in URL event source            :feature:
+     - [X] Ordered list of decoders in source config {:decoders [...]}
+     - [X] Each decoder operates on current (already-decoded) URL, not original
+     - [X] Decoder schema:
            {:name :decoder-name
             :match {:scheme :https :host "*.example.com" :path "/*"}
             :decode-fn (fn [ctx] decoded-url-or-nil)}
      - [ ] Decoder ctx is {:url current-url :parts (hs.http.urlParts current-url)}
-     - [ ] nil return means no transform; keep current URL and continue
-     - [ ] Returned string replaces current URL
-     - [ ] Continue until stable or :decoder-max-depth, default 5
-     - [ ] Do not perform network redirect expansion
-     - [ ] Pipeline runs in start-fn before emit — source emits already-decoded URL
-     - [ ] Built-in decoders:
+     - [X] nil return means no transform; keep current URL and continue
+     - [X] Returned string replaces current URL
+     - [X] Continue until stable or :decoder-max-depth, default 5
+     - [X] Do not perform network redirect expansion
+     - [X] Pipeline runs in start-fn before emit — source emits already-decoded URL
+     - [X] Built-in decoders:
        Slack redirect: URLs matching slack-redir.net → extract real URL from query param
        Outlook SafeLinks: URLs matching safelinks.protection.outlook.com → extract real URL
-     - [ ] Decoders defined in event_sources/url-decoders.fnl, imported by source
+     - [X] Decoders defined in event_sources/url-decoders.fnl, imported by source
 
-**** NEXT [#A] Create url-dispatch component                            :feature:
-     - [ ] components/url-dispatch.fnl with make-component-type :component.type/url-dispatch
-     - [ ] Derive :component.kind/url-dispatch from :component.kind/any
-     - [ ] Owned source: {:type :event-source.type/url-handler
+**** DONE [#A] Create url-dispatch component                            :feature:
+     - [X] components/url-dispatch.fnl with make-component-type :component.type/url-dispatch
+     - [X] Derive :component.kind/url-dispatch from :component.kind/any
+     - [X] Owned source: {:type :event-source.type/url-handler
                       :config {:decoders [slack-redir-decoder outlook-decoder]}
                       :instance-name "main"
                       :tags [:tag/url-handler]}
-     - [ ] start-fn: returns {} (stateless in Phase 1; Phase 2 adds history state)
-     - [ ] No traits required in Phase 1
-     - [ ] Register in components/init.fnl:
+     - [X] start-fn: returns {} (stateless in Phase 1; Phase 2 adds history state)
+     - [X] No traits required in Phase 1
+     - [X] Register in components/init.fnl:
        Derive component kind, add type, start instance, attach :tag/url-dispatch
 
-**** NEXT [#A] Create URL routing-rules component                       :feature:
-     - [ ] Add :trait/has-url-routing-rules to traits/init.fnl
-     - [ ] Add :shape/url-routing-rules to shapes/init.fnl
-     - [ ] Create components/url-routing-rules.fnl with
+**** DONE [#A] Create URL routing-rules component                       :feature:
+     - [X] Add :trait/has-url-routing-rules to traits/init.fnl
+     - [X] Add :shape/url-routing-rules to shapes/init.fnl
+     - [X] Create components/url-routing-rules.fnl with
            :component.type/url-routing-rules
      - [ ] start-fn returns raw state containing ordered browsers, fallback
            action, and ordered rules
@@ -681,11 +681,11 @@ Architectural decisions that must be resolved before implementation.
             :match {:urls [{:scheme [:http :https] :host "*.example.com" :path "/*"}]
                     :sender-bundle-ids ["com.example.App"]}
             :action {:type :open-in-app :browser-id :chrome}}
-     - [ ] Support chooser actions:
+     - [X] Support chooser actions:
            {:type :choose :browser-ids [:safari :chrome]}
            {:type :choose :browser-ids :all}
-     - [ ] Register component kind/type in components/init.fnl
-     - [ ] Start routing-rules instance and attach :tag/url-routing-rules
+     - [X] Register component kind/type in components/init.fnl
+     - [X] Start routing-rules instance and attach :tag/url-routing-rules
 
 **** DONE Create open-in-app command                                    :feature:
      - [X] :url-dispatch.commands/open-in-app {url, bundle-id}
@@ -695,43 +695,43 @@ Architectural decisions that must be resolved before implementation.
      - [X] :url-dispatch.commands/show-chooser {url, choices [{name, bundle-id}]}
      - [X] Use hs.chooser (async, non-blocking)
 
-**** NEXT [#A] Add browser choice resolution helpers                    :feature:
-     - [ ] Build browser lookup table from inputs.rules.browsers by :id
-     - [ ] Resolve :browser-id to {:id :bundle-id :name :path :image?}
-     - [ ] Enrich configured bundle IDs using hs.application.nameForBundleID
+**** DONE [#A] Add browser choice resolution helpers                    :feature:
+     - [X] Build browser lookup table from inputs.rules.browsers by :id
+     - [X] Resolve :browser-id to {:id :bundle-id :name :path :image?}
+     - [X] Enrich configured bundle IDs using hs.application.nameForBundleID
            and hs.application.pathForBundleID
-     - [ ] Add app icon with hs.image.imageFromAppBundle when available
-     - [ ] Convert resolved browsers to hs.chooser choices with
+     - [X] Add app icon with hs.image.imageFromAppBundle when available
+     - [X] Convert resolved browsers to hs.chooser choices with
            {:text name :subText bundle-id :image image :bundle-id bundle-id}
-     - [ ] Warn and skip missing browser IDs or unresolved bundle IDs
+     - [X] Warn and skip missing browser IDs or unresolved bundle IDs
 
-**** NEXT [#A] Create URL routing behavior                              :feature:
-     - [ ] behaviors/url-routing.fnl
-     - [ ] :url-dispatch.behaviors/route-url
-     - [ ] Responds to [:event.kind.url/opened]
-     - [ ] Commands: {:open-in-app :url-dispatch.commands/open-in-app
+**** DONE [#A] Create URL routing behavior                              :feature:
+     - [X] behaviors/url-routing.fnl
+     - [X] :url-dispatch.behaviors/route-url
+     - [X] Responds to [:event.kind.url/opened]
+     - [X] Commands: {:open-in-app :url-dispatch.commands/open-in-app
                   :show-chooser :url-dispatch.commands/show-chooser}
-     - [ ] Inputs: {:rules :shape/url-routing-rules}
-     - [ ] First-match-wins against ordered structured rules
-     - [ ] Match URL fields with simple wildcard semantics
-     - [ ] Match sender using event.event-data.sender-bundle-id
-     - [ ] Apply configured fallback action when no rule matches
-     - [ ] Resolve :browser-id through inputs.rules.browsers before dispatch
-     - [ ] Resolve :browser-ids :all to all configured browsers
-     - [ ] Dispatch :open-in-app for {:type :open-in-app :browser-id ...}
-     - [ ] Dispatch :show-chooser for {:type :choose :browser-ids ...}
-     - [ ] Depends on: behavior inputs implemented
+     - [X] Inputs: {:rules :shape/url-routing-rules}
+     - [X] First-match-wins against ordered structured rules
+     - [X] Match URL fields with simple wildcard semantics
+     - [X] Match sender using event.event-data.sender-bundle-id
+     - [X] Apply configured fallback action when no rule matches
+     - [X] Resolve :browser-id through inputs.rules.browsers before dispatch
+     - [X] Resolve :browser-ids :all to all configured browsers
+     - [X] Dispatch :open-in-app for {:type :open-in-app :browser-id ...}
+     - [X] Dispatch :show-chooser for {:type :choose :browser-ids ...}
+     - [X] Depends on: behavior inputs implemented
 
-**** NEXT [#A] Wire subscription and integrate into core [0/3]          :feature:
-     - [ ] Define subscription in subscriptions/init.fnl:
+**** DONE [#A] Wire subscription and integrate into core [3/3]          :feature:
+     - [X] Define subscription in subscriptions/init.fnl:
            :sub/route-url-on-open
            source-tag: :tag/url-handler
            target-tag: :tag/url-dispatch
            input-tag: :tag/url-routing-rules
            behavior: :url-dispatch.behaviors/route-url
            event-selector: :event.kind.url/opened
-     - [ ] Register behavior in behaviors/init.fnl
-     - [ ] Verify boot order in core.fnl (no changes expected — follows existing pattern)
+     - [X] Register behavior in behaviors/init.fnl
+     - [X] Verify boot order in core.fnl (no changes expected — follows existing pattern)
 
 **** LATER [#C] Add trait-projected/read-only behavior inputs            :architecture:
      - [ ] Project input state to fields guaranteed by requested traits

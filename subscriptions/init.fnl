@@ -93,4 +93,13 @@
   :target-tag :tag/window-border
   :event-selector :event.kind.window/not-visible})
 
+(define-subscription! subscription-registry
+ :sub/route-url-on-open
+ {:description "Route opened URLs to browsers based on rules"
+  :behavior :url-dispatch.behaviors/route-url
+  :source-tag :tag/url-handler
+  :target-tag :tag/url-dispatch
+  :input-tag :tag/url-routing-rules
+  :event-selector :event.kind.url/opened})
+
 {: subscription-registry}

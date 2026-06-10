@@ -12,6 +12,7 @@
 (local {: window-watcher-source-type} (require :event_sources.window-watcher))
 (local {: window-element-watcher-source-type} (require :event_sources.window-element-watcher))
 (local {: app-watcher-source-type} (require :event_sources.app-watcher))
+(local {: url-handler-source-type} (require :event_sources.url-handler))
 
 
 ;; Create source registry
@@ -26,6 +27,7 @@
 (add-source-type! source-registry window-watcher-source-type)
 (add-source-type! source-registry window-element-watcher-source-type)
 (add-source-type! source-registry app-watcher-source-type)
+(add-source-type! source-registry url-handler-source-type)
 
 
 {: source-registry}

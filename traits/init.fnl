@@ -27,8 +27,11 @@
 ;; │   ├── :trait/has-window-filter
 ;; │   └── :trait/has-layout
 ;; │
-;; └── :trait.kind/scheduling                ;; Timer-based operations
-;;     └── :trait/has-delayed-timer
+;; ├── :trait.kind/scheduling                ;; Timer-based operations
+;; │   └── :trait/has-delayed-timer
+;; │
+;; └── :trait.kind/data                      ;; Pure config/data in state
+;;     └── :trait/has-url-routing-rules
 
 (local trait-hierarchy (make-hierarchy))
 
@@ -49,6 +52,10 @@
 
 ;; --- Scheduling ---
 (derive! trait-hierarchy :trait/has-delayed-timer :trait.kind/scheduling)
+
+;; --- Data ---
+(derive! trait-hierarchy :trait.kind/data :trait.kind/any)
+(derive! trait-hierarchy :trait/has-url-routing-rules :trait.kind/data)
 
 
 ;; ============================================================================
@@ -99,6 +106,13 @@
   (make-trait :trait/has-delayed-timer
               "Component state includes an hs.timer.delayed"
               {:timer non-nil?}))
+
+
+;; --- Data ---
+(add-trait! trait-registry
+  (make-trait :trait/has-url-routing-rules
+              "Component state includes URL routing configuration: browsers, fallback, and rules"
+              {:browsers non-nil? :fallback non-nil? :rules non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)

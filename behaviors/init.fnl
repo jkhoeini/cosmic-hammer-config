@@ -14,6 +14,7 @@
 (local {: update-space-indicator-behavior} (require :behaviors.update-space-indicator))
 (local {: open-emacs-behavior} (require :behaviors.open-emacs))
 (local {: update-on-focus-behavior : update-on-move-behavior : hide-on-disappear-behavior} (require :behaviors.window-border))
+(local {: route-url-behavior} (require :behaviors.url-routing))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -27,6 +28,7 @@
 (add-behavior! behavior-registry update-on-focus-behavior)
 (add-behavior! behavior-registry update-on-move-behavior)
 (add-behavior! behavior-registry hide-on-disappear-behavior)
+(add-behavior! behavior-registry route-url-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

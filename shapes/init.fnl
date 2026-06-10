@@ -8,7 +8,7 @@
 ;; No shapes are registered yet — behaviors do not use shaped inputs until
 ;; the "Migrate behavior input design to shapes" TODO is implemented.
 
-(local {: make-shape-registry} (require :sheaf.shape-registry))
+(local {: make-shape-registry : make-shape : add-shape!} (require :sheaf.shape-registry))
 (local {: trait-registry} (require :traits))
 
 
@@ -23,7 +23,10 @@
 ;; Shape Definitions
 ;; ============================================================================
 
-;; (Shapes will be defined here as behaviors declare shaped inputs.)
+(add-shape! shape-registry
+  (make-shape :shape/url-routing-rules
+              "URL routing configuration: browsers, fallback action, and ordered rules"
+              [{:name :default :traits [:trait/has-url-routing-rules]}]))
 
 
 ;; Export registry

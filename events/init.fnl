@@ -11,6 +11,7 @@
 
 (local number? (fn [x] (= (type x) :number)))
 (local table? (fn [x] (= (type x) :table)))
+(local nil-or-string? (fn [x] (or (= x nil) (string? x))))
 
 
 ;; ============================================================================
@@ -63,8 +64,11 @@
 ;; ├── :event.kind.wifi/any                ;; WiFi events
 ;; │   └── :event.kind.wifi/changed
 ;; │
-;; └── :event.kind.battery/any             ;; Battery events
+;; ├── :event.kind.battery/any             ;; Battery events
 ;;     └── :event.kind.battery/changed
+;; │
+;; └── :event.kind.url/any                 ;; URL events
+;;     └── :event.kind.url/opened
 
 (local event-hierarchy (make-hierarchy))
 
@@ -125,6 +129,10 @@
 ;; --- Battery ---
 (derive! event-hierarchy :event.kind.battery/any :event.kind/any)
 (derive! event-hierarchy :event.kind.battery/changed :event.kind.battery/any)
+
+;; --- URL ---
+(derive! event-hierarchy :event.kind.url/any :event.kind/any)
+(derive! event-hierarchy :event.kind.url/opened :event.kind.url/any)
 
 
 ;; ============================================================================
@@ -253,6 +261,16 @@
                "Application hidden"
                {:app-name string? :bundle-id string? :pid number?})
 (derive! event-hierarchy :app-watcher.events/hidden :event.kind.app/hidden)
+
+
+;; --- URL Handler Events ---
+(define-event! event-registry
+               :url-handler.events/url-opened
+               "URL opened via default browser handler"
+               {:url string? :original string? :scheme string? :host string?
+                :path nil-or-string? :params table?
+                :sender nil-or-string? :sender-bundle-id nil-or-string?})
+(derive! event-hierarchy :url-handler.events/url-opened :event.kind.url/opened)
 
 
 ;; Export registry (hierarchy accessible via event-registry.hierarchy)
