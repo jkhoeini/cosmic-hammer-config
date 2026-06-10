@@ -98,7 +98,7 @@
                               (when hash-pos (table.insert candidates hash-pos))
                               (if (= 0 (length candidates))
                                   nil
-                                  (math.min (unpack candidates))))
+                                  (math.min (table.unpack candidates))))
               host-part (if authority-end
                             (rest:sub 1 (- authority-end 1))
                             rest)

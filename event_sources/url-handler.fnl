@@ -32,7 +32,8 @@
   (if (and parts parts.queryItems)
       (let [p {}]
         (each [_ item (ipairs parts.queryItems)]
-          (tset p item.name item.value))
+          (when item.name
+            (tset p item.name item.value)))
         p)
       (or fallback-params {})))
 
@@ -49,6 +50,10 @@
         prev-http (hs.urlevent.getDefaultHandler :http)
         prev-https (hs.urlevent.getDefaultHandler :https)
         callback (fn [scheme host params full-url sender-pid]
+                   (print (.. "[DEBUG] url-handler: received URL=" (tostring full-url)
+                              " scheme=" (tostring scheme)
+                              " host=" (tostring host)
+                              " senderPID=" (tostring sender-pid)))
                    (let [original full-url
                          ;; Run decoder pipeline
                          decoded (run-decoders decoders max-depth full-url)
@@ -58,6 +63,9 @@
                          decoded-params (extract-params parts params)
                          ;; Resolve sender info
                          (sender-name sender-bid) (resolve-sender sender-pid)]
+                     (print (.. "[DEBUG] url-handler: emitting event, decoded="
+                                (tostring decoded) " sender=" (tostring sender-name)
+                                " bid=" (tostring sender-bid)))
                      (emit :url-handler.events/url-opened
                            {:url decoded
                             :original original

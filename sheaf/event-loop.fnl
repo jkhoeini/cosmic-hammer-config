@@ -28,12 +28,18 @@
 (fn process-event! [event-loop]
   "Process one event from the queue.
    Pops the first event and runs it through all handlers.
+   Errors in individual handlers are caught and logged so one bad event
+   cannot kill the event loop timer.
    Returns true if an event was processed, false if queue was empty."
   (let [registry event-loop.event-registry]
     (if (< 0 (length registry.queue))
         (let [event (table.remove registry.queue 1)]
-          (each [_ handler (pairs registry.handlers)]
-            (handler event))
+          (each [handler-key handler (pairs registry.handlers)]
+            (let [(ok err) (pcall handler event)]
+              (when (not ok)
+                (print (.. "[ERROR] event-loop: handler '" (tostring handler-key)
+                           "' failed on event '" (tostring event.event-name)
+                           "': " (tostring err))))))
           true)
         false)))
 

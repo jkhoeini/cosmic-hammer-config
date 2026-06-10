@@ -130,7 +130,7 @@
                 (when ctx.parts.queryItems
                   (var target nil)
                   (each [_ item (ipairs ctx.parts.queryItems)]
-                    (when (and (not target) (= item.name :url))
+                    (when (and (not target) item.name (= item.name :url))
                       (set target item.value)))
                   target))})
 
@@ -142,7 +142,7 @@
                 (when ctx.parts.queryItems
                   (var target nil)
                   (each [_ item (ipairs ctx.parts.queryItems)]
-                    (when (and (not target) (= item.name :url))
+                    (when (and (not target) item.name (= item.name :url))
                       (set target item.value)))
                   target))})
 

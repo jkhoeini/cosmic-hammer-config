@@ -9,6 +9,8 @@
    "Open a URL in a specific app by bundle ID"
    {:schema {:url string? :bundle-id string?}
     :fn (fn [component params]
+          (print (.. "[DEBUG] open-in-app: url=" (tostring params.url)
+                     " bundle-id=" (tostring params.bundle-id)))
           (hs.urlevent.openURLWithBundle params.url params.bundle-id)
           nil)}))
 

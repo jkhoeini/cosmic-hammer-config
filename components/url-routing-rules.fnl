@@ -19,15 +19,20 @@
    "URL routing configuration: browsers, fallback action, and ordered rules"
    {:traits [:trait/has-url-routing-rules]
     :start-fn (fn [config]
-                {:browsers [{:id :safari :bundle-id "com.apple.Safari"}
-                            {:id :chrome :bundle-id "com.google.Chrome"}
-                            {:id :firefox :bundle-id "org.mozilla.firefox"}
-                            {:id :arc :bundle-id "company.thebrowser.Browser"}]
-                 :fallback {:type :open-in-app :browser-id :safari}
-                 :rules [{:id :work-slack-links
-                          :match {:urls [{:scheme [:http :https]
-                                          :host "*.slack.com"}]
-                                  :sender-bundle-ids ["com.tinyspeck.slackmacgap"]}
-                          :action {:type :open-in-app :browser-id :chrome}}]})}))
+                {:browsers [{:id :orion    :bundle-id "com.kagi.kagimacOS"}
+                            {:id :firefox  :bundle-id "org.mozilla.firefox"}
+                            {:id :arc      :bundle-id "company.thebrowser.Browser"}
+                            {:id :chrome   :bundle-id "com.google.Chrome"}
+                            {:id :safari   :bundle-id "com.apple.Safari"}
+                            {:id :brave    :bundle-id "com.brave.Browser"}
+                            {:id :edge     :bundle-id "com.microsoft.edgemac"}
+                            {:id :zen      :bundle-id "app.zen-browser.zen"}
+                            {:id :dia      :bundle-id "company.thebrowser.dia"}
+                            {:id :figma    :bundle-id "com.figma.Desktop"}
+                            {:id :helium   :bundle-id "net.imput.helium"}
+                            {:id :ora      :bundle-id "com.orabrowser.app"}
+                            {:id :surf     :bundle-id "surf.deta"}]
+                 :fallback {:type :choose :browser-ids :all}
+                 :rules []})}))
 
 {: url-routing-rules-type}

@@ -22,8 +22,11 @@
 
 (fn dispatch-open-in-app [action url lookup target send-cmd]
   "Dispatch an :open-in-app action. Resolves browser-id and sends command."
+  (print (.. "[DEBUG] url-routing: dispatch-open-in-app browser-id=" (tostring action.browser-id)))
   (let [browser (resolve-browser action.browser-id lookup)]
     (when browser
+      (print (.. "[DEBUG] url-routing: opening in " (tostring browser.name)
+                 " (" (tostring browser.bundle-id) ")"))
       (send-cmd target :open-in-app {:url url :bundle-id browser.bundle-id}))))
 
 
@@ -42,12 +45,18 @@
 
 (fn dispatch-choose [action url browsers lookup target send-cmd]
   "Dispatch a :choose action. Resolves browser list and sends chooser command."
+  (print (.. "[DEBUG] url-routing: dispatch-choose browser-ids="
+             (tostring action.browser-ids)))
   (let [browser-ids (collect-browser-ids-for-choose action browsers)
         resolved (resolve-browsers browser-ids lookup)
         choices (make-chooser-choices resolved)]
+    (print (.. "[DEBUG] url-routing: resolved " (tostring (length resolved))
+               " browsers, " (tostring (length choices)) " choices"))
     (if (= 0 (length choices))
         (print "[WARN] url-routing: no browsers resolved for chooser, skipping")
-        (send-cmd target :show-chooser {:url url :choices choices}))))
+        (do
+          (print (.. "[DEBUG] url-routing: sending show-chooser to " (tostring target)))
+          (send-cmd target :show-chooser {:url url :choices choices})))))
 
 
 (fn dispatch-action [action url browsers lookup candidates send-cmd]
@@ -86,12 +95,17 @@
                :show-chooser :url-dispatch.commands/show-chooser}
     :inputs {:rules :shape/url-routing-rules}
     :fn (fn [event candidates send-cmd inputs]
+          (print (.. "[DEBUG] url-routing: behavior invoked"))
           (let [url (?. event :event-data :url)
                 sender-bundle-id (?. event :event-data :sender-bundle-id)]
+            (print (.. "[DEBUG] url-routing: url=" (tostring url)
+                       " sender=" (tostring sender-bundle-id)))
             (when (= nil url)
               (print "[WARN] url-routing: event missing :url in event-data")
               (lua "return nil"))
             ;; Extract routing config from shaped inputs
+            (print (.. "[DEBUG] url-routing: inputs=" (tostring inputs)
+                       " inputs.rules=" (tostring (when inputs (?. inputs :rules)))))
             (let [rules-state (when inputs (?. inputs :rules))
                   browsers (or (?. rules-state :browsers) [])
                   rules (or (?. rules-state :rules) [])
@@ -106,6 +120,9 @@
                   action (if matched-rule
                              matched-rule.action
                              fallback)]
+              (print (.. "[DEBUG] url-routing: browsers=" (tostring (length browsers))
+                         " matched-rule=" (tostring (when matched-rule matched-rule.id))
+                         " action.type=" (tostring (?. action :type))))
               (if action
                   (dispatch-action action url browsers lookup candidates send-cmd)
                   (print (.. "[WARN] url-routing: no matching rule and no fallback for URL '"

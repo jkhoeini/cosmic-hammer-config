@@ -1746,8 +1746,8 @@ package.preload["event_sources"] = package.preload["event_sources"] or function(
   local window_element_watcher_source_type = _local_257_["window-element-watcher-source-type"]
   local _local_266_ = require("event_sources.app-watcher")
   local app_watcher_source_type = _local_266_["app-watcher-source-type"]
-  local _local_300_ = require("event_sources.url-handler")
-  local url_handler_source_type = _local_300_["url-handler-source-type"]
+  local _local_301_ = require("event_sources.url-handler")
+  local url_handler_source_type = _local_301_["url-handler-source-type"]
   local source_registry = make_source_registry({["event-registry"] = event_registry})
   add_source_type_21(source_registry, file_watcher_source_type)
   add_source_type_21(source_registry, hotkey_source_type)
@@ -2185,7 +2185,10 @@ package.preload["event_sources.url-handler"] = package.preload["event_sources.ur
     if (parts and parts.queryItems) then
       local p = {}
       for _, item in ipairs(parts.queryItems) do
-        p[item.name] = item.value
+        if item.name then
+          p[item.name] = item.value
+        else
+        end
       end
       return p
     else
@@ -2198,33 +2201,35 @@ package.preload["event_sources.url-handler"] = package.preload["event_sources.ur
     local prev_http = hs.urlevent.getDefaultHandler("http")
     local prev_https = hs.urlevent.getDefaultHandler("https")
     local callback
-    local function _290_(scheme, host, params, full_url, sender_pid)
+    local function _291_(scheme, host, params, full_url, sender_pid)
+      print(("[DEBUG] url-handler: received URL=" .. tostring(full_url) .. " scheme=" .. tostring(scheme) .. " host=" .. tostring(host) .. " senderPID=" .. tostring(sender_pid)))
       local original = full_url
       local decoded = run_decoders(decoders, max_depth, full_url)
       local parts = parse_url_parts(decoded)
       local decoded_params = extract_params(parts, params)
       local sender_name, sender_bid = resolve_sender(sender_pid)
-      local _291_
+      print(("[DEBUG] url-handler: emitting event, decoded=" .. tostring(decoded) .. " sender=" .. tostring(sender_name) .. " bid=" .. tostring(sender_bid)))
+      local _292_
       if parts then
-        _291_ = parts.scheme
+        _292_ = parts.scheme
       else
-        _291_ = (scheme or "")
+        _292_ = (scheme or "")
       end
-      local _293_
+      local _294_
       if parts then
-        _293_ = parts.host
+        _294_ = parts.host
       else
-        _293_ = (host or "")
+        _294_ = (host or "")
       end
-      local _295_
+      local _296_
       if parts then
-        _295_ = parts.path
+        _296_ = parts.path
       else
-        _295_ = nil
+        _296_ = nil
       end
-      return emit("url-handler.events/url-opened", {url = decoded, original = original, scheme = _291_, host = _293_, path = _295_, params = decoded_params, sender = sender_name, ["sender-bundle-id"] = sender_bid})
+      return emit("url-handler.events/url-opened", {url = decoded, original = original, scheme = _292_, host = _294_, path = _296_, params = decoded_params, sender = sender_name, ["sender-bundle-id"] = sender_bid})
     end
-    callback = _290_
+    callback = _291_
     hs.urlevent.setDefaultHandler("http")
     hs.urlevent.httpCallback = callback
     return {["prev-http-handler"] = prev_http, ["prev-https-handler"] = prev_https}
@@ -2339,7 +2344,7 @@ package.preload["event_sources.url-decoders"] = package.preload["event_sources.u
     if ctx.parts.queryItems then
       local target = nil
       for _, item in ipairs(ctx.parts.queryItems) do
-        if (not target and (item.name == "url")) then
+        if (not target and item.name and (item.name == "url")) then
           target = item.value
         else
         end
@@ -2355,7 +2360,7 @@ package.preload["event_sources.url-decoders"] = package.preload["event_sources.u
     if ctx.parts.queryItems then
       local target = nil
       for _, item in ipairs(ctx.parts.queryItems) do
-        if (not target and (item.name == "url")) then
+        if (not target and item.name and (item.name == "url")) then
           target = item.value
         else
         end
@@ -2371,43 +2376,43 @@ package.preload["event_sources.url-decoders"] = package.preload["event_sources.u
 end
 require("event_sources")
 package.preload["components"] = package.preload["components"] or function(...)
-  local _local_301_ = require("lib.hierarchy")
-  local make_hierarchy = _local_301_["make-hierarchy"]
-  local derive_21 = _local_301_["derive!"]
-  local _local_340_ = require("sheaf.component-registry")
-  local make_component_registry = _local_340_["make-component-registry"]
-  local add_component_type_21 = _local_340_["add-component-type!"]
-  local start_component_21 = _local_340_["start-component!"]
-  local make_instance_name = _local_340_["make-instance-name"]
-  local _local_341_ = require("sheaf.tag-registry")
-  local make_tag_registry = _local_341_["make-tag-registry"]
-  local attach_tag_21 = _local_341_["attach-tag!"]
-  local _local_342_ = require("traits")
-  local trait_registry = _local_342_["trait-registry"]
-  local _local_343_ = require("event_sources")
-  local source_registry = _local_343_["source-registry"]
-  local _local_349_ = require("components.space-indicator")
-  local space_indicator_type = _local_349_["space-indicator-type"]
-  local _local_352_ = require("components.expose")
-  local expose_type = _local_352_["expose-type"]
-  local _local_355_ = require("components.emacs")
-  local emacs_type = _local_355_["emacs-type"]
-  local _local_359_ = require("components.reload-hammerspoon")
-  local reload_hammerspoon_type = _local_359_["reload-hammerspoon-type"]
-  local _local_362_ = require("components.compile-fennel")
-  local compile_fennel_type = _local_362_["compile-fennel-type"]
-  local _local_365_ = require("components.config-watcher")
-  local config_watcher_type = _local_365_["config-watcher-type"]
-  local _local_368_ = require("components.window-watcher")
-  local window_watcher_type = _local_368_["window-watcher-type"]
-  local _local_371_ = require("components.app-watcher")
-  local app_watcher_type = _local_371_["app-watcher-type"]
-  local _local_377_ = require("components.window-border")
-  local window_border_type = _local_377_["window-border-type"]
-  local _local_381_ = require("components.url-dispatch")
-  local url_dispatch_type = _local_381_["url-dispatch-type"]
-  local _local_384_ = require("components.url-routing-rules")
-  local url_routing_rules_type = _local_384_["url-routing-rules-type"]
+  local _local_302_ = require("lib.hierarchy")
+  local make_hierarchy = _local_302_["make-hierarchy"]
+  local derive_21 = _local_302_["derive!"]
+  local _local_341_ = require("sheaf.component-registry")
+  local make_component_registry = _local_341_["make-component-registry"]
+  local add_component_type_21 = _local_341_["add-component-type!"]
+  local start_component_21 = _local_341_["start-component!"]
+  local make_instance_name = _local_341_["make-instance-name"]
+  local _local_342_ = require("sheaf.tag-registry")
+  local make_tag_registry = _local_342_["make-tag-registry"]
+  local attach_tag_21 = _local_342_["attach-tag!"]
+  local _local_343_ = require("traits")
+  local trait_registry = _local_343_["trait-registry"]
+  local _local_344_ = require("event_sources")
+  local source_registry = _local_344_["source-registry"]
+  local _local_350_ = require("components.space-indicator")
+  local space_indicator_type = _local_350_["space-indicator-type"]
+  local _local_353_ = require("components.expose")
+  local expose_type = _local_353_["expose-type"]
+  local _local_356_ = require("components.emacs")
+  local emacs_type = _local_356_["emacs-type"]
+  local _local_360_ = require("components.reload-hammerspoon")
+  local reload_hammerspoon_type = _local_360_["reload-hammerspoon-type"]
+  local _local_363_ = require("components.compile-fennel")
+  local compile_fennel_type = _local_363_["compile-fennel-type"]
+  local _local_366_ = require("components.config-watcher")
+  local config_watcher_type = _local_366_["config-watcher-type"]
+  local _local_369_ = require("components.window-watcher")
+  local window_watcher_type = _local_369_["window-watcher-type"]
+  local _local_372_ = require("components.app-watcher")
+  local app_watcher_type = _local_372_["app-watcher-type"]
+  local _local_378_ = require("components.window-border")
+  local window_border_type = _local_378_["window-border-type"]
+  local _local_382_ = require("components.url-dispatch")
+  local url_dispatch_type = _local_382_["url-dispatch-type"]
+  local _local_385_ = require("components.url-routing-rules")
+  local url_routing_rules_type = _local_385_["url-routing-rules-type"]
   local component_hierarchy = make_hierarchy()
   derive_21(component_hierarchy, "component.kind/space-indicator", "component.kind/any")
   derive_21(component_hierarchy, "component.kind/expose", "component.kind/any")
@@ -2477,18 +2482,18 @@ package.preload["components"] = package.preload["components"] or function(...)
   return {["component-registry"] = component_registry, ["tag-registry"] = tag_registry}
 end
 package.preload["sheaf.component-registry"] = package.preload["sheaf.component-registry"] or function(...)
-  local _local_302_ = require("lib.hierarchy")
-  local isa_3f = _local_302_["isa?"]
-  local _local_303_ = require("sheaf.trait-registry")
-  local trait_defined_3f = _local_303_["trait-defined?"]
-  local satisfies_all_3f = _local_303_["satisfies-all?"]
-  local _local_304_ = require("sheaf.source-registry")
-  local source_type_defined_3f = _local_304_["source-type-defined?"]
-  local start_event_source_21 = _local_304_["start-event-source!"]
-  local stop_event_source_21 = _local_304_["stop-event-source!"]
-  local _local_315_ = require("sheaf.tag-registry")
-  local attach_tag_21 = _local_315_["attach-tag!"]
-  local detach_tag_21 = _local_315_["detach-tag!"]
+  local _local_303_ = require("lib.hierarchy")
+  local isa_3f = _local_303_["isa?"]
+  local _local_304_ = require("sheaf.trait-registry")
+  local trait_defined_3f = _local_304_["trait-defined?"]
+  local satisfies_all_3f = _local_304_["satisfies-all?"]
+  local _local_305_ = require("sheaf.source-registry")
+  local source_type_defined_3f = _local_305_["source-type-defined?"]
+  local start_event_source_21 = _local_305_["start-event-source!"]
+  local stop_event_source_21 = _local_305_["stop-event-source!"]
+  local _local_316_ = require("sheaf.tag-registry")
+  local attach_tag_21 = _local_316_["attach-tag!"]
+  local detach_tag_21 = _local_316_["detach-tag!"]
   local function type_name__3edescriptor(type_name)
     return string.match(tostring(type_name), "^component%.type/(.+)$")
   end
@@ -2695,12 +2700,12 @@ package.preload["sheaf.component-registry"] = package.preload["sheaf.component-r
   return {["make-instance-name"] = make_instance_name, ["make-owned-source-name"] = make_owned_source_name, ["valid-instance-name?"] = valid_instance_name_3f, ["make-component-registry"] = make_component_registry, ["make-component-type"] = make_component_type, ["add-component-type!"] = add_component_type_21, ["component-type-defined?"] = component_type_defined_3f, ["get-component-type"] = get_component_type, ["list-component-types"] = list_component_types, ["component-instance-exists?"] = component_instance_exists_3f, ["get-component-instance"] = get_component_instance, ["list-component-instances"] = list_component_instances, ["start-component!"] = start_component_21, ["stop-component!"] = stop_component_21, ["component-type-isa?"] = component_type_isa_3f}
 end
 package.preload["sheaf.tag-registry"] = package.preload["sheaf.tag-registry"] or function(...)
-  local _local_305_ = require("lib.cljlib-shim")
-  local hash_set = _local_305_["hash-set"]
-  local conj = _local_305_.conj
-  local disj = _local_305_.disj
-  local contains_3f = _local_305_["contains?"]
-  local seq = _local_305_.seq
+  local _local_306_ = require("lib.cljlib-shim")
+  local hash_set = _local_306_["hash-set"]
+  local conj = _local_306_.conj
+  local disj = _local_306_.disj
+  local contains_3f = _local_306_["contains?"]
+  local seq = _local_306_.seq
   local function make_tag_registry()
     return {["instance-tags"] = {}, ["tag-instances"] = {}}
   end
@@ -2724,24 +2729,24 @@ package.preload["sheaf.tag-registry"] = package.preload["sheaf.tag-registry"] or
     local tag_insts = registry["tag-instances"][tag]
     if inst_tags then
       local new_set = disj(inst_tags, tag)
-      local _308_
+      local _309_
       if seq(new_set) then
-        _308_ = new_set
+        _309_ = new_set
       else
-        _308_ = nil
+        _309_ = nil
       end
-      registry["instance-tags"][instance_name] = _308_
+      registry["instance-tags"][instance_name] = _309_
     else
     end
     if tag_insts then
       local new_set = disj(tag_insts, instance_name)
-      local _311_
+      local _312_
       if seq(new_set) then
-        _311_ = new_set
+        _312_ = new_set
       else
-        _311_ = nil
+        _312_ = nil
       end
-      registry["tag-instances"][tag] = _311_
+      registry["tag-instances"][tag] = _312_
       return nil
     else
       return nil
@@ -2764,10 +2769,10 @@ package.preload["sheaf.tag-registry"] = package.preload["sheaf.tag-registry"] or
   return {["make-tag-registry"] = make_tag_registry, ["attach-tag!"] = attach_tag_21, ["detach-tag!"] = detach_tag_21, ["get-tags"] = get_tags, ["components-with-tag"] = components_with_tag, ["tag-attached?"] = tag_attached_3f}
 end
 package.preload["components.space-indicator"] = package.preload["components.space-indicator"] or function(...)
-  local _local_344_ = require("sheaf.component-registry")
-  local make_component_type = _local_344_["make-component-type"]
+  local _local_345_ = require("sheaf.component-registry")
+  local make_component_type = _local_345_["make-component-type"]
   local space_indicator_type
-  local function _345_(config)
+  local function _346_(config)
     local menubar = hs.menubar.new(true, "cosmicHammerSpaceIndicator")
     if menubar then
       menubar:setTitle("...")
@@ -2775,92 +2780,92 @@ package.preload["components.space-indicator"] = package.preload["components.spac
     end
     return {menubar = menubar}
   end
-  local function _347_(state)
+  local function _348_(state)
     if state.menubar then
       return state.menubar:delete()
     else
       return nil
     end
   end
-  space_indicator_type = make_component_type("component.type/space-indicator", "Space indicator menubar component", {traits = {"trait/has-menubar"}, sources = {{type = "event-source.type/space-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/space-watcher"}}, {type = "event-source.type/screen-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/screen-watcher"}}}, ["start-fn"] = _345_, ["stop-fn"] = _347_})
+  space_indicator_type = make_component_type("component.type/space-indicator", "Space indicator menubar component", {traits = {"trait/has-menubar"}, sources = {{type = "event-source.type/space-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/space-watcher"}}, {type = "event-source.type/screen-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/screen-watcher"}}}, ["start-fn"] = _346_, ["stop-fn"] = _348_})
   return {["space-indicator-type"] = space_indicator_type}
 end
 package.preload["components.expose"] = package.preload["components.expose"] or function(...)
-  local _local_350_ = require("sheaf.component-registry")
-  local make_component_type = _local_350_["make-component-type"]
+  local _local_351_ = require("sheaf.component-registry")
+  local make_component_type = _local_351_["make-component-type"]
   local expose_type
-  local function _351_(config)
+  local function _352_(config)
     return {expose = hs.expose.new()}
   end
-  expose_type = make_component_type("component.type/expose", "Expose window picker component", {traits = {"trait/has-expose"}, sources = {{type = "event-source.type/hotkey", config = {mods = {"ctrl", "cmd"}, key = "e"}, ["instance-name"] = "toggle", tags = {"tag/expose-hotkey"}}}, ["start-fn"] = _351_})
+  expose_type = make_component_type("component.type/expose", "Expose window picker component", {traits = {"trait/has-expose"}, sources = {{type = "event-source.type/hotkey", config = {mods = {"ctrl", "cmd"}, key = "e"}, ["instance-name"] = "toggle", tags = {"tag/expose-hotkey"}}}, ["start-fn"] = _352_})
   return {["expose-type"] = expose_type}
 end
 package.preload["components.emacs"] = package.preload["components.emacs"] or function(...)
-  local _local_353_ = require("sheaf.component-registry")
-  local make_component_type = _local_353_["make-component-type"]
+  local _local_354_ = require("sheaf.component-registry")
+  local make_component_type = _local_354_["make-component-type"]
   local emacs_type
-  local function _354_(config)
+  local function _355_(config)
     return {}
   end
-  emacs_type = make_component_type("component.type/emacs", "Emacs integration component", {sources = {{type = "event-source.type/hotkey", config = {mods = {"cmd", "alt"}, key = "return"}, ["instance-name"] = "open", tags = {"tag/emacs-hotkey"}}}, ["start-fn"] = _354_})
+  emacs_type = make_component_type("component.type/emacs", "Emacs integration component", {sources = {{type = "event-source.type/hotkey", config = {mods = {"cmd", "alt"}, key = "return"}, ["instance-name"] = "open", tags = {"tag/emacs-hotkey"}}}, ["start-fn"] = _355_})
   return {["emacs-type"] = emacs_type}
 end
 package.preload["components.reload-hammerspoon"] = package.preload["components.reload-hammerspoon"] or function(...)
-  local _local_356_ = require("sheaf.component-registry")
-  local make_component_type = _local_356_["make-component-type"]
+  local _local_357_ = require("sheaf.component-registry")
+  local make_component_type = _local_357_["make-component-type"]
   local reload_hammerspoon_type
-  local function _357_(config)
+  local function _358_(config)
     return {timer = hs.timer.delayed.new(0.5, hs.reload), ["reloading?"] = false}
   end
-  local function _358_(state)
+  local function _359_(state)
     return state.timer:stop()
   end
-  reload_hammerspoon_type = make_component_type("component.type/reload-hammerspoon", "Hammerspoon config reloader with debounce timer", {traits = {"trait/has-delayed-timer"}, ["start-fn"] = _357_, ["stop-fn"] = _358_})
+  reload_hammerspoon_type = make_component_type("component.type/reload-hammerspoon", "Hammerspoon config reloader with debounce timer", {traits = {"trait/has-delayed-timer"}, ["start-fn"] = _358_, ["stop-fn"] = _359_})
   return {["reload-hammerspoon-type"] = reload_hammerspoon_type}
 end
 package.preload["components.compile-fennel"] = package.preload["components.compile-fennel"] or function(...)
-  local _local_360_ = require("sheaf.component-registry")
-  local make_component_type = _local_360_["make-component-type"]
+  local _local_361_ = require("sheaf.component-registry")
+  local make_component_type = _local_361_["make-component-type"]
   local compile_fennel_type
-  local function _361_(config)
+  local function _362_(config)
     return {}
   end
-  compile_fennel_type = make_component_type("component.type/compile-fennel", "Fennel source file compiler", {["start-fn"] = _361_})
+  compile_fennel_type = make_component_type("component.type/compile-fennel", "Fennel source file compiler", {["start-fn"] = _362_})
   return {["compile-fennel-type"] = compile_fennel_type}
 end
 package.preload["components.config-watcher"] = package.preload["components.config-watcher"] or function(...)
-  local _local_363_ = require("sheaf.component-registry")
-  local make_component_type = _local_363_["make-component-type"]
+  local _local_364_ = require("sheaf.component-registry")
+  local make_component_type = _local_364_["make-component-type"]
   local config_watcher_type
-  local function _364_(config)
+  local function _365_(config)
     return {}
   end
-  config_watcher_type = make_component_type("component.type/config-watcher", "Watches config directory for file changes", {sources = {{type = "event-source.type/file-watcher", config = {path = hs.configdir}, ["instance-name"] = "config-dir", tags = {"tag/config-watcher"}}}, ["start-fn"] = _364_})
+  config_watcher_type = make_component_type("component.type/config-watcher", "Watches config directory for file changes", {sources = {{type = "event-source.type/file-watcher", config = {path = hs.configdir}, ["instance-name"] = "config-dir", tags = {"tag/config-watcher"}}}, ["start-fn"] = _365_})
   return {["config-watcher-type"] = config_watcher_type}
 end
 package.preload["components.window-watcher"] = package.preload["components.window-watcher"] or function(...)
-  local _local_366_ = require("sheaf.component-registry")
-  local make_component_type = _local_366_["make-component-type"]
+  local _local_367_ = require("sheaf.component-registry")
+  local make_component_type = _local_367_["make-component-type"]
   local window_watcher_type
-  local function _367_(config)
+  local function _368_(config)
     return {}
   end
-  window_watcher_type = make_component_type("component.type/window-watcher", "Watches window focus, visibility, and fullscreen changes", {sources = {{type = "event-source.type/window-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/window-watcher"}}}, ["start-fn"] = _367_})
+  window_watcher_type = make_component_type("component.type/window-watcher", "Watches window focus, visibility, and fullscreen changes", {sources = {{type = "event-source.type/window-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/window-watcher"}}}, ["start-fn"] = _368_})
   return {["window-watcher-type"] = window_watcher_type}
 end
 package.preload["components.app-watcher"] = package.preload["components.app-watcher"] or function(...)
-  local _local_369_ = require("sheaf.component-registry")
-  local make_component_type = _local_369_["make-component-type"]
+  local _local_370_ = require("sheaf.component-registry")
+  local make_component_type = _local_370_["make-component-type"]
   local app_watcher_type
-  local function _370_(config)
+  local function _371_(config)
     return {}
   end
-  app_watcher_type = make_component_type("component.type/app-watcher", "Watches application lifecycle events (launch, quit, activate, deactivate, hidden)", {sources = {{type = "event-source.type/app-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/app-watcher"}}}, ["start-fn"] = _370_})
+  app_watcher_type = make_component_type("component.type/app-watcher", "Watches application lifecycle events (launch, quit, activate, deactivate, hidden)", {sources = {{type = "event-source.type/app-watcher", config = {}, ["instance-name"] = "default", tags = {"tag/app-watcher"}}}, ["start-fn"] = _371_})
   return {["app-watcher-type"] = app_watcher_type}
 end
 package.preload["components.window-border"] = package.preload["components.window-border"] or function(...)
-  local _local_372_ = require("sheaf.component-registry")
-  local make_component_type = _local_372_["make-component-type"]
+  local _local_373_ = require("sheaf.component-registry")
+  local make_component_type = _local_373_["make-component-type"]
   local function parse_argb_hex(hex_str)
     local n = tonumber(hex_str)
     local a = (((n >> 24) & 255) / 255)
@@ -2879,13 +2884,13 @@ package.preload["components.window-border"] = package.preload["components.window
     return canvas
   end
   local window_border_type
-  local function _373_(config)
+  local function _374_(config)
     local cr = (config["corner-radius"] or 9)
     local active = make_border_canvas(config["active-color"], config.width, cr)
     local inactive = make_border_canvas(config["inactive-color"], config.width, cr)
     return {["active-canvas"] = active, ["inactive-canvas"] = inactive, ["active-window-id"] = nil, ["border-width"] = config.width, ["default-corner-radius"] = cr}
   end
-  local function _374_(state)
+  local function _375_(state)
     if state["active-canvas"] then
       state["active-canvas"]:delete()
     else
@@ -2896,57 +2901,57 @@ package.preload["components.window-border"] = package.preload["components.window
       return nil
     end
   end
-  window_border_type = make_component_type("component.type/window-border", "Draws colored borders around active and inactive windows", {traits = {"trait/has-canvas"}, ["start-fn"] = _373_, ["stop-fn"] = _374_})
+  window_border_type = make_component_type("component.type/window-border", "Draws colored borders around active and inactive windows", {traits = {"trait/has-canvas"}, ["start-fn"] = _374_, ["stop-fn"] = _375_})
   return {["window-border-type"] = window_border_type}
 end
 package.preload["components.url-dispatch"] = package.preload["components.url-dispatch"] or function(...)
-  local _local_378_ = require("sheaf.component-registry")
-  local make_component_type = _local_378_["make-component-type"]
-  local _local_379_ = require("event_sources.url-decoders")
-  local default_decoders = _local_379_["default-decoders"]
+  local _local_379_ = require("sheaf.component-registry")
+  local make_component_type = _local_379_["make-component-type"]
+  local _local_380_ = require("event_sources.url-decoders")
+  local default_decoders = _local_380_["default-decoders"]
   local url_dispatch_type
-  local function _380_(config)
+  local function _381_(config)
     return {}
   end
-  url_dispatch_type = make_component_type("component.type/url-dispatch", "URL dispatch handler - routes URLs through decoders and opens them", {sources = {{type = "event-source.type/url-handler", config = {decoders = default_decoders}, ["instance-name"] = "main", tags = {"tag/url-handler"}}}, ["start-fn"] = _380_})
+  url_dispatch_type = make_component_type("component.type/url-dispatch", "URL dispatch handler - routes URLs through decoders and opens them", {sources = {{type = "event-source.type/url-handler", config = {decoders = default_decoders}, ["instance-name"] = "main", tags = {"tag/url-handler"}}}, ["start-fn"] = _381_})
   return {["url-dispatch-type"] = url_dispatch_type}
 end
 package.preload["components.url-routing-rules"] = package.preload["components.url-routing-rules"] or function(...)
-  local _local_382_ = require("sheaf.component-registry")
-  local make_component_type = _local_382_["make-component-type"]
+  local _local_383_ = require("sheaf.component-registry")
+  local make_component_type = _local_383_["make-component-type"]
   local url_routing_rules_type
-  local function _383_(config)
-    return {browsers = {{id = "safari", ["bundle-id"] = "com.apple.Safari"}, {id = "chrome", ["bundle-id"] = "com.google.Chrome"}, {id = "firefox", ["bundle-id"] = "org.mozilla.firefox"}, {id = "arc", ["bundle-id"] = "company.thebrowser.Browser"}}, fallback = {type = "open-in-app", ["browser-id"] = "safari"}, rules = {{id = "work-slack-links", match = {urls = {{scheme = {"http", "https"}, host = "*.slack.com"}}, ["sender-bundle-ids"] = {"com.tinyspeck.slackmacgap"}}, action = {type = "open-in-app", ["browser-id"] = "chrome"}}}}
+  local function _384_(config)
+    return {browsers = {{id = "orion", ["bundle-id"] = "com.kagi.kagimacOS"}, {id = "firefox", ["bundle-id"] = "org.mozilla.firefox"}, {id = "arc", ["bundle-id"] = "company.thebrowser.Browser"}, {id = "chrome", ["bundle-id"] = "com.google.Chrome"}, {id = "safari", ["bundle-id"] = "com.apple.Safari"}, {id = "brave", ["bundle-id"] = "com.brave.Browser"}, {id = "edge", ["bundle-id"] = "com.microsoft.edgemac"}, {id = "zen", ["bundle-id"] = "app.zen-browser.zen"}, {id = "dia", ["bundle-id"] = "company.thebrowser.dia"}, {id = "figma", ["bundle-id"] = "com.figma.Desktop"}, {id = "helium", ["bundle-id"] = "net.imput.helium"}, {id = "ora", ["bundle-id"] = "com.orabrowser.app"}, {id = "surf", ["bundle-id"] = "surf.deta"}}, fallback = {type = "choose", ["browser-ids"] = "all"}, rules = {}}
   end
-  url_routing_rules_type = make_component_type("component.type/url-routing-rules", "URL routing configuration: browsers, fallback action, and ordered rules", {traits = {"trait/has-url-routing-rules"}, ["start-fn"] = _383_})
+  url_routing_rules_type = make_component_type("component.type/url-routing-rules", "URL routing configuration: browsers, fallback action, and ordered rules", {traits = {"trait/has-url-routing-rules"}, ["start-fn"] = _384_})
   return {["url-routing-rules-type"] = url_routing_rules_type}
 end
-local _local_385_ = require("components")
-local component_registry = _local_385_["component-registry"]
+local _local_386_ = require("components")
+local component_registry = _local_386_["component-registry"]
 package.preload["commands"] = package.preload["commands"] or function(...)
-  local _local_392_ = require("sheaf.command-registry")
-  local make_command_registry = _local_392_["make-command-registry"]
-  local add_command_21 = _local_392_["add-command!"]
-  local _local_393_ = require("traits")
-  local trait_registry = _local_393_["trait-registry"]
-  local _local_396_ = require("commands.toggle-expose")
-  local toggle_expose_command = _local_396_["toggle-expose-command"]
-  local _local_402_ = require("commands.space-indicator")
-  local update_menubar_command = _local_402_["update-menubar-command"]
-  local _local_405_ = require("commands.compile-fennel")
-  local compile_command = _local_405_["compile-command"]
-  local _local_409_ = require("commands.reload-hammerspoon")
-  local reload_hammerspoon_command = _local_409_["reload-hammerspoon-command"]
-  local _local_412_ = require("commands.open-in-app")
-  local open_in_app_command = _local_412_["open-in-app-command"]
-  local _local_417_ = require("commands.show-chooser")
-  local show_chooser_command = _local_417_["show-chooser-command"]
-  local _local_423_ = require("commands.open-emacs")
-  local open_emacs_command = _local_423_["open-emacs-command"]
-  local _local_434_ = require("commands.window-border")
-  local show_active_border_command = _local_434_["show-active-border-command"]
-  local show_inactive_border_command = _local_434_["show-inactive-border-command"]
-  local hide_borders_command = _local_434_["hide-borders-command"]
+  local _local_393_ = require("sheaf.command-registry")
+  local make_command_registry = _local_393_["make-command-registry"]
+  local add_command_21 = _local_393_["add-command!"]
+  local _local_394_ = require("traits")
+  local trait_registry = _local_394_["trait-registry"]
+  local _local_397_ = require("commands.toggle-expose")
+  local toggle_expose_command = _local_397_["toggle-expose-command"]
+  local _local_403_ = require("commands.space-indicator")
+  local update_menubar_command = _local_403_["update-menubar-command"]
+  local _local_406_ = require("commands.compile-fennel")
+  local compile_command = _local_406_["compile-command"]
+  local _local_410_ = require("commands.reload-hammerspoon")
+  local reload_hammerspoon_command = _local_410_["reload-hammerspoon-command"]
+  local _local_413_ = require("commands.open-in-app")
+  local open_in_app_command = _local_413_["open-in-app-command"]
+  local _local_419_ = require("commands.show-chooser")
+  local show_chooser_command = _local_419_["show-chooser-command"]
+  local _local_425_ = require("commands.open-emacs")
+  local open_emacs_command = _local_425_["open-emacs-command"]
+  local _local_436_ = require("commands.window-border")
+  local show_active_border_command = _local_436_["show-active-border-command"]
+  local show_inactive_border_command = _local_436_["show-inactive-border-command"]
+  local hide_borders_command = _local_436_["hide-borders-command"]
   local command_registry = make_command_registry({["trait-registry"] = trait_registry})
   add_command_21(command_registry, toggle_expose_command)
   add_command_21(command_registry, update_menubar_command)
@@ -2961,8 +2966,8 @@ package.preload["commands"] = package.preload["commands"] or function(...)
   return {["command-registry"] = command_registry}
 end
 package.preload["sheaf.command-registry"] = package.preload["sheaf.command-registry"] or function(...)
-  local _local_386_ = require("sheaf.trait-registry")
-  local trait_defined_3f = _local_386_["trait-defined?"]
+  local _local_387_ = require("sheaf.trait-registry")
+  local trait_defined_3f = _local_387_["trait-defined?"]
   local function make_command_registry(opts)
     if (nil == opts["trait-registry"]) then
       error("make-command-registry: :trait-registry is required")
@@ -3012,23 +3017,23 @@ package.preload["sheaf.command-registry"] = package.preload["sheaf.command-regis
   return {["make-command-registry"] = make_command_registry, ["make-command"] = make_command, ["add-command!"] = add_command_21, ["command-defined?"] = command_defined_3f, ["get-command"] = get_command, ["list-commands"] = list_commands}
 end
 package.preload["commands.toggle-expose"] = package.preload["commands.toggle-expose"] or function(...)
-  local _local_394_ = require("sheaf.command-registry")
-  local make_command = _local_394_["make-command"]
+  local _local_395_ = require("sheaf.command-registry")
+  local make_command = _local_395_["make-command"]
   local toggle_expose_command
-  local function _395_(component, params)
+  local function _396_(component, params)
     component.state.expose:toggleShow()
     return nil
   end
-  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {["requires-traits"] = {"trait/has-expose"}, fn = _395_})
+  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {["requires-traits"] = {"trait/has-expose"}, fn = _396_})
   return {["toggle-expose-command"] = toggle_expose_command}
 end
 package.preload["commands.space-indicator"] = package.preload["commands.space-indicator"] or function(...)
-  local _local_397_ = require("sheaf.command-registry")
-  local make_command = _local_397_["make-command"]
+  local _local_398_ = require("sheaf.command-registry")
+  local make_command = _local_398_["make-command"]
   local update_menubar_command
-  local function _398_(component, params)
+  local function _399_(component, params)
     if component.state.menubar then
-      local _399_
+      local _400_
       do
         local tbl_26_ = {}
         local i_27_ = 0
@@ -3040,33 +3045,33 @@ package.preload["commands.space-indicator"] = package.preload["commands.space-in
           else
           end
         end
-        _399_ = tbl_26_
+        _400_ = tbl_26_
       end
-      component.state.menubar:setTitle(table.concat(_399_, "|"))
+      component.state.menubar:setTitle(table.concat(_400_, "|"))
     else
     end
     return nil
   end
-  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {["requires-traits"] = {"trait/has-menubar"}, schema = {["active-spaces"] = __fnl_global__table_3f}, fn = _398_})
+  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {["requires-traits"] = {"trait/has-menubar"}, schema = {["active-spaces"] = __fnl_global__table_3f}, fn = _399_})
   return {["update-menubar-command"] = update_menubar_command}
 end
 package.preload["commands.compile-fennel"] = package.preload["commands.compile-fennel"] or function(...)
-  local _local_403_ = require("sheaf.command-registry")
-  local make_command = _local_403_["make-command"]
+  local _local_404_ = require("sheaf.command-registry")
+  local make_command = _local_404_["make-command"]
   local compile_command
-  local function _404_(component, params)
+  local function _405_(component, params)
     print(hs.execute("./compile.sh", true))
     return nil
   end
-  compile_command = make_command("compile-fennel.commands/compile", "Compile Fennel source files", {fn = _404_})
+  compile_command = make_command("compile-fennel.commands/compile", "Compile Fennel source files", {fn = _405_})
   return {["compile-command"] = compile_command}
 end
 package.preload["commands.reload-hammerspoon"] = package.preload["commands.reload-hammerspoon"] or function(...)
-  local _local_406_ = require("sheaf.command-registry")
-  local make_command = _local_406_["make-command"]
+  local _local_407_ = require("sheaf.command-registry")
+  local make_command = _local_407_["make-command"]
   local notify = require("notify")
   local reload_hammerspoon_command
-  local function _407_(component, params)
+  local function _408_(component, params)
     if not component.state["reloading?"] then
       notify.warn("Reloading...")
       component.state.timer:start()
@@ -3075,47 +3080,57 @@ package.preload["commands.reload-hammerspoon"] = package.preload["commands.reloa
       return nil
     end
   end
-  reload_hammerspoon_command = make_command("reload-hammerspoon.commands/reload", "Reload Hammerspoon config with debounce", {["requires-traits"] = {"trait/has-delayed-timer"}, fn = _407_})
+  reload_hammerspoon_command = make_command("reload-hammerspoon.commands/reload", "Reload Hammerspoon config with debounce", {["requires-traits"] = {"trait/has-delayed-timer"}, fn = _408_})
   return {["reload-hammerspoon-command"] = reload_hammerspoon_command}
 end
 package.preload["commands.open-in-app"] = package.preload["commands.open-in-app"] or function(...)
-  local _local_410_ = require("sheaf.command-registry")
-  local make_command = _local_410_["make-command"]
+  local _local_411_ = require("sheaf.command-registry")
+  local make_command = _local_411_["make-command"]
   local open_in_app_command
-  local function _411_(component, params)
+  local function _412_(component, params)
+    print(("[DEBUG] open-in-app: url=" .. tostring(params.url) .. " bundle-id=" .. tostring(params["bundle-id"])))
     hs.urlevent.openURLWithBundle(params.url, params["bundle-id"])
     return nil
   end
-  open_in_app_command = make_command("url-dispatch.commands/open-in-app", "Open a URL in a specific app by bundle ID", {schema = {url = __fnl_global__string_3f, ["bundle-id"] = __fnl_global__string_3f}, fn = _411_})
+  open_in_app_command = make_command("url-dispatch.commands/open-in-app", "Open a URL in a specific app by bundle ID", {schema = {url = __fnl_global__string_3f, ["bundle-id"] = __fnl_global__string_3f}, fn = _412_})
   return {["open-in-app-command"] = open_in_app_command}
 end
 package.preload["commands.show-chooser"] = package.preload["commands.show-chooser"] or function(...)
-  local _local_413_ = require("sheaf.command-registry")
-  local make_command = _local_413_["make-command"]
+  local _local_414_ = require("sheaf.command-registry")
+  local make_command = _local_414_["make-command"]
+  local active_chooser = nil
   local show_chooser_command
-  local function _414_(component, params)
+  local function _415_(component, params)
+    print(("[DEBUG] show-chooser: url=" .. tostring(params.url) .. " choices=" .. tostring(#(params.choices or {}))))
+    if ((nil == params.choices) or (0 == #params.choices)) then
+      print("[WARN] show-chooser: no choices provided, skipping")
+      return nil
+    else
+    end
     do
       local url = params.url
       local chooser
-      local function _415_(choice)
+      local function _417_(choice)
         if choice then
+          print(("[DEBUG] show-chooser: user chose " .. tostring(choice.text) .. " (" .. tostring(choice["bundle-id"]) .. ")"))
           return hs.urlevent.openURLWithBundle(url, choice["bundle-id"])
         else
-          return nil
+          return print("[DEBUG] show-chooser: user dismissed chooser")
         end
       end
-      chooser = hs.chooser.new(_415_)
+      chooser = hs.chooser.new(_417_)
       chooser:choices(params.choices)
       chooser:show()
+      active_chooser = chooser
     end
     return nil
   end
-  show_chooser_command = make_command("url-dispatch.commands/show-chooser", "Show an async browser picker dialog for a URL", {schema = {url = __fnl_global__string_3f, choices = __fnl_global__table_3f}, fn = _414_})
+  show_chooser_command = make_command("url-dispatch.commands/show-chooser", "Show an async browser picker dialog for a URL", {schema = {url = __fnl_global__string_3f, choices = __fnl_global__table_3f}, fn = _415_})
   return {["show-chooser-command"] = show_chooser_command}
 end
 package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] or function(...)
-  local _local_418_ = require("sheaf.command-registry")
-  local make_command = _local_418_["make-command"]
+  local _local_420_ = require("sheaf.command-registry")
+  local make_command = _local_420_["make-command"]
   local emacsclient_path
   do
     local app = hs.application.find("Emacs")
@@ -3126,9 +3141,9 @@ package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] 
     end
   end
   local open_emacs_command
-  local function _420_(component, params)
+  local function _422_(component, params)
     io.popen(("'" .. emacsclient_path .. "' -n -c &"))
-    local function _421_()
+    local function _423_()
       local app = hs.application.find("Emacs")
       if app then
         return app:activate()
@@ -3136,15 +3151,15 @@ package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] 
         return nil
       end
     end
-    hs.timer.doAfter(0.3, _421_)
+    hs.timer.doAfter(0.3, _423_)
     return nil
   end
-  open_emacs_command = make_command("emacs.commands/open-emacs", "Open a new emacsclient frame", {fn = _420_})
+  open_emacs_command = make_command("emacs.commands/open-emacs", "Open a new emacsclient frame", {fn = _422_})
   return {["open-emacs-command"] = open_emacs_command}
 end
 package.preload["commands.window-border"] = package.preload["commands.window-border"] or function(...)
-  local _local_424_ = require("sheaf.command-registry")
-  local make_command = _local_424_["make-command"]
+  local _local_426_ = require("sheaf.command-registry")
+  local make_command = _local_426_["make-command"]
   local function resolve_corner_radius(window_id, default_radius)
     local has_api = (hs.window and hs.window.cornerRadiusForID)
     if has_api then
@@ -3167,7 +3182,7 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     return canvas:show()
   end
   local show_active_border_command
-  local function _427_(component, params)
+  local function _429_(component, params)
     if (params["only-if-active"] and (params["window-id"] ~= component.state["active-window-id"])) then
       return nil
     else
@@ -3179,9 +3194,9 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return {["active-canvas"] = component.state["active-canvas"], ["inactive-canvas"] = component.state["inactive-canvas"], ["active-window-id"] = params["window-id"], ["border-width"] = component.state["border-width"], ["default-corner-radius"] = component.state["default-corner-radius"]}
   end
-  show_active_border_command = make_command("window-border.commands/show-active-border", "Position and show the active window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _427_})
+  show_active_border_command = make_command("window-border.commands/show-active-border", "Position and show the active window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _429_})
   local show_inactive_border_command
-  local function _429_(component, params)
+  local function _431_(component, params)
     do
       local bw = component.state["border-width"]
       local cr = resolve_corner_radius(params["window-id"], component.state["default-corner-radius"])
@@ -3189,9 +3204,9 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return nil
   end
-  show_inactive_border_command = make_command("window-border.commands/show-inactive-border", "Position and show the inactive window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _429_})
+  show_inactive_border_command = make_command("window-border.commands/show-inactive-border", "Position and show the inactive window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _431_})
   local hide_borders_command
-  local function _430_(component, params)
+  local function _432_(component, params)
     if (params["only-if-active"] and (params["window-id"] ~= component.state["active-window-id"])) then
       return nil
     else
@@ -3206,36 +3221,36 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return {["active-canvas"] = component.state["active-canvas"], ["inactive-canvas"] = component.state["inactive-canvas"], ["active-window-id"] = nil, ["border-width"] = component.state["border-width"], ["default-corner-radius"] = component.state["default-corner-radius"]}
   end
-  hide_borders_command = make_command("window-border.commands/hide-borders", "Hide both active and inactive window border overlays", {["requires-traits"] = {"trait/has-canvas"}, fn = _430_})
+  hide_borders_command = make_command("window-border.commands/hide-borders", "Hide both active and inactive window border overlays", {["requires-traits"] = {"trait/has-canvas"}, fn = _432_})
   return {["show-active-border-command"] = show_active_border_command, ["show-inactive-border-command"] = show_inactive_border_command, ["hide-borders-command"] = hide_borders_command}
 end
 require("commands")
 package.preload["behaviors"] = package.preload["behaviors"] or function(...)
-  local _local_455_ = require("sheaf.behavior-registry")
-  local make_behavior_registry = _local_455_["make-behavior-registry"]
-  local add_behavior_21 = _local_455_["add-behavior!"]
-  local _local_456_ = require("events")
-  local event_registry = _local_456_["event-registry"]
-  local _local_457_ = require("commands")
-  local command_registry = _local_457_["command-registry"]
-  local _local_458_ = require("shapes")
-  local shape_registry = _local_458_["shape-registry"]
-  local _local_465_ = require("behaviors.compile-fennel")
-  local compile_fennel_behavior = _local_465_["compile-fennel-behavior"]
-  local _local_472_ = require("behaviors.reload-hammerspoon")
-  local reload_hammerspoon_behavior = _local_472_["reload-hammerspoon-behavior"]
-  local _local_476_ = require("behaviors.toggle-expose")
-  local toggle_expose_behavior = _local_476_["toggle-expose-behavior"]
-  local _local_481_ = require("behaviors.update-space-indicator")
-  local update_space_indicator_behavior = _local_481_["update-space-indicator-behavior"]
-  local _local_485_ = require("behaviors.open-emacs")
-  local open_emacs_behavior = _local_485_["open-emacs-behavior"]
-  local _local_493_ = require("behaviors.window-border")
-  local update_on_focus_behavior = _local_493_["update-on-focus-behavior"]
-  local update_on_move_behavior = _local_493_["update-on-move-behavior"]
-  local hide_on_disappear_behavior = _local_493_["hide-on-disappear-behavior"]
-  local _local_563_ = require("behaviors.url-routing")
-  local route_url_behavior = _local_563_["route-url-behavior"]
+  local _local_457_ = require("sheaf.behavior-registry")
+  local make_behavior_registry = _local_457_["make-behavior-registry"]
+  local add_behavior_21 = _local_457_["add-behavior!"]
+  local _local_458_ = require("events")
+  local event_registry = _local_458_["event-registry"]
+  local _local_459_ = require("commands")
+  local command_registry = _local_459_["command-registry"]
+  local _local_460_ = require("shapes")
+  local shape_registry = _local_460_["shape-registry"]
+  local _local_467_ = require("behaviors.compile-fennel")
+  local compile_fennel_behavior = _local_467_["compile-fennel-behavior"]
+  local _local_474_ = require("behaviors.reload-hammerspoon")
+  local reload_hammerspoon_behavior = _local_474_["reload-hammerspoon-behavior"]
+  local _local_478_ = require("behaviors.toggle-expose")
+  local toggle_expose_behavior = _local_478_["toggle-expose-behavior"]
+  local _local_483_ = require("behaviors.update-space-indicator")
+  local update_space_indicator_behavior = _local_483_["update-space-indicator-behavior"]
+  local _local_487_ = require("behaviors.open-emacs")
+  local open_emacs_behavior = _local_487_["open-emacs-behavior"]
+  local _local_495_ = require("behaviors.window-border")
+  local update_on_focus_behavior = _local_495_["update-on-focus-behavior"]
+  local update_on_move_behavior = _local_495_["update-on-move-behavior"]
+  local hide_on_disappear_behavior = _local_495_["hide-on-disappear-behavior"]
+  local _local_572_ = require("behaviors.url-routing")
+  local route_url_behavior = _local_572_["route-url-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry, ["shape-registry"] = shape_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
@@ -3249,16 +3264,16 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-registry"] or function(...)
-  local _local_435_ = require("lib.cljlib-shim")
-  local some = _local_435_.some
-  local _local_436_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_436_["valid-event-selector?"]
-  local _local_437_ = require("sheaf.command-registry")
-  local command_defined_3f = _local_437_["command-defined?"]
-  local _local_438_ = require("sheaf.shape-registry")
-  local shape_defined_3f = _local_438_["shape-defined?"]
-  local _local_439_ = require("lib.hierarchy")
-  local isa_3f = _local_439_["isa?"]
+  local _local_437_ = require("lib.cljlib-shim")
+  local some = _local_437_.some
+  local _local_438_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_438_["valid-event-selector?"]
+  local _local_439_ = require("sheaf.command-registry")
+  local command_defined_3f = _local_439_["command-defined?"]
+  local _local_440_ = require("sheaf.shape-registry")
+  local shape_defined_3f = _local_440_["shape-defined?"]
+  local _local_441_ = require("lib.hierarchy")
+  local isa_3f = _local_441_["isa?"]
   local function make_behavior_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-behavior-registry: :event-registry is required")
@@ -3346,31 +3361,31 @@ package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-reg
     if (nil == behavior) then
       return false
     else
-      local function _453_(_241)
+      local function _455_(_241)
         return isa_3f(registry["event-registry"].hierarchy, event_name, _241)
       end
-      return some(_453_, behavior["respond-to"])
+      return some(_455_, behavior["respond-to"])
     end
   end
   return {["make-behavior-registry"] = make_behavior_registry, ["make-behavior"] = make_behavior, ["add-behavior!"] = add_behavior_21, ["behavior-defined?"] = behavior_defined_3f, ["get-behavior"] = get_behavior, ["list-behaviors"] = list_behaviors, ["behavior-responds-to?"] = behavior_responds_to_3f}
 end
 package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile-fennel"] or function(...)
-  local _local_459_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_459_["make-behavior"]
+  local _local_461_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_461_["make-behavior"]
   local compile_fennel_behavior
-  local function _460_(file_change_event, candidates, send_cmd)
+  local function _462_(file_change_event, candidates, send_cmd)
     local path
     do
-      local t_461_ = file_change_event
-      if (nil ~= t_461_) then
-        t_461_ = t_461_["event-data"]
+      local t_463_ = file_change_event
+      if (nil ~= t_463_) then
+        t_463_ = t_463_["event-data"]
       else
       end
-      if (nil ~= t_461_) then
-        t_461_ = t_461_["file-path"]
+      if (nil ~= t_463_) then
+        t_463_ = t_463_["file-path"]
       else
       end
-      path = t_461_
+      path = t_463_
     end
     local target = candidates.compile[1]
     if (target and (nil ~= path) and (".fnl" == path:sub(-4))) then
@@ -3379,26 +3394,26 @@ package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile
       return nil
     end
   end
-  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {compile = "compile-fennel.commands/compile"}, fn = _460_})
+  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {compile = "compile-fennel.commands/compile"}, fn = _462_})
   return {["compile-fennel-behavior"] = compile_fennel_behavior}
 end
 package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.reload-hammerspoon"] or function(...)
-  local _local_466_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_466_["make-behavior"]
+  local _local_468_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_468_["make-behavior"]
   local reload_hammerspoon_behavior
-  local function _467_(file_change_event, candidates, send_cmd)
+  local function _469_(file_change_event, candidates, send_cmd)
     local path
     do
-      local t_468_ = file_change_event
-      if (nil ~= t_468_) then
-        t_468_ = t_468_["event-data"]
+      local t_470_ = file_change_event
+      if (nil ~= t_470_) then
+        t_470_ = t_470_["event-data"]
       else
       end
-      if (nil ~= t_468_) then
-        t_468_ = t_468_["file-path"]
+      if (nil ~= t_470_) then
+        t_470_ = t_470_["file-path"]
       else
       end
-      path = t_468_
+      path = t_470_
     end
     local target = candidates.reload[1]
     if (target and (nil ~= path) and ("/init.lua" == path:sub(-9))) then
@@ -3407,14 +3422,14 @@ package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.rel
       return nil
     end
   end
-  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {reload = "reload-hammerspoon.commands/reload"}, fn = _467_})
+  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {reload = "reload-hammerspoon.commands/reload"}, fn = _469_})
   return {["reload-hammerspoon-behavior"] = reload_hammerspoon_behavior}
 end
 package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-expose"] or function(...)
-  local _local_473_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_473_["make-behavior"]
+  local _local_475_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_475_["make-behavior"]
   local toggle_expose_behavior
-  local function _474_(event, candidates, send_cmd)
+  local function _476_(event, candidates, send_cmd)
     local target = candidates["toggle-show"][1]
     if target then
       return send_cmd(target, "toggle-show", {})
@@ -3422,12 +3437,12 @@ package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-e
       return nil
     end
   end
-  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _474_})
+  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _476_})
   return {["toggle-expose-behavior"] = toggle_expose_behavior}
 end
 package.preload["behaviors.update-space-indicator"] = package.preload["behaviors.update-space-indicator"] or function(...)
-  local _local_477_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_477_["make-behavior"]
+  local _local_479_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_479_["make-behavior"]
   local function compute_active_space_indices(all_spaces, active_spaces)
     local result = {}
     local offset = 0
@@ -3446,7 +3461,7 @@ package.preload["behaviors.update-space-indicator"] = package.preload["behaviors
     return result
   end
   local update_space_indicator_behavior
-  local function _479_(event, candidates, send_cmd)
+  local function _481_(event, candidates, send_cmd)
     local target = candidates["update-menubar"][1]
     if target then
       local indices = compute_active_space_indices(event["event-data"]["all-spaces"], event["event-data"]["active-spaces"])
@@ -3455,14 +3470,14 @@ package.preload["behaviors.update-space-indicator"] = package.preload["behaviors
       return nil
     end
   end
-  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _479_})
+  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _481_})
   return {["update-space-indicator-behavior"] = update_space_indicator_behavior}
 end
 package.preload["behaviors.open-emacs"] = package.preload["behaviors.open-emacs"] or function(...)
-  local _local_482_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_482_["make-behavior"]
+  local _local_484_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_484_["make-behavior"]
   local open_emacs_behavior
-  local function _483_(event, candidates, send_cmd)
+  local function _485_(event, candidates, send_cmd)
     local target = candidates["open-emacs"][1]
     if target then
       return send_cmd(target, "open-emacs", {})
@@ -3470,14 +3485,14 @@ package.preload["behaviors.open-emacs"] = package.preload["behaviors.open-emacs"
       return nil
     end
   end
-  open_emacs_behavior = make_behavior({name = "emacs.behaviors/open-emacs", description = "Open a new emacsclient frame on hotkey press", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["open-emacs"] = "emacs.commands/open-emacs"}, fn = _483_})
+  open_emacs_behavior = make_behavior({name = "emacs.behaviors/open-emacs", description = "Open a new emacsclient frame on hotkey press", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["open-emacs"] = "emacs.commands/open-emacs"}, fn = _485_})
   return {["open-emacs-behavior"] = open_emacs_behavior}
 end
 package.preload["behaviors.window-border"] = package.preload["behaviors.window-border"] or function(...)
-  local _local_486_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_486_["make-behavior"]
+  local _local_488_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_488_["make-behavior"]
   local update_on_focus_behavior
-  local function _487_(event, candidates, send_cmd)
+  local function _489_(event, candidates, send_cmd)
     local target = candidates["show-active"][1]
     if target then
       return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame})
@@ -3485,9 +3500,9 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  update_on_focus_behavior = make_behavior({name = "window-border.behaviors/update-on-focus", description = "Show active border around the newly focused window", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible"}, commands = {["show-active"] = "window-border.commands/show-active-border", ["show-inactive"] = "window-border.commands/show-inactive-border"}, fn = _487_})
+  update_on_focus_behavior = make_behavior({name = "window-border.behaviors/update-on-focus", description = "Show active border around the newly focused window", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible"}, commands = {["show-active"] = "window-border.commands/show-active-border", ["show-inactive"] = "window-border.commands/show-inactive-border"}, fn = _489_})
   local update_on_move_behavior
-  local function _489_(event, candidates, send_cmd)
+  local function _491_(event, candidates, send_cmd)
     local target = candidates["show-active"][1]
     if target then
       return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame, ["only-if-active"] = true})
@@ -3495,9 +3510,9 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  update_on_move_behavior = make_behavior({name = "window-border.behaviors/update-on-move", description = "Reposition active border when a window moves or resizes", ["respond-to"] = {"event.kind.window/moved"}, commands = {["show-active"] = "window-border.commands/show-active-border"}, fn = _489_})
+  update_on_move_behavior = make_behavior({name = "window-border.behaviors/update-on-move", description = "Reposition active border when a window moves or resizes", ["respond-to"] = {"event.kind.window/moved"}, commands = {["show-active"] = "window-border.commands/show-active-border"}, fn = _491_})
   local hide_on_disappear_behavior
-  local function _491_(event, candidates, send_cmd)
+  local function _493_(event, candidates, send_cmd)
     local target = candidates.hide[1]
     if target then
       return send_cmd(target, "hide", {["window-id"] = event["event-data"]["window-id"], ["only-if-active"] = true})
@@ -3505,23 +3520,25 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  hide_on_disappear_behavior = make_behavior({name = "window-border.behaviors/hide-on-disappear", description = "Hide active border when the focused window disappears", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {hide = "window-border.commands/hide-borders"}, fn = _491_})
+  hide_on_disappear_behavior = make_behavior({name = "window-border.behaviors/hide-on-disappear", description = "Hide active border when the focused window disappears", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {hide = "window-border.commands/hide-borders"}, fn = _493_})
   return {["update-on-focus-behavior"] = update_on_focus_behavior, ["update-on-move-behavior"] = update_on_move_behavior, ["hide-on-disappear-behavior"] = hide_on_disappear_behavior}
 end
 package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routing"] or function(...)
-  local _local_494_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_494_["make-behavior"]
-  local _local_533_ = require("lib.url-routing")
-  local build_browser_lookup = _local_533_["build-browser-lookup"]
-  local resolve_browser = _local_533_["resolve-browser"]
-  local resolve_browsers = _local_533_["resolve-browsers"]
-  local make_chooser_choices = _local_533_["make-chooser-choices"]
-  local parse_url = _local_533_["parse-url"]
-  local match_rule_3f = _local_533_["match-rule?"]
-  local find_matching_rule = _local_533_["find-matching-rule"]
+  local _local_496_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_496_["make-behavior"]
+  local _local_535_ = require("lib.url-routing")
+  local build_browser_lookup = _local_535_["build-browser-lookup"]
+  local resolve_browser = _local_535_["resolve-browser"]
+  local resolve_browsers = _local_535_["resolve-browsers"]
+  local make_chooser_choices = _local_535_["make-chooser-choices"]
+  local parse_url = _local_535_["parse-url"]
+  local match_rule_3f = _local_535_["match-rule?"]
+  local find_matching_rule = _local_535_["find-matching-rule"]
   local function dispatch_open_in_app(action, url, lookup, target, send_cmd)
+    print(("[DEBUG] url-routing: dispatch-open-in-app browser-id=" .. tostring(action["browser-id"])))
     local browser = resolve_browser(action["browser-id"], lookup)
     if browser then
+      print(("[DEBUG] url-routing: opening in " .. tostring(browser.name) .. " (" .. tostring(browser["bundle-id"]) .. ")"))
       return send_cmd(target, "open-in-app", {url = url, ["bundle-id"] = browser["bundle-id"]})
     else
       return nil
@@ -3539,12 +3556,15 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
     end
   end
   local function dispatch_choose(action, url, browsers, lookup, target, send_cmd)
+    print(("[DEBUG] url-routing: dispatch-choose browser-ids=" .. tostring(action["browser-ids"])))
     local browser_ids = collect_browser_ids_for_choose(action, browsers)
     local resolved = resolve_browsers(browser_ids, lookup)
     local choices = make_chooser_choices(resolved)
+    print(("[DEBUG] url-routing: resolved " .. tostring(#resolved) .. " browsers, " .. tostring(#choices) .. " choices"))
     if (0 == #choices) then
       return print("[WARN] url-routing: no browsers resolved for chooser, skipping")
     else
+      print(("[DEBUG] url-routing: sending show-chooser to " .. tostring(target)))
       return send_cmd(target, "show-chooser", {url = url, choices = choices})
     end
   end
@@ -3578,79 +3598,94 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
     end
   end
   local route_url_behavior
-  local function _542_(event, candidates, send_cmd, inputs)
+  local function _544_(event, candidates, send_cmd, inputs)
+    print("[DEBUG] url-routing: behavior invoked")
     local url
     do
-      local t_543_ = event
-      if (nil ~= t_543_) then
-        t_543_ = t_543_["event-data"]
+      local t_545_ = event
+      if (nil ~= t_545_) then
+        t_545_ = t_545_["event-data"]
       else
       end
-      if (nil ~= t_543_) then
-        t_543_ = t_543_.url
+      if (nil ~= t_545_) then
+        t_545_ = t_545_.url
       else
       end
-      url = t_543_
+      url = t_545_
     end
     local sender_bundle_id
     do
-      local t_546_ = event
-      if (nil ~= t_546_) then
-        t_546_ = t_546_["event-data"]
+      local t_548_ = event
+      if (nil ~= t_548_) then
+        t_548_ = t_548_["event-data"]
       else
       end
-      if (nil ~= t_546_) then
-        t_546_ = t_546_["sender-bundle-id"]
+      if (nil ~= t_548_) then
+        t_548_ = t_548_["sender-bundle-id"]
       else
       end
-      sender_bundle_id = t_546_
+      sender_bundle_id = t_548_
     end
+    print(("[DEBUG] url-routing: url=" .. tostring(url) .. " sender=" .. tostring(sender_bundle_id)))
     if (nil == url) then
       print("[WARN] url-routing: event missing :url in event-data")
       return nil
     else
     end
+    local function _554_()
+      if inputs then
+        local t_552_ = inputs
+        if (nil ~= t_552_) then
+          t_552_ = t_552_.rules
+        else
+        end
+        return t_552_
+      else
+        return nil
+      end
+    end
+    print(("[DEBUG] url-routing: inputs=" .. tostring(inputs) .. " inputs.rules=" .. tostring(_554_())))
     local rules_state
     if inputs then
-      local t_550_ = inputs
-      if (nil ~= t_550_) then
-        t_550_ = t_550_.rules
+      local t_555_ = inputs
+      if (nil ~= t_555_) then
+        t_555_ = t_555_.rules
       else
       end
-      rules_state = t_550_
+      rules_state = t_555_
     else
       rules_state = nil
     end
     local browsers
-    local _554_
+    local _559_
     do
-      local t_553_ = rules_state
-      if (nil ~= t_553_) then
-        t_553_ = t_553_.browsers
+      local t_558_ = rules_state
+      if (nil ~= t_558_) then
+        t_558_ = t_558_.browsers
       else
       end
-      _554_ = t_553_
+      _559_ = t_558_
     end
-    browsers = (_554_ or {})
+    browsers = (_559_ or {})
     local rules
-    local _557_
+    local _562_
     do
-      local t_556_ = rules_state
-      if (nil ~= t_556_) then
-        t_556_ = t_556_.rules
+      local t_561_ = rules_state
+      if (nil ~= t_561_) then
+        t_561_ = t_561_.rules
       else
       end
-      _557_ = t_556_
+      _562_ = t_561_
     end
-    rules = (_557_ or {})
+    rules = (_562_ or {})
     local fallback
     do
-      local t_559_ = rules_state
-      if (nil ~= t_559_) then
-        t_559_ = t_559_.fallback
+      local t_564_ = rules_state
+      if (nil ~= t_564_) then
+        t_564_ = t_564_.fallback
       else
       end
-      fallback = t_559_
+      fallback = t_564_
     end
     local lookup = build_browser_lookup(browsers)
     local parsed = parse_url(url)
@@ -3661,20 +3696,36 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
     else
       action = fallback
     end
+    local function _567_()
+      if matched_rule then
+        return matched_rule.id
+      else
+        return nil
+      end
+    end
+    local function _569_()
+      local t_568_ = action
+      if (nil ~= t_568_) then
+        t_568_ = t_568_.type
+      else
+      end
+      return t_568_
+    end
+    print(("[DEBUG] url-routing: browsers=" .. tostring(#browsers) .. " matched-rule=" .. tostring(_567_()) .. " action.type=" .. tostring(_569_())))
     if action then
       return dispatch_action(action, url, browsers, lookup, candidates, send_cmd)
     else
       return print(("[WARN] url-routing: no matching rule and no fallback for URL '" .. tostring(url) .. "'"))
     end
   end
-  route_url_behavior = make_behavior({name = "url-dispatch.behaviors/route-url", description = "Route opened URLs to browsers based on structured routing rules", ["respond-to"] = {"event.kind.url/opened"}, commands = {["open-in-app"] = "url-dispatch.commands/open-in-app", ["show-chooser"] = "url-dispatch.commands/show-chooser"}, inputs = {rules = "shape/url-routing-rules"}, fn = _542_})
+  route_url_behavior = make_behavior({name = "url-dispatch.behaviors/route-url", description = "Route opened URLs to browsers based on structured routing rules", ["respond-to"] = {"event.kind.url/opened"}, commands = {["open-in-app"] = "url-dispatch.commands/open-in-app", ["show-chooser"] = "url-dispatch.commands/show-chooser"}, inputs = {rules = "shape/url-routing-rules"}, fn = _544_})
   return {["route-url-behavior"] = route_url_behavior}
 end
 package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or function(...)
-  local _local_495_ = require("lib.cljlib-shim")
-  local some = _local_495_.some
-  local seq = _local_495_.seq
-  local empty_3f = _local_495_["empty?"]
+  local _local_497_ = require("lib.cljlib-shim")
+  local some = _local_497_.some
+  local seq = _local_497_.seq
+  local empty_3f = _local_497_["empty?"]
   local function build_browser_lookup(browsers)
     local lookup = {}
     for _, browser in ipairs((browsers or {})) do
@@ -3757,7 +3808,7 @@ package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or funct
         if (0 == #candidates) then
           authority_end = nil
         else
-          authority_end = math.min(unpack(candidates))
+          authority_end = math.min(table.unpack(candidates))
         end
       end
       local host_part
@@ -3931,13 +3982,13 @@ package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or funct
       return true
     else
     end
-    local _530_
+    local _532_
     if match_spec.urls then
-      _530_ = match_urls_3f(parsed_url, match_spec.urls)
+      _532_ = match_urls_3f(parsed_url, match_spec.urls)
     else
-      _530_ = true
+      _532_ = true
     end
-    return (_530_ and match_sender_3f(sender_bundle_id, match_spec["sender-bundle-ids"]))
+    return (_532_ and match_sender_3f(sender_bundle_id, match_spec["sender-bundle-ids"]))
   end
   local function find_matching_rule(parsed_url, sender_bundle_id, rules)
     local result = nil
@@ -3953,15 +4004,15 @@ package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or funct
 end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_590_ = require("sheaf.subscription-registry")
-  local make_subscription_registry = _local_590_["make-subscription-registry"]
-  local define_subscription_21 = _local_590_["define-subscription!"]
-  local _local_591_ = require("events")
-  local event_registry = _local_591_["event-registry"]
-  local _local_592_ = require("behaviors")
-  local behavior_registry = _local_592_["behavior-registry"]
-  local _local_593_ = require("components")
-  local tag_registry = _local_593_["tag-registry"]
+  local _local_599_ = require("sheaf.subscription-registry")
+  local make_subscription_registry = _local_599_["make-subscription-registry"]
+  local define_subscription_21 = _local_599_["define-subscription!"]
+  local _local_600_ = require("events")
+  local event_registry = _local_600_["event-registry"]
+  local _local_601_ = require("behaviors")
+  local behavior_registry = _local_601_["behavior-registry"]
+  local _local_602_ = require("components")
+  local tag_registry = _local_602_["tag-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["tag-registry"] = tag_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/reload-hammerspoon", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/compile-fennel", ["event-selector"] = "event.kind.fs/file-change"})
@@ -3977,20 +4028,20 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
-  local _local_564_ = require("lib.cljlib-shim")
-  local hash_set = _local_564_["hash-set"]
-  local conj = _local_564_.conj
-  local disj = _local_564_.disj
-  local into = _local_564_.into
-  local seq = _local_564_.seq
-  local _local_565_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_565_["valid-event-selector?"]
-  local _local_566_ = require("sheaf.behavior-registry")
-  local behavior_defined_3f = _local_566_["behavior-defined?"]
-  local _local_567_ = require("sheaf.tag-registry")
-  local get_tags = _local_567_["get-tags"]
-  local _local_568_ = require("lib.hierarchy")
-  local ancestors = _local_568_.ancestors
+  local _local_573_ = require("lib.cljlib-shim")
+  local hash_set = _local_573_["hash-set"]
+  local conj = _local_573_.conj
+  local disj = _local_573_.disj
+  local into = _local_573_.into
+  local seq = _local_573_.seq
+  local _local_574_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_574_["valid-event-selector?"]
+  local _local_575_ = require("sheaf.behavior-registry")
+  local behavior_defined_3f = _local_575_["behavior-defined?"]
+  local _local_576_ = require("sheaf.tag-registry")
+  local get_tags = _local_576_["get-tags"]
+  local _local_577_ = require("lib.hierarchy")
+  local ancestors = _local_577_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -4027,27 +4078,27 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
     local sub_name = subscription.name
     local sub_set
     do
-      local t_574_ = registry.index
-      if (nil ~= t_574_) then
-        t_574_ = t_574_[tag]
+      local t_583_ = registry.index
+      if (nil ~= t_583_) then
+        t_583_ = t_583_[tag]
       else
       end
-      if (nil ~= t_574_) then
-        t_574_ = t_574_[event]
+      if (nil ~= t_583_) then
+        t_583_ = t_583_[event]
       else
       end
-      sub_set = t_574_
+      sub_set = t_583_
     end
     if sub_set then
       do
         local new_set = disj(sub_set, sub_name)
-        local _577_
+        local _586_
         if seq(new_set) then
-          _577_ = new_set
+          _586_ = new_set
         else
-          _577_ = nil
+          _586_ = nil
         end
-        registry.index[tag][event] = _577_
+        registry.index[tag][event] = _586_
       end
       if (nil == registry.index[tag][event]) then
         if (nil == next(registry.index[tag])) then
@@ -4163,42 +4214,42 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-matching-subscriptions"] = get_matching_subscriptions}
 end
-local _local_594_ = require("subscriptions")
-local subscription_registry = _local_594_["subscription-registry"]
+local _local_603_ = require("subscriptions")
+local subscription_registry = _local_603_["subscription-registry"]
 package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or function(...)
-  local _local_595_ = require("sheaf.event-registry")
-  local add_event_handler_21 = _local_595_["add-event-handler!"]
-  local _local_596_ = require("sheaf.behavior-registry")
-  local behavior_responds_to_3f = _local_596_["behavior-responds-to?"]
-  local get_behavior = _local_596_["get-behavior"]
-  local _local_597_ = require("sheaf.subscription-registry")
-  local get_matching_subscriptions = _local_597_["get-matching-subscriptions"]
-  local _local_598_ = require("sheaf.command-registry")
-  local get_command = _local_598_["get-command"]
-  local _local_599_ = require("sheaf.tag-registry")
-  local components_with_tag = _local_599_["components-with-tag"]
-  local _local_600_ = require("sheaf.component-registry")
-  local get_component_instance = _local_600_["get-component-instance"]
-  local _local_601_ = require("sheaf.trait-registry")
-  local satisfies_all_3f = _local_601_["satisfies-all?"]
-  local _local_602_ = require("sheaf.shape-registry")
-  local conforms_3f = _local_602_["conforms?"]
+  local _local_604_ = require("sheaf.event-registry")
+  local add_event_handler_21 = _local_604_["add-event-handler!"]
+  local _local_605_ = require("sheaf.behavior-registry")
+  local behavior_responds_to_3f = _local_605_["behavior-responds-to?"]
+  local get_behavior = _local_605_["get-behavior"]
+  local _local_606_ = require("sheaf.subscription-registry")
+  local get_matching_subscriptions = _local_606_["get-matching-subscriptions"]
+  local _local_607_ = require("sheaf.command-registry")
+  local get_command = _local_607_["get-command"]
+  local _local_608_ = require("sheaf.tag-registry")
+  local components_with_tag = _local_608_["components-with-tag"]
+  local _local_609_ = require("sheaf.component-registry")
+  local get_component_instance = _local_609_["get-component-instance"]
+  local _local_610_ = require("sheaf.trait-registry")
+  local satisfies_all_3f = _local_610_["satisfies-all?"]
+  local _local_611_ = require("sheaf.shape-registry")
+  local conforms_3f = _local_611_["conforms?"]
   local function build_candidates(behavior, command_registry, component_registry, trait_registry, tag_registry, target_tag)
     local candidates = {}
     local target_instances = components_with_tag(tag_registry, target_tag)
     for alias, cmd_name in pairs((behavior.commands or {})) do
       local command = get_command(command_registry, cmd_name)
       local required_traits
-      local _604_
+      local _613_
       do
-        local t_603_ = command
-        if (nil ~= t_603_) then
-          t_603_ = t_603_["requires-traits"]
+        local t_612_ = command
+        if (nil ~= t_612_) then
+          t_612_ = t_612_["requires-traits"]
         else
         end
-        _604_ = t_603_
+        _613_ = t_612_
       end
-      required_traits = (_604_ or {})
+      required_traits = (_613_ or {})
       local matching = {}
       for instance_name, _ in pairs(target_instances) do
         local instance = get_component_instance(component_registry, instance_name)
@@ -4212,7 +4263,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
     return candidates
   end
   local function make_send_cmd(behavior, command_registry, component_registry, trait_registry)
-    local function _607_(instance_name, cmd_alias, params)
+    local function _616_(instance_name, cmd_alias, params)
       local cmd_name = behavior.commands[cmd_alias]
       if (nil == cmd_name) then
         print(("[WARN] send-cmd: unknown alias '" .. tostring(cmd_alias) .. "' in behavior '" .. tostring(behavior.name) .. "'"))
@@ -4243,7 +4294,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
         return print(("[WARN] send-cmd: instance '" .. tostring(instance_name) .. "' does not satisfy traits for command '" .. tostring(cmd_name) .. "'"))
       end
     end
-    return _607_
+    return _616_
   end
   local function build_inputs(behavior, shape_registry, component_registry, tag_registry, input_tag)
     local inputs = (behavior.inputs or {})
@@ -4311,27 +4362,27 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
   end
   local function start_dispatcher_21(subscription_registry, component_registry, _3fshape_registry)
     local event_registry = subscription_registry["event-registry"]
-    local function _620_(event)
+    local function _629_(event)
       local sub_matches = get_matching_subscriptions(subscription_registry, event["event-source"], event["event-name"])
       for _, sub_match in ipairs((sub_matches or {})) do
         dispatch_to_behavior(subscription_registry, component_registry, _3fshape_registry, event, sub_match.behavior, sub_match["target-tag"], sub_match["input-tag"])
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _620_)
-    local function _621_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _629_)
+    local function _630_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _621_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _630_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_623_ = require("sheaf.dispatcher")
-local start_dispatcher_21 = _local_623_["start-dispatcher!"]
+local _local_632_ = require("sheaf.dispatcher")
+local start_dispatcher_21 = _local_632_["start-dispatcher!"]
 package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -4344,8 +4395,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     local registry = event_loop["event-registry"]
     if (0 < #registry.queue) then
       local event = table.remove(registry.queue, 1)
-      for _, handler in pairs(registry.handlers) do
-        handler(event)
+      for handler_key, handler in pairs(registry.handlers) do
+        local ok, err = pcall(handler, event)
+        if not ok then
+          print(("[ERROR] event-loop: handler '" .. tostring(handler_key) .. "' failed on event '" .. tostring(event["event-name"]) .. "': " .. tostring(err)))
+        else
+        end
       end
       return true
     else
@@ -4358,12 +4413,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     else
     end
     local timer
-    local function _627_()
+    local function _637_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _627_)
+    timer = hs.timer.new(0.01, _637_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -4379,9 +4434,9 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_629_ = require("sheaf.event-loop")
-local make_event_loop = _local_629_["make-event-loop"]
-local start_event_loop_21 = _local_629_["start-event-loop!"]
+local _local_639_ = require("sheaf.event-loop")
+local make_event_loop = _local_639_["make-event-loop"]
+local start_event_loop_21 = _local_639_["start-event-loop!"]
 start_dispatcher_21(subscription_registry, component_registry, shape_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)
