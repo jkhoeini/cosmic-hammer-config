@@ -442,7 +442,7 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-** PROJ URL Dispatch [18/22]
+** PROJ URL Dispatch [20/22]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
 Depends on: event hierarchy (done), source registry (done), component architecture (done),
 tag-based subscription routing (done), dispatcher (done).
@@ -738,7 +738,7 @@ Architectural decisions that must be resolved before implementation.
      - [X] Register behavior in behaviors/init.fnl
      - [X] Verify boot order in core.fnl (no changes expected — follows existing pattern)
 
-*** LATER Phase 2: In-Memory History [1/4]
+*** LATER Phase 2: In-Memory History [3/4]
     Separate url-history component records every dispatched URL into its own
     state. Decoupled from routing — recording can be wired/unwired independently
     via its subscription. History resets on reload (in-memory only); file/SQLite
@@ -752,24 +752,24 @@ Architectural decisions that must be resolved before implementation.
      (start-fn returns initial state). File or SQLite persistence deferred;
      if SQLite, aligns with "Persist state into SQLite" in Visibility & Debugging.
 
-**** LATER [#B] Create url-history component and record command [0/7]   :feature:
+**** DONE [#B] Create url-history component and record command [7/7]    :feature:
      A dedicated component holds URL history state. A command appends entries.
      A behavior responds to url-opened events and sends the record command.
      A subscription wires the url-handler source to the recording behavior.
 
-     - [ ] Add :trait/has-url-history to traits/init.fnl
+     - [X] Add :trait/has-url-history to traits/init.fnl
            Under :trait.kind/data (same category as :trait/has-url-routing-rules)
            Attrs: {:history non-nil?}
-     - [ ] Create components/url-history.fnl:
+     - [X] Create components/url-history.fnl:
            :component.type/url-history
            Traits: [:trait/has-url-history]
            Owned sources: hotkey source for history browser (see show-history item)
            start-fn returns {:history []}
-     - [ ] Register in components/init.fnl:
+     - [X] Register in components/init.fnl:
            Derive :component.kind/url-history from :component.kind/any
            Derive :component.type/url-history from :component.kind/url-history
            Start instance, attach :tag/url-history
-     - [ ] Create commands/record-url.fnl:
+     - [X] Create commands/record-url.fnl:
            :url-history.commands/record-url
            :requires-traits [:trait/has-url-history]
            #+begin_src fennel
@@ -782,7 +782,7 @@ Architectural decisions that must be resolved before implementation.
                     (table.insert history entry)
                     {:history history}))}
            #+end_src
-     - [ ] Create behaviors/record-url.fnl:
+     - [X] Create behaviors/record-url.fnl:
            :url-history.behaviors/record-on-dispatch
            Responds to [:event.kind.url/opened]
            Commands: {:record :url-history.commands/record-url}
@@ -795,7 +795,7 @@ Architectural decisions that must be resolved before implementation.
                                  :sender-bundle-id (?. event :event-data :sender-bundle-id)
                                  :timestamp (hs.timer.secondsSinceEpoch)}))))}
            #+end_src
-     - [ ] Wire subscription in subscriptions/init.fnl:
+     - [X] Wire subscription in subscriptions/init.fnl:
            :sub/record-url-on-dispatch
            #+begin_src fennel
            {:description "Record dispatched URLs into history"
@@ -804,24 +804,24 @@ Architectural decisions that must be resolved before implementation.
             :target-tag :tag/url-history
             :event-selector :event.kind.url/opened}
            #+end_src
-     - [ ] Register command in commands/init.fnl, behavior in behaviors/init.fnl
+     - [X] Register command in commands/init.fnl, behavior in behaviors/init.fnl
      - Depends on: Phase 1 (done)
 
-**** LATER [#B] Create history browser and hotkey [0/6]                 :feature:
+**** DONE [#B] Create history browser and hotkey [6/6]                  :feature:
      Command reads url-history component's state and presents it as a
      searchable hs.chooser list. On selection, re-opens the URL. A hotkey
      source on the url-history component triggers the behavior.
 
-     - [ ] Create commands/show-history.fnl:
+     - [X] Create commands/show-history.fnl:
            :url-history.commands/show-history
            :requires-traits [:trait/has-url-history]
            Module-level (var active-history-chooser nil) for GC prevention
            (same pattern as commands/show-chooser.fnl)
            Reads component.state.history, builds choices:
            {:text url :subText (.. sender-bundle-id " — " timestamp)}
-           On selection: opens URL via hs.urlevent.openURLWithBundle
+           On selection: copies URL to clipboard (avoids re-dispatch loop)
            Returns nil (browsing history is read-only)
-     - [ ] Create behaviors/show-history.fnl:
+     - [X] Create behaviors/show-history.fnl:
            :url-history.behaviors/show-history
            Responds to [:event.kind.hotkey/pressed]
            Commands: {:show-history :url-history.commands/show-history}
@@ -831,14 +831,14 @@ Architectural decisions that must be resolved before implementation.
                     (when target
                       (send-cmd target :show-history {}))))}
            #+end_src
-     - [ ] Add hotkey source to url-history component :sources array:
+     - [X] Add hotkey source to url-history component :sources array:
            #+begin_src fennel
            {:type :event-source.type/hotkey
             :config {:mods [:cmd :ctrl] :key "l"}
             :instance-name "history-hotkey"
             :tags [:tag/url-history-hotkey]}
            #+end_src
-     - [ ] Wire subscription in subscriptions/init.fnl:
+     - [X] Wire subscription in subscriptions/init.fnl:
            :sub/show-history-on-hotkey
            #+begin_src fennel
            {:description "Show URL history browser on Cmd+Ctrl+L"
@@ -847,8 +847,8 @@ Architectural decisions that must be resolved before implementation.
             :target-tag :tag/url-history
             :event-selector :event.kind.hotkey/pressed}
            #+end_src
-     - [ ] Register command in commands/init.fnl, behavior in behaviors/init.fnl
-     - [ ] Depends on: url-history component (previous item)
+     - [X] Register command in commands/init.fnl, behavior in behaviors/init.fnl
+     - [X] Depends on: url-history component (previous item)
 
 **** LATER [#C] Enhance history entries with routing result              :feature:
      - [ ] Extend record-url params with optional :action-type and :browser-id

@@ -16,6 +16,7 @@
 (local {: update-on-focus-behavior : update-on-move-behavior : hide-on-disappear-behavior} (require :behaviors.window-border))
 (local {: route-url-behavior} (require :behaviors.url-routing))
 (local {: record-url-behavior} (require :behaviors.record-url))
+(local {: show-history-behavior} (require :behaviors.show-history))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -31,6 +32,7 @@
 (add-behavior! behavior-registry hide-on-disappear-behavior)
 (add-behavior! behavior-registry route-url-behavior)
 (add-behavior! behavior-registry record-url-behavior)
+(add-behavior! behavior-registry show-history-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

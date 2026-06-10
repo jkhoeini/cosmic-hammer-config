@@ -110,4 +110,12 @@
   :target-tag :tag/url-history
   :event-selector :event.kind.url/opened})
 
+(define-subscription! subscription-registry
+ :sub/show-history-on-hotkey
+ {:description "Show URL history browser on Cmd+Ctrl+L"
+  :behavior :url-history.behaviors/show-history
+  :source-tag :tag/url-history-hotkey
+  :target-tag :tag/url-history
+  :event-selector :event.kind.hotkey/pressed})
+
 {: subscription-registry}

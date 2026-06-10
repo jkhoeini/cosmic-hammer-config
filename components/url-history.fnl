@@ -13,6 +13,10 @@
    :component.type/url-history
    "URL history - records dispatched URLs for browsing and recall"
    {:traits [:trait/has-url-history]
+    :sources [{:type :event-source.type/hotkey
+               :config {:mods [:cmd :ctrl] :key "l"}
+               :instance-name "history-hotkey"
+               :tags [:tag/url-history-hotkey]}]
     :start-fn (fn [config] {:history []})}))
 
 {: url-history-type}
