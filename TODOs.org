@@ -282,7 +282,7 @@ System is performant and has comprehensive documentation for users.
      - How they are independent but compose together
      - See DESIGN.md for current reference
 
-** PROJ Sheaf Shapes [5/6]
+** PROJ Sheaf Shapes [5/7]
 Logical composition of traits for behavior inputs and future Datalog-style state.
 
 *** DONE [#A] Define shape concept                                      :architecture:
@@ -324,6 +324,11 @@ Logical composition of traits for behavior inputs and future Datalog-style state
 *** DONE [#A] Migrate behavior input design to shapes                   :architecture:
     - [X] Behavior inputs become {:alias :shape/name}
     - [X] Dispatcher resolves input candidates by :input-tag, then conforms? by shape
+
+*** LATER [#C] Add trait-projected/read-only behavior inputs              :architecture:
+    - [ ] Project input state to fields guaranteed by requested traits
+    - [ ] Prevent behavior code from mutating injected component state
+    - [ ] Keep raw-state inputs as the initial implementation
 
 *** LATER [#C] Explore fact/Datalog-backed traits and shapes             :architecture:
     - [ ] Traits become inferred/asserted facts over entities
@@ -437,7 +442,7 @@ Users can automate based on more system events.
 
 *** LATER [#C] Add user commands, key mappings, etc on top of event/behavior system :architecture:
 
-** PROJ URL Dispatch [17/19]
+** PROJ URL Dispatch [18/22]
 Route URLs to different browsers/apps based on rules. Hammerspoon acts as default browser.
 Depends on: event hierarchy (done), source registry (done), component architecture (done),
 tag-based subscription routing (done), dispatcher (done).
@@ -642,7 +647,7 @@ Architectural decisions that must be resolved before implementation.
            {:name :decoder-name
             :match {:scheme :https :host "*.example.com" :path "/*"}
             :decode-fn (fn [ctx] decoded-url-or-nil)}
-     - [ ] Decoder ctx is {:url current-url :parts (hs.http.urlParts current-url)}
+     - [X] Decoder ctx is {:url current-url :parts (hs.http.urlParts current-url)}
      - [X] nil return means no transform; keep current URL and continue
      - [X] Returned string replaces current URL
      - [X] Continue until stable or :decoder-max-depth, default 5
@@ -670,13 +675,13 @@ Architectural decisions that must be resolved before implementation.
      - [X] Add :shape/url-routing-rules to shapes/init.fnl
      - [X] Create components/url-routing-rules.fnl with
            :component.type/url-routing-rules
-     - [ ] start-fn returns raw state containing ordered browsers, fallback
+     - [X] start-fn returns raw state containing ordered browsers, fallback
            action, and ordered rules
-     - [ ] Browser list uses stable IDs:
+     - [X] Browser list uses stable IDs:
            {:browsers [{:id :safari :bundle-id "com.apple.Safari"}]}
-     - [ ] Fallback uses browser ID:
+     - [X] Fallback uses browser ID:
            {:fallback {:type :open-in-app :browser-id :safari}}
-     - [ ] Rules use structured matching:
+     - [X] Rules use structured matching:
            {:id :rule-id
             :match {:urls [{:scheme [:http :https] :host "*.example.com" :path "/*"}]
                     :sender-bundle-ids ["com.example.App"]}
@@ -733,51 +738,125 @@ Architectural decisions that must be resolved before implementation.
      - [X] Register behavior in behaviors/init.fnl
      - [X] Verify boot order in core.fnl (no changes expected — follows existing pattern)
 
-**** LATER [#C] Add trait-projected/read-only behavior inputs            :architecture:
-     - [ ] Project input state to fields guaranteed by requested traits
-     - [ ] Prevent behavior code from mutating injected component state
-     - [ ] Keep raw-state inputs as the initial implementation
+*** LATER Phase 2: In-Memory History [1/4]
+    Separate url-history component records every dispatched URL into its own
+    state. Decoupled from routing — recording can be wired/unwired independently
+    via its subscription. History resets on reload (in-memory only); file/SQLite
+    persistence deferred to a future phase.
 
-*** LATER Phase 2: History [0/4]
+**** DONE [#B] Decide history persistence format                        :architecture:
+     Decision: in-memory Lua table. History entries live in a dedicated
+     url-history component's state as a sequential table. No file I/O or
+     external deps. History resets on reload — acceptable for Phase 2;
+     aligns with the existing pattern where all component state is ephemeral
+     (start-fn returns initial state). File or SQLite persistence deferred;
+     if SQLite, aligns with "Persist state into SQLite" in Visibility & Debugging.
 
-**** LATER [#B] Decide history persistence format                       :architecture:
-     - [ ] Option A: Lua table serialized to JSON file — simple, no deps
-     - [ ] Option B: SQLite via hs.sqlite3 — queryable, aligns with PROJ Visibility & Debugging
-     - [ ] Option C: Append-only log file — simplest, grep-friendly, no random access
-     - [ ] Decision affects component state shape, startup cost, and query capabilities
-     - [ ] If SQLite: aligns with the "Persist state into SQLite" item in Visibility & Debugging
+**** LATER [#B] Create url-history component and record command [0/7]   :feature:
+     A dedicated component holds URL history state. A command appends entries.
+     A behavior responds to url-opened events and sends the record command.
+     A subscription wires the url-handler source to the recording behavior.
 
-**** LATER [#B] Record URL history                                      :feature:
      - [ ] Add :trait/has-url-history to traits/init.fnl
-     - [ ] Update url-dispatch component start-fn to initialize history storage
-     - [ ] Create :url-dispatch.commands/record-url command
-       Requires :trait/has-url-history
-       Params: {:url :sender :matched-rule :target-app :timestamp}
-       Returns new state with appended history entry
-     - [ ] Create :url-dispatch.behaviors/record-on-dispatch behavior
-       Responds to [:event.kind.url/opened]
-       Sends :record-url after routing completes
-     - [ ] Wire subscription: :sub/record-url-on-open
-     - [ ] Depends on: Phase 1 complete, persistence format decided
+           Under :trait.kind/data (same category as :trait/has-url-routing-rules)
+           Attrs: {:history non-nil?}
+     - [ ] Create components/url-history.fnl:
+           :component.type/url-history
+           Traits: [:trait/has-url-history]
+           Owned sources: hotkey source for history browser (see show-history item)
+           start-fn returns {:history []}
+     - [ ] Register in components/init.fnl:
+           Derive :component.kind/url-history from :component.kind/any
+           Derive :component.type/url-history from :component.kind/url-history
+           Start instance, attach :tag/url-history
+     - [ ] Create commands/record-url.fnl:
+           :url-history.commands/record-url
+           :requires-traits [:trait/has-url-history]
+           #+begin_src fennel
+           {:schema {:url string? :sender-bundle-id string? :timestamp number?}
+            :fn (fn [component params]
+                  (let [entry {:url params.url
+                               :sender-bundle-id params.sender-bundle-id
+                               :timestamp params.timestamp}
+                        history (or component.state.history [])]
+                    (table.insert history entry)
+                    {:history history}))}
+           #+end_src
+     - [ ] Create behaviors/record-url.fnl:
+           :url-history.behaviors/record-on-dispatch
+           Responds to [:event.kind.url/opened]
+           Commands: {:record :url-history.commands/record-url}
+           #+begin_src fennel
+           {:fn (fn [event candidates send-cmd]
+                  (let [target (. candidates.record 1)]
+                    (when target
+                      (send-cmd target :record
+                                {:url (?. event :event-data :url)
+                                 :sender-bundle-id (?. event :event-data :sender-bundle-id)
+                                 :timestamp (hs.timer.secondsSinceEpoch)}))))}
+           #+end_src
+     - [ ] Wire subscription in subscriptions/init.fnl:
+           :sub/record-url-on-dispatch
+           #+begin_src fennel
+           {:description "Record dispatched URLs into history"
+            :behavior :url-history.behaviors/record-on-dispatch
+            :source-tag :tag/url-handler
+            :target-tag :tag/url-history
+            :event-selector :event.kind.url/opened}
+           #+end_src
+     - [ ] Register command in commands/init.fnl, behavior in behaviors/init.fnl
+     - Depends on: Phase 1 (done)
 
-**** LATER [#B] Create history browser via hs.chooser                   :feature:
-     - [ ] Create :url-dispatch.commands/show-history command
-       Requires :trait/has-url-history
-       Reads history from component state, populates hs.chooser
-       On selection: opens URL in original or user-selected app
-     - [ ] Searchable list of past URLs with timestamp, sender, target app
-     - [ ] Depends on: Record URL history
+**** LATER [#B] Create history browser and hotkey [0/6]                 :feature:
+     Command reads url-history component's state and presents it as a
+     searchable hs.chooser list. On selection, re-opens the URL. A hotkey
+     source on the url-history component triggers the behavior.
 
-**** LATER [#C] Add hotkey source + behavior to trigger history browser  :feature:
-     - [ ] Add hotkey source to url-dispatch component :sources array
-       {:type :event-source.type/hotkey :config {:mods [...] :key "..."} :instance-name "history-hotkey" :tags [:tag/url-history-hotkey]}
-     - [ ] Create :url-dispatch.behaviors/show-history-on-hotkey behavior
-       Responds to [:event.kind.hotkey/pressed]
-       Commands: {:show-history :url-dispatch.commands/show-history}
-     - [ ] Wire subscription: :sub/show-history-on-hotkey
-       source-tag: :tag/url-history-hotkey, target-tag: :tag/url-dispatch
-     - [ ] Depends on: history browser command
-     - [ ] Wire a hotkey to show the URL history chooser
+     - [ ] Create commands/show-history.fnl:
+           :url-history.commands/show-history
+           :requires-traits [:trait/has-url-history]
+           Module-level (var active-history-chooser nil) for GC prevention
+           (same pattern as commands/show-chooser.fnl)
+           Reads component.state.history, builds choices:
+           {:text url :subText (.. sender-bundle-id " — " timestamp)}
+           On selection: opens URL via hs.urlevent.openURLWithBundle
+           Returns nil (browsing history is read-only)
+     - [ ] Create behaviors/show-history.fnl:
+           :url-history.behaviors/show-history
+           Responds to [:event.kind.hotkey/pressed]
+           Commands: {:show-history :url-history.commands/show-history}
+           #+begin_src fennel
+           {:fn (fn [event candidates send-cmd]
+                  (let [target (. candidates.show-history 1)]
+                    (when target
+                      (send-cmd target :show-history {}))))}
+           #+end_src
+     - [ ] Add hotkey source to url-history component :sources array:
+           #+begin_src fennel
+           {:type :event-source.type/hotkey
+            :config {:mods [:cmd :ctrl] :key "l"}
+            :instance-name "history-hotkey"
+            :tags [:tag/url-history-hotkey]}
+           #+end_src
+     - [ ] Wire subscription in subscriptions/init.fnl:
+           :sub/show-history-on-hotkey
+           #+begin_src fennel
+           {:description "Show URL history browser on Cmd+Ctrl+L"
+            :behavior :url-history.behaviors/show-history
+            :source-tag :tag/url-history-hotkey
+            :target-tag :tag/url-history
+            :event-selector :event.kind.hotkey/pressed}
+           #+end_src
+     - [ ] Register command in commands/init.fnl, behavior in behaviors/init.fnl
+     - [ ] Depends on: url-history component (previous item)
+
+**** LATER [#C] Enhance history entries with routing result              :feature:
+     - [ ] Extend record-url params with optional :action-type and :browser-id
+           so history shows which browser was used for :open-in-app actions
+     - [ ] For :choose actions, record :action-type :choose without :browser-id
+           (async chooser callback result not capturable in the synchronous
+           command model — would require a new event for chooser selection)
+     - [ ] Depends on: record command and behavior working
 
 ** PROJ Window Management [0/7]
 Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
