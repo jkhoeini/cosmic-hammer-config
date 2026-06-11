@@ -21,13 +21,20 @@
 ;; ============================================================================
 
 (fn dispatch-open-in-app [action url lookup target send-cmd]
-  "Dispatch an :open-in-app action. Resolves browser-id and sends command."
+  "Dispatch an :open-in-app action. Resolves browser-id and sends command.
+   Returns true if dispatched, false if browser could not be resolved."
   (print (.. "[DEBUG] url-routing: dispatch-open-in-app browser-id=" (tostring action.browser-id)))
   (let [browser (resolve-browser action.browser-id lookup)]
-    (when browser
-      (print (.. "[DEBUG] url-routing: opening in " (tostring browser.name)
-                 " (" (tostring browser.bundle-id) ")"))
-      (send-cmd target :open-in-app {:url url :bundle-id browser.bundle-id}))))
+    (if browser
+        (do
+          (print (.. "[DEBUG] url-routing: opening in " (tostring browser.name)
+                     " (" (tostring browser.bundle-id) ")"))
+          (send-cmd target :open-in-app {:url url :bundle-id browser.bundle-id})
+          true)
+        (do
+          (print (.. "[WARN] url-routing: browser '" (tostring action.browser-id)
+                     "' not resolved, falling back"))
+          false))))
 
 
 (fn collect-browser-ids-for-choose [action browsers]
@@ -60,7 +67,8 @@
 
 
 (fn dispatch-action [action url browsers lookup candidates send-cmd]
-  "Dispatch a rule action to the appropriate command on a target candidate."
+  "Dispatch a rule action to the appropriate command on a target candidate.
+   Falls back to chooser when :open-in-app fails (e.g. browser not installed)."
   (when (= nil action)
     (print "[WARN] url-routing: nil action, cannot dispatch")
     (lua "return nil"))
@@ -70,7 +78,12 @@
   (if (= :open-in-app action.type)
       (let [target (. candidates.open-in-app 1)]
         (if target
-            (dispatch-open-in-app action url lookup target send-cmd)
+            (when (not (dispatch-open-in-app action url lookup target send-cmd))
+              (print "[INFO] url-routing: open-in-app failed, falling back to chooser")
+              (let [chooser-target (. candidates.show-chooser 1)]
+                (when chooser-target
+                  (dispatch-choose {:browser-ids :all} url browsers lookup
+                                   chooser-target send-cmd))))
             (print "[WARN] url-routing: no candidate for :open-in-app")))
       (= :choose action.type)
       (let [target (. candidates.show-chooser 1)]
@@ -116,17 +129,17 @@
                   parsed (parse-url url)
                   ;; First-match-wins against ordered rules
                   matched-rule (find-matching-rule parsed sender-bundle-id rules)
-                  ;; Use matched rule's action or fall back
-                  action (if matched-rule
-                             matched-rule.action
-                             fallback)]
+                  ;; Use matched rule's action, configured fallback, or safety-net chooser
+                  action (or (when matched-rule matched-rule.action)
+                             fallback
+                             {:type :choose :browser-ids :all})]
+              (when (not (or matched-rule fallback))
+                (print (.. "[WARN] url-routing: no matching rule and no fallback configured"
+                           " — using safety-net chooser for URL '" (tostring url) "'")))
               (print (.. "[DEBUG] url-routing: browsers=" (tostring (length browsers))
                          " matched-rule=" (tostring (when matched-rule matched-rule.id))
                          " action.type=" (tostring (?. action :type))))
-              (if action
-                  (dispatch-action action url browsers lookup candidates send-cmd)
-                  (print (.. "[WARN] url-routing: no matching rule and no fallback for URL '"
-                             (tostring url) "'"))))))}))
+              (dispatch-action action url browsers lookup candidates send-cmd))))}))
 
 
 {: route-url-behavior}

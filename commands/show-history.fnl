@@ -24,7 +24,7 @@
                               {:text entry.url
                                :subText (.. (or entry.sender-bundle-id "unknown")
                                            " \xe2\x80\x94 "
-                                           (os.date "%Y-%m-%d %H:%M" entry.timestamp))})))
+                                           (os.date "%Y-%m-%d %H:%M" (math.floor entry.timestamp)))})))
             (let [chooser (hs.chooser.new
                            (fn [choice]
                              (when choice

@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [31/123]
+* Projects [32/124]
 ** PROJ Configuration as Data [12/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -383,14 +383,16 @@ Users can automate based on more system events.
 
     - [X] Define window events in events/init.fnl:
           Kind nodes under :event.kind.window/any: /focused, /visible, /not-visible,
-          /fullscreened, /unfullscreened, /moved, /resized.
-          Concrete events: window-watcher.events/{focused,visible,not-visible,fullscreened,unfullscreened},
+          /fullscreened, /unfullscreened, /moved, /resized, /initial.
+          Concrete events: window-watcher.events/{focused,visible,not-visible,fullscreened,unfullscreened,initial-windows},
           window-element-watcher.events/{moved,resized}.
-          Schema: {:window-id :app-name :window-title :frame}
+          Schema: {:window-id :app-name :bundle-id :window-title :frame}
+          Initial-windows schema: {:windows table?}
     - [X] Implement event_sources/window-watcher.fnl:
           Wraps hs.window.filter. Permissive filter (no fullscreen/titlebar exclusion).
           Emacs allowRoles: [:AXUnknown :AXStandardWindow :AXDialog :AXSystemDialog].
-          Subscribes to 5 events, emits {:window-id :app-name :window-title :frame}
+          Subscribes to 6 events, emits {:window-id :app-name :bundle-id :window-title :frame}.
+          Emits :window-watcher.events/initial-windows on start with all visible windows
     - [X] Implement event_sources/window-element-watcher.fnl:
           Wraps hs.uielement.watcher for a single window.
           Config: {:window-id id} — looks up hs.window, creates uielement watcher.
@@ -894,7 +896,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [7/19]
+** PROJ Window Borders [8/20]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -1040,15 +1042,35 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [ ] Store timer in component state so it can be cancelled on stop
     - [ ] Filter self-generated events (canvas show/hide can trigger window callbacks)
 
+*** DONE Implement window-state component [11/11] :feature:
+    Dedicated component tracks all visible windows in a live ={window-id → entry}= map.
+    Starts empty; populated via =:window-watcher.events/initial-windows= on boot.
+    Updated reactively by window events through commands. Downstream features
+    consume it as a behavior input via =:input-tag :tag/window-state=.
+    Depends on: window-watcher event source (done), trait system (done), shape system (done).
+
+    - [X] Add =:bundle-id= to =make-event-data= in =event_sources/window-watcher.fnl=
+    - [X] Emit =:window-watcher.events/initial-windows= on source start with all visible windows
+    - [X] Define =:event.kind.window/initial= kind and =initial-windows= concrete event
+    - [X] Update 6 existing window event schemas to include =:bundle-id=
+    - [X] Add =:trait/has-window-state= under =:trait.kind/data=
+    - [X] Add =:shape/window-state= for behavior input conformance
+    - [X] Create =components/window-state.fnl=: starts with ={:windows {}}=
+    - [X] Create =commands/window-state.fnl=: =initialize-windows=, =upsert-window=, =remove-window=
+    - [X] Create =behaviors/window-state.fnl=: =initialize=, =track-on-change=, =track-on-move=, =untrack-on-disappear=
+    - [X] Register in =components/init.fnl=, =commands/init.fnl=, =behaviors/init.fnl=
+    - [X] Wire 7 subscriptions in =subscriptions/init.fnl=
+
 *** LATER [#B] Track all windows (active + inactive borders) :feature:
     Currently we only show a border on the focused window. JankyBorders tracks ALL windows
     via a hash table keyed by window-id, rendering active color on focused and inactive color on rest.
+    Window-state component (done) provides the live ={window-id → entry}= map via
+    =:input-tag :tag/window-state= — no bootstrap needed, border behaviors consume it as input.
     - [ ] Maintain a Lua table =window-borders= mapping =window-id → canvas= in component state
     - [ ] On focus event: recolor previous active to inactive, recolor new to active
     - [ ] On window-visible event: create new border canvas, add to table
     - [ ] On window-not-visible event: delete border canvas, remove from table
     - [ ] On move/resize event: reposition the specific window's border by window-id lookup
-    - [ ] Use =hs.window.filter:getWindows()= on start to bootstrap borders for all existing windows
     - [ ] Requires new behavior: =update-all-on-change= that manages the full border table
     This is a significant redesign — the current single-active-canvas model becomes a canvas-per-window model.
 

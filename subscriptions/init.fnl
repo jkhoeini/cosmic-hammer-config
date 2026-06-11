@@ -118,4 +118,63 @@
   :target-tag :tag/url-history
   :event-selector :event.kind.hotkey/pressed})
 
+
+;; --- Window State Tracking ---
+
+(define-subscription! subscription-registry
+ :sub/window-state-initialize
+ {:description "Populate window state from initial snapshot"
+  :behavior :window-state.behaviors/initialize
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/initial})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-focus
+ {:description "Track window on focus"
+  :behavior :window-state.behaviors/track-on-change
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/focused})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-visible
+ {:description "Track window on visible"
+  :behavior :window-state.behaviors/track-on-change
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/visible})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-fullscreen
+ {:description "Track window fullscreen state"
+  :behavior :window-state.behaviors/track-on-change
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/fullscreened})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-unfullscreen
+ {:description "Track window unfullscreen state"
+  :behavior :window-state.behaviors/track-on-change
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/unfullscreened})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-move
+ {:description "Track window frame on move/resize"
+  :behavior :window-state.behaviors/track-on-move
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/moved})
+
+(define-subscription! subscription-registry
+ :sub/window-state-on-disappear
+ {:description "Remove window from tracking on disappear"
+  :behavior :window-state.behaviors/untrack-on-disappear
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/not-visible})
+
 {: subscription-registry}

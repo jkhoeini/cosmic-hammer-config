@@ -18,6 +18,9 @@
         : hide-borders-command} (require :commands.window-border))
 (local {: record-url-command} (require :commands.record-url))
 (local {: show-history-command} (require :commands.show-history))
+(local {: initialize-windows-command
+        : upsert-window-command
+        : remove-window-command} (require :commands.window-state))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry {:trait-registry trait-registry}))
@@ -33,6 +36,9 @@
 (add-command! command-registry hide-borders-command)
 (add-command! command-registry record-url-command)
 (add-command! command-registry show-history-command)
+(add-command! command-registry initialize-windows-command)
+(add-command! command-registry upsert-window-command)
+(add-command! command-registry remove-window-command)
 
 
 {: command-registry}

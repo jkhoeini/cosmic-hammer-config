@@ -32,7 +32,8 @@
 ;; │
 ;; └── :trait.kind/data                      ;; Pure config/data in state
 ;;     ├── :trait/has-url-routing-rules
-;;     └── :trait/has-url-history
+;;     ├── :trait/has-url-history
+;;     └── :trait/has-window-state
 
 (local trait-hierarchy (make-hierarchy))
 
@@ -58,6 +59,7 @@
 (derive! trait-hierarchy :trait.kind/data :trait.kind/any)
 (derive! trait-hierarchy :trait/has-url-routing-rules :trait.kind/data)
 (derive! trait-hierarchy :trait/has-url-history :trait.kind/data)
+(derive! trait-hierarchy :trait/has-window-state :trait.kind/data)
 
 
 ;; ============================================================================
@@ -121,6 +123,11 @@
   (make-trait :trait/has-url-history
               "Component state includes URL visit history"
               {:history non-nil?}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-window-state
+              "Component state includes a map of tracked window states"
+              {:windows non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)

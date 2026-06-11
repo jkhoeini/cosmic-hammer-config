@@ -9,10 +9,12 @@
 
 (fn make-event-data [window appName]
   "Build the event payload from an hs.window object."
-  {:window-id (window:id)
-   :app-name appName
-   :window-title (window:title)
-   :frame (window:frame)})
+  (let [app (window:application)]
+    {:window-id (window:id)
+     :app-name appName
+     :bundle-id (when app (app:bundleID))
+     :window-title (window:title)
+     :frame (window:frame)}))
 
 
 (fn start-window-watcher [self emit]
@@ -46,6 +48,18 @@
       WindowFilter.windowUnfullscreened
       WindowFilter.windowMoved]
      handler)
+    (let [current-windows (wf:getWindows)
+          entries []]
+      (each [_ w (ipairs current-windows)]
+        (let [app (w:application)]
+          (table.insert entries
+                        {:window-id (w:id)
+                         :app-name (when app (app:name))
+                         :bundle-id (when app (app:bundleID))
+                         :window-title (w:title)
+                         :frame (w:frame)
+                         :fullscreen (w:isFullScreen)})))
+      (emit :window-watcher.events/initial-windows {:windows entries}))
     wf))
 
 
@@ -67,7 +81,8 @@
             :window-watcher.events/not-visible
             :window-watcher.events/fullscreened
             :window-watcher.events/unfullscreened
-            :window-watcher.events/moved]
+            :window-watcher.events/moved
+            :window-watcher.events/initial-windows]
     :start-fn start-window-watcher
     :stop-fn stop-window-watcher}))
 

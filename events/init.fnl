@@ -31,7 +31,8 @@
 ;; │   ├── :event.kind.window/fullscreened
 ;; │   ├── :event.kind.window/unfullscreened
 ;; │   ├── :event.kind.window/moved
-;; │   └── :event.kind.window/resized
+;; │   ├── :event.kind.window/resized
+;; │   └── :event.kind.window/initial
 ;; │
 ;; ├── :event.kind.app/any                 ;; Application events
 ;; │   ├── :event.kind.app/launched
@@ -87,6 +88,7 @@
 (derive! event-hierarchy :event.kind.window/unfullscreened :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/moved :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/resized :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/initial :event.kind.window/any)
 
 ;; --- Application ---
 (derive! event-hierarchy :event.kind.app/any :event.kind/any)
@@ -182,38 +184,44 @@
 (define-event! event-registry
                :window-watcher.events/focused
                "Window gained focus"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/focused :event.kind.window/focused)
 
 (define-event! event-registry
                :window-watcher.events/visible
                "Window became visible"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/visible :event.kind.window/visible)
 
 (define-event! event-registry
                :window-watcher.events/not-visible
                "Window is no longer visible"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/not-visible :event.kind.window/not-visible)
 
 (define-event! event-registry
                :window-watcher.events/fullscreened
                "Window entered fullscreen"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/fullscreened :event.kind.window/fullscreened)
 
 (define-event! event-registry
                :window-watcher.events/unfullscreened
                "Window exited fullscreen"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/unfullscreened :event.kind.window/unfullscreened)
 
 (define-event! event-registry
                :window-watcher.events/moved
                "Window was moved or resized"
-               {:window-id number? :app-name string? :window-title string? :frame table?})
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/moved :event.kind.window/moved)
+
+(define-event! event-registry
+               :window-watcher.events/initial-windows
+               "Snapshot of all visible windows at source startup"
+               {:windows table?})
+(derive! event-hierarchy :window-watcher.events/initial-windows :event.kind.window/initial)
 
 
 ;; --- Window Element Watcher Events ---

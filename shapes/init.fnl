@@ -28,6 +28,11 @@
               "URL routing configuration: browsers, fallback action, and ordered rules"
               [{:name :default :traits [:trait/has-url-routing-rules]}]))
 
+(add-shape! shape-registry
+  (make-shape :shape/window-state
+              "Live index of all tracked windows by window-id"
+              [{:name :default :traits [:trait/has-window-state]}]))
+
 
 ;; Export registry
 {: shape-registry}

@@ -41,6 +41,10 @@
 (fn start-url-handler [self emit]
   "Start the URL handler source.
    Registers Hammerspoon as the default HTTP/HTTPS handler.
+   Note: setDefaultHandler also registers for HTML/text content types
+   via LSSetDefaultRoleHandlerForContentType, so file opens (e.g. local
+   .html files) also arrive here with scheme='file'. These are forwarded
+   directly to the previous default browser.
    self: {:name instance-name :type type-name :config {:decoders table? :decoder-max-depth number?}}
    emit: (fn [event-name event-data])
    Returns state with previous handler info for restore."
@@ -50,10 +54,18 @@
         prev-http (hs.urlevent.getDefaultHandler :http)
         prev-https (hs.urlevent.getDefaultHandler :https)
         callback (fn [scheme host params full-url sender-pid]
-                   (print (.. "[DEBUG] url-handler: received URL=" (tostring full-url)
+                   (print (.. "[INFO] url-handler: callback invoked"
                               " scheme=" (tostring scheme)
-                              " host=" (tostring host)
+                              " url=" (tostring full-url)
                               " senderPID=" (tostring sender-pid)))
+                   ;; file:// URLs come from local file opens (e.g. GP SAML HTML).
+                   ;; Forward directly to the previous browser — we can't render HTML.
+                   (when (= scheme :file)
+                     (print (.. "[INFO] url-handler: file:// URL, forwarding to "
+                                (tostring prev-http)))
+                     (when prev-http
+                       (hs.urlevent.openURLWithBundle full-url prev-http))
+                     (lua "return"))
                    (let [original full-url
                          ;; Run decoder pipeline
                          decoded (run-decoders decoders max-depth full-url)
@@ -78,8 +90,13 @@
     ;; Register Hammerspoon as the default browser for http
     ;; (http and https are linked in macOS, so one call covers both)
     (hs.urlevent.setDefaultHandler :http)
+    ;; Tell cosmichammer to restore the previous browser on exit/reload
+    ;; so content-type registrations (HTML, text, etc.) are also restored
+    (when prev-http
+      (hs.urlevent.setRestoreHandler :http prev-http))
     ;; Set the callback for incoming URLs
     (set hs.urlevent.httpCallback callback)
+    (print (.. "[INFO] url-handler: registered, prev-http=" (tostring prev-http)))
     ;; Return state for stop-fn to restore
     {:prev-http-handler prev-http
      :prev-https-handler prev-https}))

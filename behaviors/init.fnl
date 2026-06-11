@@ -17,6 +17,10 @@
 (local {: route-url-behavior} (require :behaviors.url-routing))
 (local {: record-url-behavior} (require :behaviors.record-url))
 (local {: show-history-behavior} (require :behaviors.show-history))
+(local {: initialize-behavior
+        : track-on-change-behavior
+        : track-on-move-behavior
+        : untrack-on-disappear-behavior} (require :behaviors.window-state))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -33,6 +37,10 @@
 (add-behavior! behavior-registry route-url-behavior)
 (add-behavior! behavior-registry record-url-behavior)
 (add-behavior! behavior-registry show-history-behavior)
+(add-behavior! behavior-registry initialize-behavior)
+(add-behavior! behavior-registry track-on-change-behavior)
+(add-behavior! behavior-registry track-on-move-behavior)
+(add-behavior! behavior-registry untrack-on-disappear-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}
