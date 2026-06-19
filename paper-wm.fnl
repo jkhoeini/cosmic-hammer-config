@@ -114,7 +114,7 @@
         (tset index-table (window:id) {:space space :col col :row row})))))
 
 ;; ---------------------------------------------------------------------------
-;; move-window!
+;; Tiling engine
 ;; ---------------------------------------------------------------------------
 
 (fn move-window! [window frame]
@@ -131,10 +131,6 @@
     (window:setFrame frame)
     (Timer.doAfter (+ Window.animationDuration padding)
                    #(watcher:start [Watcher.windowMoved Watcher.windowResized]))))
-
-;; ---------------------------------------------------------------------------
-;; Tiling engine
-;; ---------------------------------------------------------------------------
 
 (fn tile-column! [windows bounds h w id h4id]
   "Tile a column of windows by moving and resizing.
@@ -226,13 +222,83 @@
                 (set x2 (math.max (- x2 column-width config.window-gap) left-margin))))))))))
 
 ;; ---------------------------------------------------------------------------
-;; Event handling
+;; Window tracking
 ;; ---------------------------------------------------------------------------
 
-;; Forward declarations for mutual references
+;; Forward declarations for mutual references between tracking and commands
 (var add-window! nil)
 (var remove-window! nil)
 (var focus-window nil)
+
+(set add-window!
+  (fn [add-win]
+    "Add a new window to be tracked and automatically tiled.
+     Returns the space containing the window, or nil."
+    (when (> (add-win:tabCount) 0)
+      (hs.notify.show :PaperWM "Windows with tabs are not supported!"
+                      "See https://github.com/mogenson/PaperWM.spoon/issues/39")
+      (lua "return"))
+    (when (. index-table (add-win:id))
+      (lua "return"))
+    (let [space (. (Spaces.windowSpaces add-win) 1)]
+      (when (not space)
+        (logger.e "add window does not have a space")
+        (lua "return"))
+      (when (not (. window-list space))
+        (tset window-list space {}))
+      (var add-column 1)
+      (if (and focused-window
+               (= (. (or (. index-table (focused-window:id)) {}) :space) space)
+               (not= (focused-window:id) (add-win:id)))
+          (set add-column (+ (. index-table (focused-window:id) :col) 1))
+          (let [x (. (add-win:frame) :center :x)]
+            (each [col windows (ipairs (. window-list space))]
+              (when (< x (. (: (. windows 1) :frame) :center :x))
+                (set add-column col)
+                (lua :break)))))
+      (table.insert (. window-list space) add-column [add-win])
+      (update-index-table! space add-column)
+      ;; subscribe to window moved/resized events
+      (let [watcher (add-win:newWatcher
+                      (fn [window event]
+                        (window-event-handler window event)))]
+        (watcher:start [Watcher.windowMoved Watcher.windowResized])
+        (tset ui-watchers (add-win:id) watcher))
+      space)))
+
+(set remove-window!
+  (fn [remove-win ?skip-focus]
+    "Remove a window from tracking. Returns the space it was in, or nil."
+    (let [remove-index (. index-table (remove-win:id))]
+      (when (not remove-index)
+        (logger.e "remove index not found")
+        (lua "return"))
+      (when (not ?skip-focus)
+        (let [fw (Window.focusedWindow)]
+          (when (and fw (= (remove-win:id) (fw:id)))
+            (each [_ direction (ipairs [Direction.DOWN Direction.UP
+                                        Direction.LEFT Direction.RIGHT])]
+              (when (focus-window direction remove-index)
+                (lua :break))))))
+      ;; remove from window-list
+      (table.remove (. window-list remove-index.space remove-index.col)
+                    remove-index.row)
+      (when (= (length (. window-list remove-index.space remove-index.col)) 0)
+        (table.remove (. window-list remove-index.space) remove-index.col))
+      ;; remove watcher
+      (: (. ui-watchers (remove-win:id)) :stop)
+      (tset ui-watchers (remove-win:id) nil)
+      ;; update index-table
+      (tset index-table (remove-win:id) nil)
+      (update-index-table! remove-index.space remove-index.col)
+      ;; remove space if empty
+      (when (= (length (. window-list remove-index.space)) 0)
+        (tset window-list remove-index.space nil))
+      remove-index.space)))
+
+;; ---------------------------------------------------------------------------
+;; Event handling
+;; ---------------------------------------------------------------------------
 
 (fn window-event-handler [window event]
   "Callback for window filter and uielement watcher events."
@@ -312,78 +378,12 @@
                      Window.animationDuration))))
 
 ;; ---------------------------------------------------------------------------
-;; Window tracking
+;; User-facing commands
 ;; ---------------------------------------------------------------------------
+;; These are the actions exposed to Sheaf command wrappers.
+;; Each takes simple parameters and performs a complete tiling operation.
 
-(set add-window!
-  (fn [add-win]
-    "Add a new window to be tracked and automatically tiled.
-     Returns the space containing the window, or nil."
-    (when (> (add-win:tabCount) 0)
-      (hs.notify.show :PaperWM "Windows with tabs are not supported!"
-                      "See https://github.com/mogenson/PaperWM.spoon/issues/39")
-      (lua "return"))
-    (when (. index-table (add-win:id))
-      (lua "return"))
-    (let [space (. (Spaces.windowSpaces add-win) 1)]
-      (when (not space)
-        (logger.e "add window does not have a space")
-        (lua "return"))
-      (when (not (. window-list space))
-        (tset window-list space {}))
-      (var add-column 1)
-      (if (and focused-window
-               (= (. (or (. index-table (focused-window:id)) {}) :space) space)
-               (not= (focused-window:id) (add-win:id)))
-          (set add-column (+ (. index-table (focused-window:id) :col) 1))
-          (let [x (. (add-win:frame) :center :x)]
-            (each [col windows (ipairs (. window-list space))]
-              (when (< x (. (: (. windows 1) :frame) :center :x))
-                (set add-column col)
-                (lua :break)))))
-      (table.insert (. window-list space) add-column [add-win])
-      (update-index-table! space add-column)
-      ;; subscribe to window moved/resized events
-      (let [watcher (add-win:newWatcher
-                      (fn [window event]
-                        (window-event-handler window event)))]
-        (watcher:start [Watcher.windowMoved Watcher.windowResized])
-        (tset ui-watchers (add-win:id) watcher))
-      space)))
-
-(set remove-window!
-  (fn [remove-win ?skip-focus]
-    "Remove a window from tracking. Returns the space it was in, or nil."
-    (let [remove-index (. index-table (remove-win:id))]
-      (when (not remove-index)
-        (logger.e "remove index not found")
-        (lua "return"))
-      (when (not ?skip-focus)
-        (let [fw (Window.focusedWindow)]
-          (when (and fw (= (remove-win:id) (fw:id)))
-            (each [_ direction (ipairs [Direction.DOWN Direction.UP
-                                        Direction.LEFT Direction.RIGHT])]
-              (when (focus-window direction remove-index)
-                (lua :break))))))
-      ;; remove from window-list
-      (table.remove (. window-list remove-index.space remove-index.col)
-                    remove-index.row)
-      (when (= (length (. window-list remove-index.space remove-index.col)) 0)
-        (table.remove (. window-list remove-index.space) remove-index.col))
-      ;; remove watcher
-      (: (. ui-watchers (remove-win:id)) :stop)
-      (tset ui-watchers (remove-win:id) nil)
-      ;; update index-table
-      (tset index-table (remove-win:id) nil)
-      (update-index-table! remove-index.space remove-index.col)
-      ;; remove space if empty
-      (when (= (length (. window-list remove-index.space)) 0)
-        (tset window-list remove-index.space nil))
-      remove-index.space)))
-
-;; ---------------------------------------------------------------------------
-;; Window navigation and manipulation
-;; ---------------------------------------------------------------------------
+;; --- Navigation ---
 
 (set focus-window
   (fn [direction ?focused-index]
@@ -484,9 +484,7 @@
               (move-window! target-window target-frame))))
       (tile-space! fi.space))))
 
-;; ---------------------------------------------------------------------------
-;; Single-window operations
-;; ---------------------------------------------------------------------------
+;; --- Window sizing ---
 
 (fn center-window! []
   "Center the focused window horizontally on screen."
@@ -561,6 +559,8 @@
       (move-window! fw frame)
       (tile-space! (. (Spaces.windowSpaces fw) 1)))))
 
+;; --- Column manipulation ---
+
 (fn slurp-window! []
   "Move focused window into the bottom of the column to its left."
   (let [fw (Window.focusedWindow)]
@@ -628,9 +628,7 @@
           (tile-column! column bounds h)
           (tile-space! fi.space))))))
 
-;; ---------------------------------------------------------------------------
-;; Space management
-;; ---------------------------------------------------------------------------
+;; --- Space navigation ---
 
 (fn switch-to-space! [index]
   "Switch to a Mission Control space by 1-based index."
@@ -662,94 +660,7 @@
       (let [new-idx (+ (% (+ (- curr-space-idx 1) direction) num-spaces) 1)]
         (switch-to-space! new-idx)))))
 
-(fn move-window-to-space! [index ?window]
-  "Move a window to a Mission Control space by 1-based index."
-  (let [fw (or ?window (Window.focusedWindow))]
-    (when (not fw)
-      (logger.d "focused window not found")
-      (lua "return"))
-    (let [fi (. index-table (fw:id))]
-      (when (not fi)
-        (logger.e "focused index not found")
-        (lua "return"))
-      (let [new-space (get-space index)]
-        (when (not new-space)
-          (logger.d "space not found")
-          (lua "return"))
-        (when (= new-space (. (Spaces.windowSpaces fw) 1))
-          (logger.d "window already on space")
-          (lua "return"))
-        (when (not= (Spaces.spaceType new-space) :user)
-          (logger.d "space is invalid")
-          (lua "return"))
-        (let [screen (Screen (Spaces.spaceDisplay new-space))]
-          (when (not screen)
-            (logger.d "no screen for space")
-            (lua "return"))
-          (let [old-space (remove-window! fw true)]
-            (when (not old-space)
-              (logger.e "can't remove focused window")
-              (lua "return"))
-            ;; macOS 14.5+ requires mouse drag hack
-            (let [version (hs.host.operatingSystemVersion)]
-              (if (>= (+ (* version.major 100) version.minor) 1405)
-                  (let [start-point (fw:frame)
-                        end-point (screen:frame)]
-                    (set start-point.x (+ start-point.x (math.floor (/ start-point.w 2))))
-                    (set start-point.y (+ start-point.y 4))
-                    (set end-point.x (+ end-point.x (math.floor (/ end-point.w 2))))
-                    (set end-point.y (+ end-point.y config.window-gap 4))
-                    (let [do-window-drag
-                          (coroutine.wrap
-                           (fn []
-                             (set start-point.x
-                                  (+ start-point.x
-                                     (math.floor (/ (- end-point.x start-point.x) 2))))
-                             (set start-point.y
-                                  (+ start-point.y
-                                     (math.floor (/ (- end-point.y start-point.y) 2))))
-                             (: (hs.eventtap.event.newMouseEvent
-                                  hs.eventtap.event.types.leftMouseDragged start-point)
-                                :post)
-                             (coroutine.yield false)
-                             (: (hs.eventtap.event.newMouseEvent
-                                  hs.eventtap.event.types.leftMouseUp end-point)
-                                :post)
-                             (while true
-                               (coroutine.yield false)
-                               (when (= (. (Spaces.windowSpaces fw) 1) new-space)
-                                 (lua :break)))
-                             (add-window! fw)
-                             (tile-space! old-space)
-                             (tile-space! new-space)
-                             (focus-space new-space fw)
-                             true))
-                          start-time (Timer.secondsSinceEpoch)]
-                      (: (hs.eventtap.event.newMouseEvent
-                           hs.eventtap.event.types.leftMouseDown start-point)
-                         :post)
-                      (Spaces.gotoSpace new-space)
-                      (Timer.doUntil do-window-drag
-                                     (fn [timer]
-                                       (when (> (- (Timer.secondsSinceEpoch) start-time) 4)
-                                         (logger.ef
-                                          "moveWindowToSpace() timeout! new %d curr %d win %d"
-                                          new-space
-                                          (Spaces.activeSpaceOnScreen (screen:id))
-                                          (. (Spaces.windowSpaces fw) 1))
-                                         (timer:stop)))
-                                     Window.animationDuration)))
-                  (do
-                    (Spaces.moveWindowToSpace fw new-space)
-                    (add-window! fw)
-                    (tile-space! old-space)
-                    (tile-space! new-space)
-                    (Spaces.gotoSpace new-space)
-                    (focus-space new-space fw))))))))))
-
-;; ---------------------------------------------------------------------------
-;; Refresh
-;; ---------------------------------------------------------------------------
+;; --- Refresh ---
 
 (fn refresh-windows! []
   "Get all windows across all spaces and retile them."
@@ -800,12 +711,7 @@
     (bind [:alt :cmd] "," #(increment-space! Direction.LEFT))
     (bind [:alt :cmd] "." #(increment-space! Direction.RIGHT))
     (for [i 1 9]
-      (bind [:alt :cmd] (tostring i) #(switch-to-space! i)))
-    ;; Move window to space
-    (for [i 1 9]
-      (bind [:alt :cmd :shift] (tostring i) #(move-window-to-space! i)))
-    ;; Stop
-    (bind [:alt :cmd :shift] :q #(stop!))))
+      (bind [:alt :cmd] (tostring i) #(switch-to-space! i)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Lifecycle
@@ -861,7 +767,18 @@
 ;; Public API
 ;; ---------------------------------------------------------------------------
 
-{: start!
+{: Direction
+ : config
+ : start!
  : stop!
- : refresh-windows!
- : config}
+ ;; User-facing commands
+ : focus-window
+ : swap-windows!
+ : center-window!
+ : set-window-full-width!
+ : cycle-window-size!
+ : slurp-window!
+ : barf-window!
+ : switch-to-space!
+ : increment-space!
+ : refresh-windows!}

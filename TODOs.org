@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [32/124]
+* Projects [34/124]
 ** PROJ Configuration as Data [12/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -896,7 +896,7 @@ Selected features from the deleted windows.fnl, reimplemented as Sheaf commands.
      - Moves and resizes focused window to given {x y w h} frame
      - Foundation for layout presets and other positioning commands
 
-** PROJ Window Borders [8/20]
+** PROJ Window Borders [9/20]
 Highlight the active window with a colored border. Replaces JankyBorders
 with a native Sheaf implementation using hs.canvas.
 Depends on: window-watcher event source (done), tag system (done), dispatcher (done).
@@ -1061,7 +1061,7 @@ Depends on: window-watcher event source (done), tag system (done), dispatcher (d
     - [X] Register in =components/init.fnl=, =commands/init.fnl=, =behaviors/init.fnl=
     - [X] Wire 7 subscriptions in =subscriptions/init.fnl=
 
-*** LATER [#B] Track all windows (active + inactive borders) :feature:
+*** CANCEL [#B] Track all windows (active + inactive borders) :feature:
     Currently we only show a border on the focused window. JankyBorders tracks ALL windows
     via a hash table keyed by window-id, rendering active color on focused and inactive color on rest.
     Window-state component (done) provides the live ={window-id → entry}= map via
@@ -1129,7 +1129,7 @@ Migrate slack.fnl to Sheaf: commands + hotkey sources + behaviors + subscription
 Proper app-context filtering requires App event source + tags (see Contextual Automation project).
 Until then behaviors guard with frontmost app check.
 
-*** NEXT [#B] Implement Slack commands, behaviors, and subscriptions :feature:
+*** LATER [#B] Implement Slack commands, behaviors, and subscriptions :feature:
      - [ ] scroll-to-bottom — move mouse to Slack window, scroll to bottom
      - [ ] add-reaction — Cmd+Shift+\ shortcut
      - [ ] prev-element — Shift+F6 to focus previous panel
@@ -1157,7 +1157,7 @@ Until then behaviors guard with frontmost app check.
 Replace native macOS Spaces with a reliable off-screen workspace layer.
 Native Spaces have no public API; every private API workaround breaks on each macOS release.
 
-*** LATER [#A] Design virtual workspace system (AeroSpace-style) :architecture:
+*** LATER [#C] Design virtual workspace system (AeroSpace-style) :architecture:
      - macOS Spaces API is private, broken on Sequoia, and has broken on every 1-2 releases historically
      - AeroSpace approach: inactive workspace windows moved off-screen via hs.window:setFrame()
      - Uses only public Accessibility API (AXPosition/AXSize) — stable, no SIP required
@@ -1170,49 +1170,55 @@ Native Spaces have no public API; every private API workaround breaks on each ma
        - [ ] Sheaf integration: workspace switches as events, commands to move windows
      - Reference: AeroSpace source (nikitabobko/AeroSpace), FlashSpace (app-level hide/show variant)
 
-** PROJ PaperWM Migration [0/5]
+** PROJ PaperWM Migration [1/5]
 Migrate paper-wm.fnl to the Sheaf architecture in phases.
-State stays in module-level closures until the Component concept is implemented.
-move-window-to-space! remains broken on Sequoia — Virtual Workspaces redesign is the real fix.
-
-*** LATER [#A] Phase 0: Hotkey event infrastructure :architecture:
-     - Window events and sources now implemented under "Create Window event sources" task
-     - Register 20+ paper-wm hotkey source instances (generate 1-9 space keys in a loop)
-     - Prerequisite for all other phases
+Commands close over module-level state — no component migration needed.
 
 *** LATER [#A] Phase 1: Extract commands :refactor:
      - commands/paper-wm.fnl with all user-visible actions as make-command entries
-     - Commands close over module-level state vars until component migration
-     - Include: focus-left/right/up/down, swap-*, center-window, set-full-width,
-       cycle-width/height-up/down, slurp-window, barf-window,
-       switch-to-space {index}, prev-space, next-space,
-       move-window-to-space {index} (broken on Sequoia — document as known-broken),
-       refresh-windows, stop, set-config {window-gap screen-margin window-ratios}
-     - paper-wm continues binding its own hotkeys internally for now
-     - Prerequisite: Phase 0 not required; commands can be registered independently
+     - Commands close over module-level state vars (window-list, index-table, etc.)
+     - Include: focus-left/right/up/down, swap-left/right/up/down, center-window,
+       set-full-width, cycle-width/height-up/down, slurp-window, barf-window,
+       switch-to-space {index}, prev-space, next-space, refresh-windows
+     - paper-wm continues binding its own hotkeys and managing its own watchers
+     - No dependencies — can be implemented independently
 
-*** LATER [#A] Phase 2: Window + screen + space behaviors :refactor:
-     - behaviors/paper-wm.fnl: on-window-created, on-window-destroyed, on-window-focused,
-       on-window-moved — wired to :event-source.window-watcher/default
-     - on-space-changed → :event-source.space-watcher/default (already running)
-     - on-screen-changed → :event-source.screen-watcher/default (already running)
-     - paper-wm start! no longer creates own window-filter or screen-watcher
-     - Prerequisite: Phase 0 (window-watcher source), Phase 1 (commands exist)
+*** LATER [#A] Phase 2: Hotkey event infrastructure :architecture:
+     - Register 25+ paper-wm hotkey source instances on the paper-wm component
+     - Navigation: alt+cmd+←/→/↑/↓ (4 hotkeys)
+     - Swap: alt+cmd+shift+←/→/↑/↓ (4 hotkeys)
+     - Sizing: alt+cmd+c/f/r, alt+cmd+shift+r, ctrl+alt+cmd+r, ctrl+alt+cmd+shift+r (6 hotkeys)
+     - Slurp/barf: alt+cmd+i/o (2 hotkeys)
+     - Space nav: alt+cmd+,/. (2 hotkeys)
+     - Switch-to-space: alt+cmd+1-9 (9 hotkeys, generate in a loop)
+     - Prerequisite: Phase 1 (commands exist to wire to)
 
 *** LATER [#A] Phase 3: Hotkey behaviors + subscriptions :refactor:
      - One behavior per user action, declared in behaviors/paper-wm.fnl
      - Each behavior's :commands map references Phase 1 commands
-     - Subscriptions in subscriptions/paper-wm.fnl wiring hotkey sources → behaviors
+     - Subscriptions wiring hotkey sources → behaviors
      - Space 1-9 and move-to-space-1-9: 9 behaviors each, generated in a loop
      - paper-wm start! no longer calls bind-hotkeys!
-     - Prerequisite: Phase 0 (hotkey sources), Phase 1 (commands)
+     - Prerequisite: Phase 2 (hotkey sources), Phase 1 (commands)
 
-*** LATER [#B] Phase 4: Per-window component instances :architecture:
+*** LATER [#A] Phase 4: Window + screen + space behaviors :refactor:
+     - behaviors/paper-wm.fnl: on-window-created, on-window-destroyed, on-window-focused,
+       on-window-moved — wired to existing :tag/window-watcher
+     - on-space-changed → existing :tag/space-watcher (already running)
+     - on-screen-changed → existing :tag/screen-watcher (already running)
+     - paper-wm start! no longer creates own window-filter or screen-watcher
+     - Gotcha: paper-wm uses narrower allowRoles (AXStandardWindow only) vs shared
+       window-watcher (permissive) — may need filtering in behavior or separate source
+     - Gotcha: pending-window state machine with coroutine retry logic for space transitions
+     - Prerequisite: Phase 1 (commands exist)
+
+*** CANCEL [#B] Phase 5: Per-window component instances :architecture:
      - Each tracked window becomes a Component instance tagged :paper-wm-managed
      - uielement watchers become per-instance source instances started dynamically
      - Subscriptions use require-tags [:paper-wm-managed]
-     - Requires: Component concept, Tag registry, dynamic source start/stop at runtime
-     - This is the clean final state — unblocked only after those concepts are implemented
+     - Cancelled: tiling algorithm fundamentally needs centralized per-space state
+       (window-list 3D table). Per-window components would decentralize this without benefit.
+       Dynamic component lifecycle not yet supported and not worth building for this use case.
 
 * Chores [0/3]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
