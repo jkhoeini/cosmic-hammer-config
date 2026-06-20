@@ -19,7 +19,8 @@
 (local {: show-history-command} (require :commands.show-history))
 (local {: initialize-windows-command
         : upsert-window-command
-        : remove-window-command} (require :commands.window-state))
+        : remove-window-command
+        : set-focused-window-command} (require :commands.window-state))
 (local {: focus-left-command
         : focus-right-command
         : focus-up-command
@@ -58,6 +59,7 @@
 (add-command! command-registry initialize-windows-command)
 (add-command! command-registry upsert-window-command)
 (add-command! command-registry remove-window-command)
+(add-command! command-registry set-focused-window-command)
 (add-command! command-registry focus-left-command)
 (add-command! command-registry focus-right-command)
 (add-command! command-registry focus-up-command)

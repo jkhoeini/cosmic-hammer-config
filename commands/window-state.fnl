@@ -20,7 +20,7 @@
                      :window-title entry.window-title
                      :frame entry.frame
                      :fullscreen (or entry.fullscreen false)}))
-            {:windows windows}))}))
+            {:windows windows :focused-window-id nil}))}))
 
 
 (local upsert-window-command
@@ -41,7 +41,8 @@
                    :fullscreen (if (not= nil params.fullscreen)
                                    params.fullscreen
                                    existing.fullscreen)})
-            {:windows windows}))}))
+            {:windows windows
+             :focused-window-id component.state.focused-window-id}))}))
 
 
 (local remove-window-command
@@ -52,9 +53,21 @@
     :fn (fn [component params]
           (let [windows component.state.windows]
             (tset windows params.window-id nil)
-            {:windows windows}))}))
+            {:windows windows
+             :focused-window-id component.state.focused-window-id}))}))
+
+
+(local set-focused-window-command
+  (make-command
+   :window-state.commands/set-focused-window
+   "Set the currently focused window ID"
+   {:requires-traits [:trait/has-window-state]
+    :fn (fn [component params]
+          {:windows component.state.windows
+           :focused-window-id params.window-id})}))
 
 
 {: initialize-windows-command
  : upsert-window-command
- : remove-window-command}
+ : remove-window-command
+ : set-focused-window-command}

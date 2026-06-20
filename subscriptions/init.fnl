@@ -177,6 +177,14 @@
   :target-tag :tag/window-state
   :event-selector :event.kind.window/not-visible})
 
+(define-subscription! subscription-registry
+ :sub/window-state-track-focus
+ {:description "Track focused window ID in window state"
+  :behavior :window-state.behaviors/track-focus
+  :source-tag :tag/window-watcher
+  :target-tag :tag/window-state
+  :event-selector :event.kind.window/focused})
+
 
 ;; --- PaperWM hotkey wiring ---
 

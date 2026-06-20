@@ -10,6 +10,6 @@
    :component.type/window-state
    "Tracks all visible windows — frame, app, fullscreen state"
    {:traits [:trait/has-window-state]
-    :start-fn (fn [config] {:windows {}})}))
+    :start-fn (fn [config] {:windows {} :focused-window-id nil})}))
 
 {: window-state-type}

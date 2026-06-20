@@ -72,7 +72,21 @@
                         {:window-id event.event-data.window-id}))))}))
 
 
+(local track-focus-behavior
+  (make-behavior
+   {:name :window-state.behaviors/track-focus
+    :description "Track which window is currently focused"
+    :respond-to [:event.kind.window/focused]
+    :commands {:set-focused :window-state.commands/set-focused-window}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.set-focused 1)
+                window-id (?. event :event-data :window-id)]
+            (when (and target window-id)
+              (send-cmd target :set-focused {:window-id window-id}))))}))
+
+
 {: initialize-behavior
  : track-on-change-behavior
  : track-on-move-behavior
- : untrack-on-disappear-behavior}
+ : untrack-on-disappear-behavior
+ : track-focus-behavior}

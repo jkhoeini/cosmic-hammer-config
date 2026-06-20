@@ -20,7 +20,8 @@
 (local {: initialize-behavior
         : track-on-change-behavior
         : track-on-move-behavior
-        : untrack-on-disappear-behavior} (require :behaviors.window-state))
+        : untrack-on-disappear-behavior
+        : track-focus-behavior} (require :behaviors.window-state))
 (local {: focus-left-behavior
         : focus-right-behavior
         : focus-up-behavior
@@ -60,6 +61,7 @@
 (add-behavior! behavior-registry track-on-change-behavior)
 (add-behavior! behavior-registry track-on-move-behavior)
 (add-behavior! behavior-registry untrack-on-disappear-behavior)
+(add-behavior! behavior-registry track-focus-behavior)
 (add-behavior! behavior-registry focus-left-behavior)
 (add-behavior! behavior-registry focus-right-behavior)
 (add-behavior! behavior-registry focus-up-behavior)
