@@ -177,4 +177,160 @@
   :target-tag :tag/window-state
   :event-selector :event.kind.window/not-visible})
 
+
+;; --- PaperWM hotkey wiring ---
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-focus-left
+ {:description "Focus window left on Alt+Cmd+Left"
+  :behavior :paper-wm.behaviors/focus-left
+  :source-tag :tag/paper-wm-focus-left
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-focus-right
+ {:description "Focus window right on Alt+Cmd+Right"
+  :behavior :paper-wm.behaviors/focus-right
+  :source-tag :tag/paper-wm-focus-right
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-focus-up
+ {:description "Focus window above on Alt+Cmd+Up"
+  :behavior :paper-wm.behaviors/focus-up
+  :source-tag :tag/paper-wm-focus-up
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-focus-down
+ {:description "Focus window below on Alt+Cmd+Down"
+  :behavior :paper-wm.behaviors/focus-down
+  :source-tag :tag/paper-wm-focus-down
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-swap-left
+ {:description "Swap window left on Alt+Cmd+Shift+Left"
+  :behavior :paper-wm.behaviors/swap-left
+  :source-tag :tag/paper-wm-swap-left
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-swap-right
+ {:description "Swap window right on Alt+Cmd+Shift+Right"
+  :behavior :paper-wm.behaviors/swap-right
+  :source-tag :tag/paper-wm-swap-right
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-swap-up
+ {:description "Swap window up on Alt+Cmd+Shift+Up"
+  :behavior :paper-wm.behaviors/swap-up
+  :source-tag :tag/paper-wm-swap-up
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-swap-down
+ {:description "Swap window down on Alt+Cmd+Shift+Down"
+  :behavior :paper-wm.behaviors/swap-down
+  :source-tag :tag/paper-wm-swap-down
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-center-window
+ {:description "Center window on Alt+Cmd+C"
+  :behavior :paper-wm.behaviors/center-window
+  :source-tag :tag/paper-wm-center-window
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-set-full-width
+ {:description "Set full width on Alt+Cmd+F"
+  :behavior :paper-wm.behaviors/set-full-width
+  :source-tag :tag/paper-wm-set-full-width
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-cycle-width-up
+ {:description "Cycle width up on Alt+Cmd+R"
+  :behavior :paper-wm.behaviors/cycle-width-up
+  :source-tag :tag/paper-wm-cycle-width-up
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-cycle-width-down
+ {:description "Cycle width down on Ctrl+Alt+Cmd+R"
+  :behavior :paper-wm.behaviors/cycle-width-down
+  :source-tag :tag/paper-wm-cycle-width-down
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-cycle-height-up
+ {:description "Cycle height up on Alt+Cmd+Shift+R"
+  :behavior :paper-wm.behaviors/cycle-height-up
+  :source-tag :tag/paper-wm-cycle-height-up
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-cycle-height-down
+ {:description "Cycle height down on Ctrl+Alt+Cmd+Shift+R"
+  :behavior :paper-wm.behaviors/cycle-height-down
+  :source-tag :tag/paper-wm-cycle-height-down
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-slurp
+ {:description "Slurp window on Alt+Cmd+I"
+  :behavior :paper-wm.behaviors/slurp-window
+  :source-tag :tag/paper-wm-slurp
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-barf
+ {:description "Barf window on Alt+Cmd+O"
+  :behavior :paper-wm.behaviors/barf-window
+  :source-tag :tag/paper-wm-barf
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-prev-space
+ {:description "Previous space on Alt+Cmd+,"
+  :behavior :paper-wm.behaviors/prev-space
+  :source-tag :tag/paper-wm-prev-space
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-next-space
+ {:description "Next space on Alt+Cmd+."
+  :behavior :paper-wm.behaviors/next-space
+  :source-tag :tag/paper-wm-next-space
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.hotkey/pressed})
+
+(for [i 1 9]
+  (define-subscription! subscription-registry
+   (.. :sub/paper-wm-switch-to-space- (tostring i))
+   {:description (.. "Switch to space " (tostring i) " on Alt+Cmd+" (tostring i))
+    :behavior (.. :paper-wm.behaviors/switch-to-space- (tostring i))
+    :source-tag (.. :tag/paper-wm-switch-to-space- (tostring i))
+    :target-tag :tag/paper-wm
+    :event-selector :event.kind.hotkey/pressed}))
+
 {: subscription-registry}

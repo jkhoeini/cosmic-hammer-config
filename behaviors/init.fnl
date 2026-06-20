@@ -21,6 +21,25 @@
         : track-on-change-behavior
         : track-on-move-behavior
         : untrack-on-disappear-behavior} (require :behaviors.window-state))
+(local {: focus-left-behavior
+        : focus-right-behavior
+        : focus-up-behavior
+        : focus-down-behavior
+        : swap-left-behavior
+        : swap-right-behavior
+        : swap-up-behavior
+        : swap-down-behavior
+        : center-window-behavior
+        : set-full-width-behavior
+        : cycle-width-up-behavior
+        : cycle-width-down-behavior
+        : cycle-height-up-behavior
+        : cycle-height-down-behavior
+        : slurp-window-behavior
+        : barf-window-behavior
+        : prev-space-behavior
+        : next-space-behavior
+        : switch-to-space-behaviors} (require :behaviors.paper-wm))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -41,6 +60,26 @@
 (add-behavior! behavior-registry track-on-change-behavior)
 (add-behavior! behavior-registry track-on-move-behavior)
 (add-behavior! behavior-registry untrack-on-disappear-behavior)
+(add-behavior! behavior-registry focus-left-behavior)
+(add-behavior! behavior-registry focus-right-behavior)
+(add-behavior! behavior-registry focus-up-behavior)
+(add-behavior! behavior-registry focus-down-behavior)
+(add-behavior! behavior-registry swap-left-behavior)
+(add-behavior! behavior-registry swap-right-behavior)
+(add-behavior! behavior-registry swap-up-behavior)
+(add-behavior! behavior-registry swap-down-behavior)
+(add-behavior! behavior-registry center-window-behavior)
+(add-behavior! behavior-registry set-full-width-behavior)
+(add-behavior! behavior-registry cycle-width-up-behavior)
+(add-behavior! behavior-registry cycle-width-down-behavior)
+(add-behavior! behavior-registry cycle-height-up-behavior)
+(add-behavior! behavior-registry cycle-height-down-behavior)
+(add-behavior! behavior-registry slurp-window-behavior)
+(add-behavior! behavior-registry barf-window-behavior)
+(add-behavior! behavior-registry prev-space-behavior)
+(add-behavior! behavior-registry next-space-behavior)
+(for [i 1 9]
+  (add-behavior! behavior-registry (. switch-to-space-behaviors i)))
 
 ;; Export registry for other modules
 {: behavior-registry}

@@ -1,4 +1,3 @@
-
 ;; commands/init.fnl
 ;; Creates command registry and registers commands.
 
@@ -21,6 +20,26 @@
 (local {: initialize-windows-command
         : upsert-window-command
         : remove-window-command} (require :commands.window-state))
+(local {: focus-left-command
+        : focus-right-command
+        : focus-up-command
+        : focus-down-command
+        : swap-left-command
+        : swap-right-command
+        : swap-up-command
+        : swap-down-command
+        : center-window-command
+        : set-full-width-command
+        : cycle-width-up-command
+        : cycle-width-down-command
+        : cycle-height-up-command
+        : cycle-height-down-command
+        : slurp-window-command
+        : barf-window-command
+        : switch-to-space-command
+        : prev-space-command
+        : next-space-command
+        : refresh-windows-command} (require :commands.paper-wm))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry {:trait-registry trait-registry}))
@@ -39,6 +58,25 @@
 (add-command! command-registry initialize-windows-command)
 (add-command! command-registry upsert-window-command)
 (add-command! command-registry remove-window-command)
-
+(add-command! command-registry focus-left-command)
+(add-command! command-registry focus-right-command)
+(add-command! command-registry focus-up-command)
+(add-command! command-registry focus-down-command)
+(add-command! command-registry swap-left-command)
+(add-command! command-registry swap-right-command)
+(add-command! command-registry swap-up-command)
+(add-command! command-registry swap-down-command)
+(add-command! command-registry center-window-command)
+(add-command! command-registry set-full-width-command)
+(add-command! command-registry cycle-width-up-command)
+(add-command! command-registry cycle-width-down-command)
+(add-command! command-registry cycle-height-up-command)
+(add-command! command-registry cycle-height-down-command)
+(add-command! command-registry slurp-window-command)
+(add-command! command-registry barf-window-command)
+(add-command! command-registry switch-to-space-command)
+(add-command! command-registry prev-space-command)
+(add-command! command-registry next-space-command)
+(add-command! command-registry refresh-windows-command)
 
 {: command-registry}

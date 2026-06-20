@@ -53,7 +53,6 @@
 ;; ui-watchers: window-id -> hs.uielement.watcher
 ;; window-filter: hs.window.filter instance (created on start!)
 ;; screen-watcher: hs.screen.watcher (created on start!)
-;; hotkeys: list of hs.hotkey objects (for cleanup on stop!)
 
 (var window-list {})
 (var index-table {})
@@ -62,7 +61,6 @@
 (var pending-window nil)
 (var window-filter nil)
 (var screen-watcher nil)
-(var hotkeys [])
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -680,40 +678,6 @@
       (tile-space! space))))
 
 ;; ---------------------------------------------------------------------------
-;; Hotkey bindings
-;; ---------------------------------------------------------------------------
-
-(fn bind-hotkeys! []
-  "Bind all PaperWM hotkeys. Stores references in `hotkeys` for cleanup."
-  (let [bind (fn [mods key action]
-               (table.insert hotkeys (hs.hotkey.bind mods key action)))]
-    ;; Focus navigation
-    (bind [:alt :cmd] :left  #(focus-window Direction.LEFT))
-    (bind [:alt :cmd] :right #(focus-window Direction.RIGHT))
-    (bind [:alt :cmd] :up    #(focus-window Direction.UP))
-    (bind [:alt :cmd] :down  #(focus-window Direction.DOWN))
-    ;; Swap windows
-    (bind [:alt :cmd :shift] :left  #(swap-windows! Direction.LEFT))
-    (bind [:alt :cmd :shift] :right #(swap-windows! Direction.RIGHT))
-    (bind [:alt :cmd :shift] :up    #(swap-windows! Direction.UP))
-    (bind [:alt :cmd :shift] :down  #(swap-windows! Direction.DOWN))
-    ;; Window sizing
-    (bind [:alt :cmd] :c #(center-window!))
-    (bind [:alt :cmd] :f #(set-window-full-width!))
-    (bind [:alt :cmd] :r #(cycle-window-size! Direction.WIDTH Direction.ASCENDING))
-    (bind [:alt :cmd :shift] :r #(cycle-window-size! Direction.HEIGHT Direction.ASCENDING))
-    (bind [:ctrl :alt :cmd] :r #(cycle-window-size! Direction.WIDTH Direction.DESCENDING))
-    (bind [:ctrl :alt :cmd :shift] :r #(cycle-window-size! Direction.HEIGHT Direction.DESCENDING))
-    ;; Slurp / Barf
-    (bind [:alt :cmd] :i #(slurp-window!))
-    (bind [:alt :cmd] :o #(barf-window!))
-    ;; Space switching
-    (bind [:alt :cmd] "," #(increment-space! Direction.LEFT))
-    (bind [:alt :cmd] "." #(increment-space! Direction.RIGHT))
-    (for [i 1 9]
-      (bind [:alt :cmd] (tostring i) #(switch-to-space! i)))))
-
-;; ---------------------------------------------------------------------------
 ;; Lifecycle
 ;; ---------------------------------------------------------------------------
 
@@ -747,8 +711,7 @@
   (set screen-watcher
        (Screen.watcher.new #(refresh-windows!)))
   (screen-watcher:start)
-  ;; bind hotkeys
-  (bind-hotkeys!))
+  )
 
 (fn stop! []
   "Stop automatic window tiling and release all resources."
@@ -757,11 +720,7 @@
   (each [_ watcher (pairs ui-watchers)]
     (watcher:stop))
   (when screen-watcher
-    (screen-watcher:stop))
-  ;; unbind hotkeys
-  (each [_ hk (ipairs hotkeys)]
-    (hk:delete))
-  (set hotkeys []))
+    (screen-watcher:stop)))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
