@@ -341,4 +341,14 @@
     :target-tag :tag/paper-wm
     :event-selector :event.kind.hotkey/pressed}))
 
+;; --- PaperWM screen change wiring ---
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-refresh-on-screen-change
+ {:description "Refresh PaperWM tiling when screen layout changes"
+  :behavior :paper-wm.behaviors/refresh-on-screen-change
+  :source-tag :tag/screen-watcher
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.screen/layout-changed})
+
 {: subscription-registry}

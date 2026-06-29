@@ -40,7 +40,8 @@
         : barf-window-behavior
         : prev-space-behavior
         : next-space-behavior
-        : switch-to-space-behaviors} (require :behaviors.paper-wm))
+        : switch-to-space-behaviors
+        : refresh-on-screen-change-behavior} (require :behaviors.paper-wm))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -82,6 +83,7 @@
 (add-behavior! behavior-registry next-space-behavior)
 (for [i 1 9]
   (add-behavior! behavior-registry (. switch-to-space-behaviors i)))
+(add-behavior! behavior-registry refresh-on-screen-change-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

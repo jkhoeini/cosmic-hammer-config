@@ -2912,6 +2912,8 @@ package.preload["commands"] = package.preload["commands"] or function(...)
   local prev_space_command = _local_462_["prev-space-command"]
   local next_space_command = _local_462_["next-space-command"]
   local refresh_windows_command = _local_462_["refresh-windows-command"]
+  local set_pending_window_command = _local_462_["set-pending-window-command"]
+  local clear_pending_window_command = _local_462_["clear-pending-window-command"]
   local command_registry = make_command_registry({["trait-registry"] = trait_registry})
   add_command_21(command_registry, toggle_expose_command)
   add_command_21(command_registry, update_menubar_command)
@@ -2949,6 +2951,8 @@ package.preload["commands"] = package.preload["commands"] or function(...)
   add_command_21(command_registry, prev_space_command)
   add_command_21(command_registry, next_space_command)
   add_command_21(command_registry, refresh_windows_command)
+  add_command_21(command_registry, set_pending_window_command)
+  add_command_21(command_registry, clear_pending_window_command)
   return {["command-registry"] = command_registry}
 end
 package.preload["sheaf.command-registry"] = package.preload["sheaf.command-registry"] or function(...)
@@ -3513,6 +3517,7 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   local prev_space_behavior = _local_649_["prev-space-behavior"]
   local next_space_behavior = _local_649_["next-space-behavior"]
   local switch_to_space_behaviors = _local_649_["switch-to-space-behaviors"]
+  local refresh_on_screen_change_behavior = _local_649_["refresh-on-screen-change-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry, ["shape-registry"] = shape_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
@@ -3551,6 +3556,7 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   for i = 1, 9 do
     add_behavior_21(behavior_registry, switch_to_space_behaviors[i])
   end
+  add_behavior_21(behavior_registry, refresh_on_screen_change_behavior)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-registry"] or function(...)
@@ -4580,6 +4586,7 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   for i = 1, 9 do
     define_subscription_21(subscription_registry, ("sub/paper-wm-switch-to-space-" .. tostring(i)), {description = ("Switch to space " .. tostring(i) .. " on Alt+Cmd+" .. tostring(i)), behavior = ("paper-wm.behaviors/switch-to-space-" .. tostring(i)), ["source-tag"] = ("tag/paper-wm-switch-to-space-" .. tostring(i)), ["target-tag"] = "tag/paper-wm", ["event-selector"] = "event.kind.hotkey/pressed"})
   end
+  define_subscription_21(subscription_registry, "sub/paper-wm-refresh-on-screen-change", {description = "Refresh PaperWM tiling when screen layout changes", behavior = "paper-wm.behaviors/refresh-on-screen-change", ["source-tag"] = "tag/screen-watcher", ["target-tag"] = "tag/paper-wm", ["event-selector"] = "event.kind.screen/layout-changed"})
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)

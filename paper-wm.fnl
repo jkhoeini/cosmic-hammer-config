@@ -52,7 +52,6 @@
 ;; index-table: window-id -> {:space <id> :col <n> :row <n>}
 ;; ui-watchers: window-id -> hs.uielement.watcher
 ;; window-filter: hs.window.filter instance (created on start!)
-;; screen-watcher: hs.screen.watcher (created on start!)
 
 (var window-list {})
 (var index-table {})
@@ -60,7 +59,6 @@
 (var focused-window nil)
 (var pending-window nil)
 (var window-filter nil)
-(var screen-watcher nil)
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -227,6 +225,7 @@
 (var add-window! nil)
 (var remove-window! nil)
 (var focus-window nil)
+(var window-event-handler nil)
 
 (set add-window!
   (fn [add-win]
@@ -298,7 +297,8 @@
 ;; Event handling
 ;; ---------------------------------------------------------------------------
 
-(fn window-event-handler [window event]
+(set window-event-handler
+  (fn [window event]
   "Callback for window filter and uielement watcher events."
   (logger.df "%s for [%s] id: %d" event window
              (or (and window (window:id)) -1))
@@ -330,7 +330,7 @@
       (set space (remove-window! window true))
       (or (= event :AXWindowMoved) (= event :AXWindowResized))
       (set space (. (Spaces.windowSpaces window) 1)))
-  (when space (tile-space! space)))
+  (when space (tile-space! space))))
 
 (fn focus-space [space window]
   "Make the specified space the active space, focusing the given window."
@@ -707,10 +707,6 @@
     WindowFilter.windowUnfullscreened]
    (fn [window _ event]
      (window-event-handler window event)))
-  ;; watch for screen changes
-  (set screen-watcher
-       (Screen.watcher.new #(refresh-windows!)))
-  (screen-watcher:start)
   )
 
 (fn stop! []
@@ -719,8 +715,7 @@
     (window-filter:unsubscribeAll))
   (each [_ watcher (pairs ui-watchers)]
     (watcher:stop))
-  (when screen-watcher
-    (screen-watcher:stop)))
+)
 
 ;; ---------------------------------------------------------------------------
 ;; Public API

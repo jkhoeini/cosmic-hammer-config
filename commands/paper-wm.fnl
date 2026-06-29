@@ -198,6 +198,24 @@
           (refresh-windows!)
           nil)}))
 
+;; ============================================================================
+;; Pending window state
+;; ============================================================================
+
+(local set-pending-window-command
+  (make-command
+   :paper-wm.commands/set-pending-window
+   "Set the pending window ID during space transitions"
+   {:fn (fn [component params]
+          {:pending-window-id params.window-id})}))
+
+(local clear-pending-window-command
+  (make-command
+   :paper-wm.commands/clear-pending-window
+   "Clear the pending window ID"
+   {:fn (fn [component params]
+          {:pending-window-id nil})}))
+
 {: focus-left-command
  : focus-right-command
  : focus-up-command
@@ -217,4 +235,6 @@
  : switch-to-space-command
  : prev-space-command
  : next-space-command
- : refresh-windows-command}
+ : refresh-windows-command
+ : set-pending-window-command
+ : clear-pending-window-command}

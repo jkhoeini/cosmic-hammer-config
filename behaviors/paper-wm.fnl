@@ -148,6 +148,21 @@
               (when target
                 (send-cmd target :switch-to-space {:index i}))))})))
 
+;; ============================================================================
+;; Screen change
+;; ============================================================================
+
+(local refresh-on-screen-change-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/refresh-on-screen-change
+    :description "Refresh PaperWM windows when screen layout changes"
+    :respond-to [:event.kind.screen/layout-changed]
+    :commands {:refresh-windows :paper-wm.commands/refresh-windows}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.refresh-windows 1)]
+            (when target
+              (send-cmd target :refresh-windows {}))))}))
+
 {: focus-left-behavior
  : focus-right-behavior
  : focus-up-behavior
@@ -166,4 +181,5 @@
  : barf-window-behavior
  : prev-space-behavior
  : next-space-behavior
- : switch-to-space-behaviors}
+ : switch-to-space-behaviors
+ : refresh-on-screen-change-behavior}
