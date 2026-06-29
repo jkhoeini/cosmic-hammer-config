@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [34/124]
+* Projects [34/132]
 ** PROJ Configuration as Data [12/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1169,6 +1169,121 @@ Native Spaces have no public API; every private API workaround breaks on each ma
        - [ ] Workspace ↔ monitor assignment model (one workspace per monitor, or floating?)
        - [ ] Sheaf integration: workspace switches as events, commands to move windows
      - Reference: AeroSpace source (nikitabobko/AeroSpace), FlashSpace (app-level hide/show variant)
+
+** PROJ Sheaf Tiling Engine [0/8]
+Niri-style scrolling column tiler built on Sheaf primitives.
+Replaces paper-wm.fnl's monolithic tiling with composable behaviors and commands.
+Windows arranged in columns on an infinite horizontal strip per screen;
+viewport scrolls to keep the focused column visible.
+Depends on: window-state component (done), window-watcher event source (done),
+tag system (done), dispatcher (done).
+
+*** LATER [#A] Design tiling data model :architecture:
+    Core state for a tiling-state component. Research from Niri, PaperWM, Karousel
+    shows all production scrolling tilers converge on the same structure.
+
+    - [ ] Column list: ordered sequential array of columns
+          Column = {:windows [window-id ...] :width N :active-window-idx N}
+    - [ ] Reverse index: {window-id → {:col-idx N :row-idx N}} for O(1) lookup
+    - [ ] Viewport offset: scalar tracking which slice of the strip is visible
+    - [ ] Active column index: which column has focus
+    - [ ] Decide width model: preset proportions (Niri: 1/3, 1/2, 2/3) vs
+          content-driven (PaperWM: use window's natural width) vs configurable list
+    - [ ] Decide per-column vs per-window width storage
+    - [ ] Define traits for tiling state
+
+*** LATER [#A] Implement column position computation :feature:
+    Sequential accumulation: col_x[i] = col_x[i-1] + width[i-1] + gap.
+    Pure function of state — no mutation during layout. All production tilers
+    (Niri, PaperWM, Karousel) use this algorithm; O(n) per relayout.
+
+    - [ ] Implement column-xs: state → [{:col-idx N :x N :width N} ...]
+    - [ ] Implement within-column vertical tiling:
+          single window gets full height; multiple windows split evenly
+          (Karousel's fillSpace fencepost algorithm is a future refinement)
+    - [ ] Implement tile-all!: given column-xs + viewport offset, call
+          hs.window:setFrame on each window
+    - [ ] Handle screen margins and window gaps from config
+    - [ ] Command: :tiling.commands/retile — recomputes and applies layout
+
+*** LATER [#A] Implement viewport scrolling :feature:
+    Viewport offset determines which portion of the infinite strip is visible.
+    Three strategies observed in production tilers; implement as swappable behaviors.
+
+    - [ ] Minimum-scroll (Niri "never", Karousel lazy):
+          scroll just enough to make focused column fully visible at nearest edge
+    - [ ] Center-focused (Niri "always", Karousel centered):
+          always center the active column in viewport
+    - [ ] Overflow-center (Niri "on-overflow"):
+          center only when focused + neighbor can't both fit; otherwise minimum-scroll
+    - [ ] Implement as separate behaviors behind tags for easy swapping
+    - [ ] Command: :tiling.commands/set-view-offset
+
+*** LATER [#A] Implement window add/remove :feature:
+    Niri stability invariant: adding/removing a window never resizes existing
+    windows, and the focused window never moves visually on screen.
+
+    - [ ] Command: :tiling.commands/add-window — insert column at position
+          relative to active column, retile
+    - [ ] Command: :tiling.commands/remove-window — remove from column,
+          delete column if empty, activate neighbor, retile
+    - [ ] Apply position deltas to columns on the far side from focus
+          (Niri's technique for visual stability)
+    - [ ] Behaviors: respond to :event.kind.window/visible and
+          :event.kind.window/not-visible from :tag/window-watcher
+    - [ ] Handle within-column add/remove (stacking)
+
+*** LATER [#A] Implement focus navigation and window swapping :feature:
+    Directional navigation across columns (left/right) and within columns (up/down).
+    Window swapping reorders the column list or rows within a column.
+
+    - [ ] Commands: focus-left, focus-right, focus-up, focus-down
+    - [ ] Commands: swap-left, swap-right, swap-up, swap-down
+    - [ ] Commands: move-to-column (slurp/barf equivalent)
+    - [ ] Wire existing paper-wm hotkey sources to new tiling commands
+    - [ ] Viewport follows focus (via scrolling behavior from previous item)
+
+*** LATER [#B] Implement column width management :feature:
+    User-adjustable column widths with preset cycling (Niri-style).
+
+    - [ ] Config: ordered list of width presets as screen proportions
+          (default: [0.33 0.5 0.67 1.0])
+    - [ ] Command: :tiling.commands/cycle-width-up — next preset
+    - [ ] Command: :tiling.commands/cycle-width-down — previous preset
+    - [ ] Command: :tiling.commands/set-full-width — maximize to screen width
+    - [ ] Decide: column width vs per-window width
+    - [ ] Wire existing paper-wm sizing hotkeys to new commands
+
+*** LATER [#B] Solve convergence on restart/reload :architecture:
+    When Hammerspoon restarts or config reloads, windows exist at arbitrary
+    positions. The tiler must infer the correct column structure from current
+    window geometry and converge to a valid tiled layout with minimum disruption.
+    Simple accumulation fails here — it ignores current positions and retiles
+    in enumeration order, effectively rearranging all windows.
+
+    - [ ] Approach A — spatial inference: sort windows by x-position, cluster
+          into columns by proximity, then accumulate. Simple, ~30 LOC.
+    - [ ] Approach B — Cassowary constraint solver: each window gets a weak
+          "stay at current position" constraint plus required ordering/gap
+          constraints. Solver finds minimum-disruption valid tiling.
+          Most principled, ~1500 LOC for solver or use a library.
+    - [ ] Approach C — persist column assignments to disk, restore on reload.
+          Avoids inference entirely but adds I/O dependency.
+    - [ ] Evaluate: is spatial inference good enough, or does Cassowary's
+          minimum-disruption property justify the complexity?
+    - [ ] If Cassowary: implement or port a Lua solver (kiwi-solver is ~1500 LOC C++)
+    - [ ] Implement as a separate initialization behavior, swappable via tags
+
+*** LATER [#C] Algorithm swapping via tags :architecture:
+    Multiple tiling algorithms (or algorithm variants) can coexist as different
+    behavior sets. Tags select which algorithm is active per screen/workspace.
+
+    - [ ] Define tag convention: :tag/tiling-algo-accumulate, :tag/tiling-algo-cassowary
+    - [ ] Behaviors for each algorithm variant share the same commands but differ
+          in how they compute layout
+    - [ ] Subscriptions wire the active algorithm's behaviors; swapping tags
+          at runtime switches algorithms without restart
+    - [ ] Useful for A/B testing scroll strategies, width policies, convergence methods
 
 ** PROJ PaperWM Migration [1/5]
 Migrate paper-wm.fnl to the Sheaf architecture in phases.
