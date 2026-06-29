@@ -275,7 +275,7 @@
 (define-event! event-registry
                :url-handler.events/url-opened
                "URL opened via default browser handler"
-               {:url string? :original string? :scheme string? :host string?
+               {:url string? :original string? :scheme string? :host nil-or-string?
                 :path nil-or-string? :params table?
                 :sender nil-or-string? :sender-bundle-id nil-or-string?})
 (derive! event-hierarchy :url-handler.events/url-opened :event.kind.url/opened)

@@ -33,6 +33,8 @@
                             {:id :ora      :bundle-id "com.orabrowser.app"}
                             {:id :surf     :bundle-id "surf.deta"}]
                  :fallback {:type :choose :browser-ids :all}
-                 :rules []})}))
+                 :rules [{:id :file-url-default
+                          :match {:urls [{:scheme :file}]}
+                          :action {:type :open-in-app :browser-id :safari}}]})}))
 
 {: url-routing-rules-type}

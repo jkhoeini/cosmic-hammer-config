@@ -11,7 +11,10 @@
     :fn (fn [component params]
           (print (.. "[DEBUG] open-in-app: url=" (tostring params.url)
                      " bundle-id=" (tostring params.bundle-id)))
-          (hs.urlevent.openURLWithBundle params.url params.bundle-id)
-          nil)}))
+          (let [ok (hs.urlevent.openURLWithBundle params.url params.bundle-id)]
+            (when (not ok)
+              (print (.. "[WARN] open-in-app: openURLWithBundle returned false for url="
+                         (tostring params.url) " bundle-id=" (tostring params.bundle-id))))
+            nil))}))
 
 {: open-in-app-command}

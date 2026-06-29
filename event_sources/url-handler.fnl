@@ -50,24 +50,21 @@
    Returns state with previous handler info for restore."
   (let [decoders (or self.config.decoders default-decoders)
         max-depth (or self.config.decoder-max-depth 5)
-        ;; Save previous default handlers before we override
-        prev-http (hs.urlevent.getDefaultHandler :http)
-        prev-https (hs.urlevent.getDefaultHandler :https)
+        own-bundle-id hs.processInfo.bundleID
+        ;; Save previous default handlers before we override.
+        ;; If we're already the default, treat it as nil to avoid forwarding to ourselves.
+        raw-prev-http (hs.urlevent.getDefaultHandler :http)
+        raw-prev-https (hs.urlevent.getDefaultHandler :https)
+        prev-http (when (not= raw-prev-http own-bundle-id) raw-prev-http)
+        prev-https (when (not= raw-prev-https own-bundle-id) raw-prev-https)
         callback (fn [scheme host params full-url sender-pid]
                    (print (.. "[INFO] url-handler: callback invoked"
                               " scheme=" (tostring scheme)
                               " url=" (tostring full-url)
                               " senderPID=" (tostring sender-pid)))
-                   ;; file:// URLs come from local file opens (e.g. GP SAML HTML).
-                   ;; Forward directly to the previous browser — we can't render HTML.
-                   (when (= scheme :file)
-                     (print (.. "[INFO] url-handler: file:// URL, forwarding to "
-                                (tostring prev-http)))
-                     (when prev-http
-                       (hs.urlevent.openURLWithBundle full-url prev-http))
-                     (lua "return"))
                    (let [original full-url
-                         ;; Run decoder pipeline
+                         ;; Run decoder pipeline (file:// URLs pass through
+                         ;; unmodified — no decoder matches local paths)
                          decoded (run-decoders decoders max-depth full-url)
                          ;; Parse decoded URL for structured fields
                          parts (parse-url-parts decoded)
