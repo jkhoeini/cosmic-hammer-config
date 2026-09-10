@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# ============================================================================
+# yabairc — reproduced from ~/src/wmbb/resource/yabairc (annotated)
+#
+# This is the config script wmbb hands to yabai. wmbb.yabai (defstate in
+# src/wmbb/yabai.clj:19-37) copies it from resources to a temp file and
+# launches `yabai --config <tempfile>`; yabai runs it as plain bash on start.
+#
+# Pipeline — how a window event reaches Clojure:
+#
+#   1. This script registers one yabai "signal" per event type.
+#   2. When an event fires, yabai sets $YABAI_WINDOW_ID / $YABAI_SPACE_ID /
+#      $YABAI_DISPLAY_ID and executes the signal's `action` shell command.
+#   3. The action pipes the string `(ev> {EDN payload})` into
+#      `nc localhost 5556`.
+#   4. Port 5556 is wmbb's prepl socket server (src/wmbb/socket.clj), which
+#      evaluates the form: (ev> {...}) -> user.clj `ev>` ->
+#      wmbb.yabai/put-event! -> sss/send-signal into the sss system.
+#   5. subscriptions.clj matches the :event keyword, builds a system event
+#      enriched with a fresh yabai query of the affected entity, and
+#      behaviors/commands react (e.g. manager.clj recomputes layout).
+#
+# Gotcha: `--add` appends. Running this script against an already-running
+# yabai stacks duplicate signals; the original never calls --remove first.
+# ============================================================================
+
+# Verbose yabai logging. wmbb starts yabai with stderr redirected to a temp
+# file, so the debug output lands there instead of the console.
+yabai -m config debug_output on
+
+# Global Configs
+# Hovering a window raises it to the front without stealing keyboard focus
+# (the "autoraise" variant of focus-follows-mouse).
+yabai -m config focus_follows_mouse autoraise
+# Inverse direction: when yabai changes focus programmatically, warp the
+# mouse cursor to the newly focused window.
+yabai -m config mouse_follows_focus on
+# New windows appear on the display where the cursor currently is.
+yabai -m config window_origin_display cursor
+
+# signal fn
+# Helper that registers one yabai signal. Two-level quoting trick:
+#   - $arg is an EDN template; \$YABAI_* is escaped at call time so it stays
+#     literal inside $arg.
+#   - The action string is built once at registration with $arg expanded;
+#     yabai itself substitutes $YABAI_* env vars when the signal fires.
+# Registered action for window_created, for example:
+#   echo -n "(ev> {:event :yabai.window/created, :yabai.window/id $YABAI_WINDOW_ID}" | nc localhost 5556
+# `echo -n` = no trailing newline, so prepl reads exactly one form per
+# connection. The event-name arg (e.g. "window_created") is yabai's signal
+# event name; the :yabai.* keyword is what subscriptions.clj dispatches on.
+function y() {
+  local event="$1"
+  local arg="$2"
+  yabai -m signal --add event="$event" action="echo -n \"(ev> $arg)\" | nc localhost 5556"
+}
+
+# window signals
+y window_created "{:event :yabai.window/created, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_destroyed "{:event :yabai.window/destroyed, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_focused "{:event :yabai.window/focused, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_moved "{:event :yabai.window/moved, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_resized "{:event :yabai.window/resized, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_minimized "{:event :yabai.window/minimized, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_deminimized "{:event :yabai.window/deminimized, :yabai.window/id \$YABAI_WINDOW_ID}"
+y window_title_changed "{:event :yabai.window/title_changed, :yabai.window/id \$YABAI_WINDOW_ID}"
+
+# space signals
+y space_created "{:event :yabai.space/created, :yabai.space/id \$YABAI_SPACE_ID}"
+y space_destroyed "{:event :yabai.space/destroyed, :yabai.space/id \$YABAI_SPACE_ID}"
+y space_changed "{:event :yabai.space/changed, :yabai.space/id \$YABAI_SPACE_ID}"
+
+# display signals (original's comment said "display removed" but covers all five)
+y display_added "{:event :yabai.display/added, :yabai.display/id \$YABAI_DISPLAY_ID}"
+y display_removed "{:event :yabai.display/removed, :yabai.display/id \$YABAI_DISPLAY_ID}"
+y display_moved "{:event :yabai.display/moved, :yabai.display/id \$YABAI_DISPLAY_ID}"
+y display_resized "{:event :yabai.display/resized, :yabai.display/id \$YABAI_DISPLAY_ID}"
+y display_changed "{:event :yabai.display/changed, :yabai.display/id \$YABAI_DISPLAY_ID}"
