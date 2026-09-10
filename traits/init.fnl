@@ -33,7 +33,9 @@
 ;; └── :trait.kind/data                      ;; Pure config/data in state
 ;;     ├── :trait/has-url-routing-rules
 ;;     ├── :trait/has-url-history
-;;     └── :trait/has-window-state
+;;     ├── :trait/has-window-state
+;;     ├── :trait/has-desktop-layout
+;;     └── :trait/has-mouse-window-management-state
 
 (local trait-hierarchy (make-hierarchy))
 
@@ -60,6 +62,8 @@
 (derive! trait-hierarchy :trait/has-url-routing-rules :trait.kind/data)
 (derive! trait-hierarchy :trait/has-url-history :trait.kind/data)
 (derive! trait-hierarchy :trait/has-window-state :trait.kind/data)
+(derive! trait-hierarchy :trait/has-desktop-layout :trait.kind/data)
+(derive! trait-hierarchy :trait/has-mouse-window-management-state :trait.kind/data)
 
 
 ;; ============================================================================
@@ -128,6 +132,16 @@
   (make-trait :trait/has-window-state
               "Component state includes a map of tracked window states"
               {:windows non-nil?}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-desktop-layout
+              "Component state includes the ordered desktop layout"
+              {:all-spaces non-nil?}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-mouse-window-management-state
+              "Component state tracks Space changes and delayed placement timers"
+              {:pending-placement-timers non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)

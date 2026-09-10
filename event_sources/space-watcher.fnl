@@ -3,15 +3,7 @@
 ;; Event source type: emits events on space/desktop change
 
 (local {: make-source-type} (require :sheaf.source-registry))
-
-
-(fn snapshot-spaces []
-  "Snapshot current space layout as ordered data.
-   Returns: [[uuid [space-id ...]] ...] ordered by screen position."
-  (let [spaces-layout (hs.spaces.allSpaces)]
-    (icollect [_ screen (ipairs (hs.screen.allScreens))]
-      (let [uuid (screen:getUUID)]
-        [uuid (. spaces-layout uuid)]))))
+(local {: snapshot-desktop} (require :event_sources.desktop-snapshot))
 
 
 (fn start-space-watcher [self emit]
@@ -20,10 +12,12 @@
    emit: (fn [event-name event-data])
    Returns the watcher object as state."
   (let [handler (fn [space-number]
-                  (emit :space-watcher.events/space-changed
-                        {:space-number space-number
-                         :all-spaces (snapshot-spaces)
-                         :active-spaces (hs.spaces.activeSpaces)}))
+                  (let [snapshot (snapshot-desktop)]
+                    (emit :space-watcher.events/space-changed
+                          {:space-number space-number
+                           :all-spaces snapshot.all-spaces
+                           :active-spaces snapshot.active-spaces
+                           :screens snapshot.screens})))
         watcher (hs.spaces.watcher.new handler)]
     (watcher:start)
     watcher))

@@ -33,6 +33,17 @@
               "Live index of all tracked windows by window-id"
               [{:name :default :traits [:trait/has-window-state]}]))
 
+(add-shape! shape-registry
+  (make-shape :shape/desktop-layout
+              "Ordered spaces grouped by screen"
+              [{:name :default :traits [:trait/has-desktop-layout]}]))
+
+(add-shape! shape-registry
+  (make-shape :shape/mouse-window-management-state
+              "Mouse window management Space-change and placement state"
+              [{:name :default
+                :traits [:trait/has-mouse-window-management-state]}]))
+
 
 ;; Export registry
 {: shape-registry}
