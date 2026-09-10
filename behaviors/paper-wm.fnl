@@ -111,6 +111,17 @@
             (when target
               (send-cmd target :refresh-windows {}))))}))
 
+(local refresh-on-window-placed-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/refresh-on-window-placed
+    :description "Refresh PaperWM after cross-screen window placement"
+    :respond-to [:event.kind.window/placed]
+    :commands {:refresh-windows :paper-wm.commands/refresh-windows}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.refresh-windows 1)]
+            (when target
+              (send-cmd target :refresh-windows {}))))}))
+
 {: focus-behavior
  : swap-behavior
  : center-window-behavior
@@ -120,4 +131,5 @@
  : barf-window-behavior
  : increment-space-behavior
  : switch-to-space-behavior
- : refresh-on-screen-change-behavior}
+ : refresh-on-screen-change-behavior
+ : refresh-on-window-placed-behavior}

@@ -37,7 +37,12 @@
 ;; │   ├── :event.kind.window/minimized
 ;; │   ├── :event.kind.window/deminimized
 ;; │   ├── :event.kind.window/title-changed
-;; │   └── :event.kind.window/initial
+;; │   ├── :event.kind.window/initial
+;; │   ├── :event.kind.window/placement-ready
+;; │   └── :event.kind.window/placed
+;; │
+;; ├── :event.kind.mouse/any               ;; Mouse observation events
+;; │   └── :event.kind.mouse/window-hovered
 ;; │
 ;; ├── :event.kind.app/any                 ;; Application events
 ;; │   ├── :event.kind.app/launched
@@ -52,7 +57,9 @@
 ;; │   └── :event.kind.screen/layout-changed
 ;; │
 ;; ├── :event.kind.space/any               ;; Spaces/desktop events
-;; │   └── :event.kind.space/changed
+;; │   ├── :event.kind.space/changed
+;; │   ├── :event.kind.space/created
+;; │   └── :event.kind.space/destroyed
 ;; │
 ;; ├── :event.kind.system/any              ;; System events
 ;; │   ├── :event.kind.system/wake
@@ -99,6 +106,12 @@
 (derive! event-hierarchy :event.kind.window/minimized :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/deminimized :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/title-changed :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/placed :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/placement-ready :event.kind.window/any)
+
+;; --- Mouse ---
+(derive! event-hierarchy :event.kind.mouse/any :event.kind/any)
+(derive! event-hierarchy :event.kind.mouse/window-hovered :event.kind.mouse/any)
 
 ;; --- Application ---
 (derive! event-hierarchy :event.kind.app/any :event.kind/any)
@@ -117,6 +130,8 @@
 ;; --- Spaces/Desktop ---
 (derive! event-hierarchy :event.kind.space/any :event.kind/any)
 (derive! event-hierarchy :event.kind.space/changed :event.kind.space/any)
+(derive! event-hierarchy :event.kind.space/created :event.kind.space/any)
+(derive! event-hierarchy :event.kind.space/destroyed :event.kind.space/any)
 
 ;; --- System ---
 (derive! event-hierarchy :event.kind.system/any :event.kind/any)
@@ -178,17 +193,55 @@
 (define-event! event-registry
                :space-watcher.events/space-changed
                "Active space/desktop changed"
-               {:space-number number? :all-spaces table? :active-spaces table?})
+               {:space-number number? :all-spaces table? :active-spaces table? :screens table?})
 (derive! event-hierarchy :space-watcher.events/space-changed :event.kind.space/changed)
+
+
+;; --- Desktop Layout Events ---
+(define-event! event-registry
+               :desktop-layout.events/space-created
+               "Space/desktop was created"
+               {:space-id number? :screen-uuid string?
+                :all-spaces table? :active-spaces table?})
+(derive! event-hierarchy :desktop-layout.events/space-created :event.kind.space/created)
+
+(define-event! event-registry
+               :desktop-layout.events/space-destroyed
+               "Space/desktop was destroyed"
+               {:space-id number? :screen-uuid string?
+                :all-spaces table? :active-spaces table?})
+(derive! event-hierarchy :desktop-layout.events/space-destroyed :event.kind.space/destroyed)
 
 
 ;; --- Screen Watcher Events ---
 (define-event! event-registry
                :screen-watcher.events/screen-changed
                "Screen layout changed"
-               {:all-spaces table? :active-spaces table?})
+               {:all-spaces table? :active-spaces table? :screens table?})
 (derive! event-hierarchy :screen-watcher.events/screen-changed :event.kind.screen/layout-changed)
 
+
+;; --- Mouse Window Management Events ---
+(define-event! event-registry
+               :mouse-window-watcher.events/window-hovered
+               "Cursor entered a different standard window"
+               {:window-id number?})
+(derive! event-hierarchy :mouse-window-watcher.events/window-hovered
+         :event.kind.mouse/window-hovered)
+
+(define-event! event-registry
+               :mouse-window-management.events/window-placement-ready
+               "Likely-new window is ready for placement policy"
+               {:window-id number? :created-at number? :cursor-screen-uuid string?})
+(derive! event-hierarchy :mouse-window-management.events/window-placement-ready
+         :event.kind.window/placement-ready)
+
+(define-event! event-registry
+               :mouse-window-management.events/window-placed
+               "Window moved to the cursor's screen"
+               {:window-id number?})
+(derive! event-hierarchy :mouse-window-management.events/window-placed
+         :event.kind.window/placed)
 
 ;; --- Window Watcher Events ---
 (define-event! event-registry

@@ -692,7 +692,7 @@
               (when space (tset retile-spaces space true)))
             (not= index.space (. (Spaces.windowSpaces window) 1))
             (do
-              (remove-window! window)
+              (remove-window! window true)
               (let [space (add-window! window)]
                 (when space (tset retile-spaces space true)))))))
     (each [space _ (pairs retile-spaces)]

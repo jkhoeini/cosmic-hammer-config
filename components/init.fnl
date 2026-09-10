@@ -15,6 +15,8 @@
 
 ;; Import component type data
 (local {: space-indicator-type} (require :components.space-indicator))
+(local {: desktop-layout-type} (require :components.desktop-layout))
+(local {: mouse-window-management-type} (require :components.mouse-window-management))
 (local {: expose-type} (require :components.expose))
 (local {: emacs-type} (require :components.emacs))
 (local {: reload-hammerspoon-type} (require :components.reload-hammerspoon))
@@ -48,11 +50,15 @@
 ;; ├── :component.kind/url-routing-rules
 ;; ├── :component.kind/url-history
 ;; ├── :component.kind/window-state
-;; └── :component.kind/paper-wm
+;; ├── :component.kind/paper-wm
+;; ├── :component.kind/desktop-layout
+;; └── :component.kind/mouse-window-management
 
 (local component-hierarchy (make-hierarchy))
 
 (derive! component-hierarchy :component.kind/space-indicator :component.kind/any)
+(derive! component-hierarchy :component.kind/desktop-layout :component.kind/any)
+(derive! component-hierarchy :component.kind/mouse-window-management :component.kind/any)
 (derive! component-hierarchy :component.kind/expose :component.kind/any)
 (derive! component-hierarchy :component.kind/emacs :component.kind/any)
 (derive! component-hierarchy :component.kind/reload-hammerspoon :component.kind/any)
@@ -69,6 +75,8 @@
 
 ;; Derive concrete types from their kinds
 (derive! component-hierarchy :component.type/space-indicator :component.kind/space-indicator)
+(derive! component-hierarchy :component.type/desktop-layout :component.kind/desktop-layout)
+(derive! component-hierarchy :component.type/mouse-window-management :component.kind/mouse-window-management)
 (derive! component-hierarchy :component.type/expose :component.kind/expose)
 (derive! component-hierarchy :component.type/emacs :component.kind/emacs)
 (derive! component-hierarchy :component.type/reload-hammerspoon :component.kind/reload-hammerspoon)
@@ -106,6 +114,8 @@
 ;; ============================================================================
 
 (add-component-type! component-registry space-indicator-type)
+(add-component-type! component-registry desktop-layout-type)
+(add-component-type! component-registry mouse-window-management-type)
 (add-component-type! component-registry expose-type)
 (add-component-type! component-registry emacs-type)
 (add-component-type! component-registry reload-hammerspoon-type)
@@ -126,6 +136,8 @@
 ;; ============================================================================
 
 (local space-indicator-name (make-instance-name :component.type/space-indicator "main"))
+(local desktop-layout-name (make-instance-name :component.type/desktop-layout "main"))
+(local mouse-window-management-name (make-instance-name :component.type/mouse-window-management "main"))
 (local expose-name (make-instance-name :component.type/expose "main"))
 (local emacs-name (make-instance-name :component.type/emacs "main"))
 (local reload-hammerspoon-name (make-instance-name :component.type/reload-hammerspoon "main"))
@@ -145,6 +157,8 @@
 ;; Instance Startup (auto-creates owned source instances via start-component!)
 ;; ============================================================================
 
+(start-component! component-registry :component.type/desktop-layout desktop-layout-name {})
+(start-component! component-registry :component.type/mouse-window-management mouse-window-management-name {})
 (start-component! component-registry :component.type/space-indicator space-indicator-name {})
 (start-component! component-registry :component.type/expose expose-name {})
 (start-component! component-registry :component.type/emacs emacs-name {})
@@ -167,6 +181,9 @@
 ;; ============================================================================
 
 (attach-tag! tag-registry space-indicator-name :tag/space-indicator)
+(attach-tag! tag-registry desktop-layout-name :tag/desktop-layout)
+(attach-tag! tag-registry desktop-layout-name :tag/space-watcher)
+(attach-tag! tag-registry mouse-window-management-name :tag/mouse-window-management)
 (attach-tag! tag-registry expose-name :tag/expose)
 (attach-tag! tag-registry emacs-name :tag/emacs)
 (attach-tag! tag-registry reload-hammerspoon-name :tag/reload-hammerspoon)

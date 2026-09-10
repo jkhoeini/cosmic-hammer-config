@@ -1409,7 +1409,7 @@ Native Spaces have no public API; every private API workaround breaks on each ma
        - [ ] Sheaf integration: workspace switches as events, commands to move windows
      - Reference: AeroSpace source (nikitabobko/AeroSpace), FlashSpace (app-level hide/show variant)
 
-** PROJ WMBB Mouse & Window Management [0/6]
+** DONE WMBB Mouse & Window Management [6/6]
 Mouse-driven window behaviors and system event coverage inspired by the wmbb
 prototype (~/src/wmbb, Clojure Sheaf ancestor; yabairc at resource/yabairc).
 Reference: ~/src/cosmic-hammer-config/yabairc (annotated reproduction).
@@ -1417,42 +1417,45 @@ Depends on: window-watcher event source (done), app-watcher event source (done),
 screen event source (done), space event source (done), tag system (done),
 dispatcher (done).
 
-*** LATER [#B] Hover-raise windows (focus follows mouse, autoraise) :feature:
-     - Hovering a window raises it to the front WITHOUT stealing keyboard focus
-       (yabai's focus_follows_mouse autoraise variant)
-     - Needs mouse-move observation: hs.eventtap mouse-moved listener or a
-       low-frequency hs.timer polling hs.mouse.getAbsolutePosition
-     - Raise via hs.window:raise() — do NOT use hs.window:focus() (that takes focus)
-     - Debounce/throttle: mouse-move fires continuously; raise only when the
-       window under the cursor differs from the last raised window
-     - Exclusions worth deciding: fullscreen windows, paper-wm-managed windows
+*** DONE [#B] Hover-raise windows (focus follows mouse, autoraise) :feature:
+     - Polls cursor position every 150ms through a component-owned event source
+     - AX hit-testing resolves the topmost containing standard window; desktop,
+       CosmicHammer-owned, nonstandard, stationary-cursor, and drag cases skip
+     - Emits only when the hovered window ID changes; command re-hit-tests at
+       execution time and uses hs.window:raise(), never :focus()
+     - Behavior excludes focused, fullscreen, and untracked windows using
+       :shape/window-state
 
-*** LATER [#B] Cursor follows keyboard focus :feature:
-     - Inverse of hover-raise: when focus changes programmatically, warp the
-       mouse to the newly focused window
-     - Respond to :event.kind.window/focused from :tag/window-watcher
-     - Warp via hs.mouse.absoluteCursorPosition (set) to center of event frame
-     - Event schema already has :frame — no extra query needed
+*** DONE [#B] Cursor follows keyboard focus :feature:
+     - Responds to :event.kind.window/focused from :tag/window-watcher
+     - Uses hs.mouse.absolutePosition and the event frame; mouse-click focus is
+       unchanged because the cursor is already inside the focused window
+     - Keyboard/programmatic focus with the cursor outside warps to frame center
 
-*** LATER [#A] Decide hover-raise ↔ cursor-warp feedback-loop guard :architecture:
-     - WM-1 (hover-raise) and WM-3 (cursor-warp) can feed each other: hover
-       raises → if that took focus, cursor warps → cursor moved triggers hover
-       on a new window → loop
-     - Design decision needed: hover-raise must be raise-only (never focus);
-       warp must be triggered only by programmatic focus, not by mouse-moved
-       events; consider a "cursor-set-programmatically" flag in event data
-     - Similar concern exists in the wmbb original (both directions on) —
-       decide whether the combined behavior is stable or pick one direction
+*** DONE [#A] Decide hover-raise ↔ cursor-warp feedback-loop guard :architecture:
+     - No mutable suppression flag or focus-provenance guess is needed
+     - Invariant: hover acts only on the window containing the cursor; cursor
+       warp runs only when the cursor is outside the focused frame
+     - Even if AXRaise makes a same-application window key, the resulting focus
+       event sees the cursor inside that window and does not warp; hover IDs are
+       also deduplicated, so the conversation terminates
 
-*** LATER [#B] New windows appear at cursor's display :feature:
-     - New windows should be created on the display where the cursor is
-       (yabai window_origin_display cursor)
-     - macOS natively opens windows on the ACTIVE display (cursor's display) —
-       verify actual gap: only intervene when the app targets a different display
-     - Respond to :event.kind.window/visible; if the window's screen ≠ cursor's
-       screen (hs.mouse.getAbsolutePosition + hs.screen.find), move it:
-       hs.window:setFrame or :moveToScreen
-     - Decide default: on by default or opt-in per app
+*** DONE [#B] New windows appear at cursor's display :feature:
+     - Responds to window-created, not visible, so unminimize/unhide do not move
+       existing windows
+     - WindowFilter can synthesize created for late discovery; behavior therefore
+       requires an untracked window ID newer than all tracked IDs and delays
+       placement. Creates near a Space-changed event are suppressed
+     - Standard, non-fullscreen windows move only when their screen differs from
+       the cursor screen captured at creation; moveToScreen preserves size and
+       fits bounds
+     - Creation captures the cursor screen UUID before focus-follow can move the
+       cursor; delayed placement therefore preserves the intended destination
+     - Successful placement delays a window-placed event until macOS updates the
+       Space assignment; a separate subscription refreshes PaperWM without
+       changing focus to repair its private index
+     - Focus handling resolves the live window frame, so later focus events use
+       the window's current geometry rather than a queued stale frame
 
 *** DONE [#C] Audit window event coverage vs wmbb's 8 window signals [3/3] :tooling:
      - wmbb registers: created, destroyed, focused, moved, resized, minimized,
@@ -1483,35 +1486,29 @@ dispatcher (done).
        small follow-up
 
 
-*** LATER [#C] Audit space/display event coverage vs wmbb's signals :tooling:
+*** DONE [#C] Audit space/display event coverage vs wmbb's signals :tooling:
      - wmbb registers space: created, destroyed, changed; display: added,
        removed, moved, resized, changed
-     - Current space-watcher (event_sources/space-watcher.fnl:22-28) emits
-       space-changed only, via hs.spaces.watcher; screen-watcher
-       (event_sources/screen-watcher.fnl:22-28) emits screen-changed only
-       (despite its TODOs entry claiming add/remove/layout-change — the
-       source type's :emits list has just :screen-watcher.events/screen-changed)
      - AUDIT RESULT (2026-09-10, source-verified against the fork):
-       - Space created/destroyed: NOT available. The fork's hs.spaces.watcher
-         (Sources/HSSwiftExtensions/SpacesWatcher.swift:78-86) observes ONLY
-         NSWorkspace.activeSpaceDidChangeNotification — one callback, space
-         change only. No per-space create/destroy notification is wired.
-       - Display added/removed: COVERED by hs.screen.watcher
-         (Sources/HSSwiftExtensions/ScreenWatcher.swift:90-95, observes
-         NSApplication.didChangeScreenParametersNotification) — but collapsed
-         into the single screen-changed event; the fork emits no per-display
-         added/removed/moved/resized distinction (an optional includeActive
-         variant distinguishes active-display change, line 97-104)
-     - TO ADD for space create/destroy: derive from diffs — the event payload
-       already snapshots all-spaces (snapshot-spaces in both watchers); diff
-       consecutive snapshots in a behavior to synthesize created/destroyed.
-       No new engine/source needed.
-     - TO ADD for display moved/resized/changed: read screen geometry in the
-       screen-changed handler (frame + UUID per screen) and diff in a behavior,
-       OR accept the single layout-change event. Decision: keep the single
-       event; consumers diff the :all-spaces/:frame payload themselves.
-     - wmbb's 5 display signals are yabai-level granularity; Sheaf's screen
-       event + snapshot payload covers the same information in one event
+       - Space created/destroyed has no native notification. The fork's
+         hs.spaces.watcher observes only activeSpaceDidChangeNotification.
+       - Display changes are covered by hs.screen.watcher but collapsed into
+         one screen-changed event; the fork exposes no per-display event kind.
+     - IMPLEMENTED 2026-09-24:
+       - [X] Centralize ordered spaces, active spaces, and screen UUID/frame
+             snapshots in event_sources/desktop-snapshot.fnl
+       - [X] Add :event.kind.space/{created,destroyed} and concrete
+             :desktop-layout.events/{space-created,space-destroyed} events
+       - [X] Add desktop-layout component state; reconcile consecutive
+             snapshots through a behavior and command, emitting destroyed
+             before created and suppressing duplicate watcher notifications
+       - [X] Move space/screen watcher ownership from the optional menubar UI
+             to desktop-layout while preserving existing source tags
+       - [X] Keep screen-changed as the aggregate display contract and include
+             ordered {:uuid :frame} screen snapshots for consumer-side diffs
+     - KNOWN PLATFORM LIMIT: topology changes are observed when either the
+       space or screen watcher fires. CosmicHammer exposes no direct Space
+       create/destroy notification, so changes triggering neither are invisible.
 
 ** PROJ Sheaf Tiling Engine [0/8]
 Niri-style scrolling column tiler built on Sheaf primitives.

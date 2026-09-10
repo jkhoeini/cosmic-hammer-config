@@ -12,6 +12,12 @@
 (local {: reload-hammerspoon-behavior} (require :behaviors.reload-hammerspoon))
 (local {: toggle-expose-behavior} (require :behaviors.toggle-expose))
 (local {: update-space-indicator-behavior} (require :behaviors.update-space-indicator))
+(local {: reconcile-spaces-behavior} (require :behaviors.desktop-layout))
+(local {: raise-hovered-window-behavior
+        : center-cursor-on-focus-behavior
+        : schedule-created-window-behavior
+        : note-space-change-behavior
+        : place-created-window-behavior} (require :behaviors.mouse-window-management))
 (local {: open-emacs-behavior} (require :behaviors.open-emacs))
 (local {: update-on-focus-behavior : update-on-move-behavior : hide-on-disappear-behavior} (require :behaviors.window-border))
 (local {: route-url-behavior} (require :behaviors.url-routing))
@@ -31,7 +37,8 @@
         : barf-window-behavior
         : increment-space-behavior
         : switch-to-space-behavior
-        : refresh-on-screen-change-behavior} (require :behaviors.paper-wm))
+        : refresh-on-screen-change-behavior
+        : refresh-on-window-placed-behavior} (require :behaviors.paper-wm))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -41,6 +48,12 @@
 (add-behavior! behavior-registry reload-hammerspoon-behavior)
 (add-behavior! behavior-registry toggle-expose-behavior)
 (add-behavior! behavior-registry update-space-indicator-behavior)
+(add-behavior! behavior-registry reconcile-spaces-behavior)
+(add-behavior! behavior-registry raise-hovered-window-behavior)
+(add-behavior! behavior-registry center-cursor-on-focus-behavior)
+(add-behavior! behavior-registry schedule-created-window-behavior)
+(add-behavior! behavior-registry note-space-change-behavior)
+(add-behavior! behavior-registry place-created-window-behavior)
 (add-behavior! behavior-registry open-emacs-behavior)
 (add-behavior! behavior-registry update-on-focus-behavior)
 (add-behavior! behavior-registry update-on-move-behavior)
@@ -63,6 +76,7 @@
 (add-behavior! behavior-registry increment-space-behavior)
 (add-behavior! behavior-registry switch-to-space-behavior)
 (add-behavior! behavior-registry refresh-on-screen-change-behavior)
+(add-behavior! behavior-registry refresh-on-window-placed-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

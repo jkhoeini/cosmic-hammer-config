@@ -54,6 +54,24 @@
   :event-selector :event.kind.screen/layout-changed})
 
 (define-subscription! subscription-registry
+ :sub/reconcile-spaces-on-space-change
+ {:description "Derive space topology changes when the active space changes"
+  :behavior :desktop-layout.behaviors/reconcile-spaces
+  :source-tag :tag/space-watcher
+  :target-tag :tag/desktop-layout
+  :input-tag :tag/desktop-layout
+  :event-selector :space-watcher.events/space-changed})
+
+(define-subscription! subscription-registry
+ :sub/reconcile-spaces-on-screen-change
+ {:description "Derive space topology changes when the screen layout changes"
+  :behavior :desktop-layout.behaviors/reconcile-spaces
+  :source-tag :tag/screen-watcher
+  :target-tag :tag/desktop-layout
+  :input-tag :tag/desktop-layout
+  :event-selector :screen-watcher.events/screen-changed})
+
+(define-subscription! subscription-registry
  :sub/open-emacs-on-hotkey
  {:description "Open emacsclient frame when cmd+alt+return is pressed"
   :behavior :emacs.behaviors/open-emacs
@@ -185,6 +203,59 @@
   :target-tag :tag/window-state
   :event-selector :event.kind.window/focused})
 
+
+;; --- Mouse Window Management ---
+
+(define-subscription! subscription-registry
+ :sub/raise-window-on-hover
+ {:description "Raise the standard window entered by the cursor"
+  :behavior :mouse-window-management.behaviors/raise-hovered-window
+  :source-tag :tag/mouse-window-watcher
+  :target-tag :tag/mouse-window-management
+  :input-tag :tag/window-state
+  :event-selector :event.kind.mouse/window-hovered})
+
+(define-subscription! subscription-registry
+ :sub/center-cursor-on-window-focus
+ {:description "Center cursor when keyboard focus moves to another window"
+  :behavior :mouse-window-management.behaviors/center-cursor-on-focus
+  :source-tag :tag/window-watcher
+  :target-tag :tag/mouse-window-management
+  :event-selector :event.kind.window/focused})
+
+(define-subscription! subscription-registry
+ :sub/schedule-created-window-placement
+ {:description "Delay placement of a likely-new window"
+  :behavior :mouse-window-management.behaviors/schedule-created-window
+  :source-tag :tag/window-watcher
+  :target-tag :tag/mouse-window-management
+  :input-tag :tag/window-state
+  :event-selector :event.kind.window/created})
+
+(define-subscription! subscription-registry
+ :sub/note-space-change-for-window-placement
+ {:description "Suppress placement of windows discovered during a Space switch"
+  :behavior :mouse-window-management.behaviors/note-space-change
+  :source-tag :tag/space-watcher
+  :target-tag :tag/mouse-window-management
+  :event-selector :event.kind.space/changed})
+
+(define-subscription! subscription-registry
+ :sub/place-settled-window-at-cursor
+ {:description "Place a settled likely-new window on the cursor's screen"
+  :behavior :mouse-window-management.behaviors/place-created-window
+  :source-tag :tag/mouse-window-management
+  :target-tag :tag/mouse-window-management
+  :input-tag :tag/mouse-window-management
+  :event-selector :event.kind.window/placement-ready})
+
+(define-subscription! subscription-registry
+ :sub/refresh-paper-wm-after-window-placement
+ {:description "Re-index PaperWM after cross-screen window placement"
+  :behavior :paper-wm.behaviors/refresh-on-window-placed
+  :source-tag :tag/mouse-window-management
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.window/placed})
 
 ;; --- PaperWM hotkey wiring ---
 
