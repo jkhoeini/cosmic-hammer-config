@@ -208,6 +208,38 @@ Always use destructuring imports at the top of the file:
 (string? x)             ; Type predicate
 ```
 
+## Runtime: CosmicHammer (not upstream Hammerspoon)
+
+This config targets **CosmicHammer** (`~/src/cosmichammer`), a personal Swift rewrite of Hammerspoon with built-in OpenTelemetry. Build it with `just build` in that repo. The `hs.opentelemetry` Lua module is always available (no require needed).
+
+### Telemetry Setup
+
+OTEL is configured at the top of `core.fnl` before the Sheaf boot sequence. The LGTM stack (Grafana + Loki + Tempo + Mimir) runs locally in Docker:
+
+```bash
+docker run --rm -p 3000:3000 -p 4317:4317 -p 4318:4318 --name cosmichammer-lgtm grafana/otel-lgtm:latest
+```
+
+Grafana at `http://localhost:3000` — Tempo for traces, Loki for logs, Prometheus for metrics.
+
+### Debugging with Telemetry
+
+- **Traces** — every `hs.*` callback is auto-instrumented. Open Tempo in Grafana to see span timelines for window events, hotkeys, timers, etc. Filter by `service.name = cosmic-hammer-config`.
+- **Logs** — `print()` and `hs.logger` output is captured as OTel logs (when `capturePrint`/`captureLogger` are on in config). Search in Loki.
+- **Metrics** — Sheaf engine metrics use the `sheaf/telemetry.fnl` adapter (counters and histograms via `counter-add!` / `histogram-record!`). View in Prometheus/Mimir panels.
+- **Console exporter** — for quick debugging without Docker, change `core.fnl` config to `{:exporter "console"}` and watch Hammerspoon console output.
+- **Flush before reload** — `reload-hammerspoon` component calls `hs.opentelemetry.flush` before `hs.reload()` so buffered data isn't lost.
+
+### sheaf/telemetry.fnl
+
+Thin adapter over `hs.opentelemetry` for the engine. Import from here, not raw `hs.opentelemetry`:
+
+```fennel
+(local {: with-span : counter-add! : enabled?} (require :sheaf.telemetry))
+```
+
+Key functions: `enabled?`, `with-span`, `counter-add!`, `histogram-record!`, `flush!`, `wrap` (context propagation for deferred callbacks). This is runtime infrastructure, not a Sheaf registrable — it registers nothing.
+
 ## Hammerspoon APIs
 
 Common APIs used in this codebase:
