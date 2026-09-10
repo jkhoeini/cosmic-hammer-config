@@ -39,14 +39,29 @@
                         WindowFilter.windowUnfullscreened
                         (emit :window-watcher.events/unfullscreened data)
                         WindowFilter.windowMoved
-                        (emit :window-watcher.events/moved data)))))]
+                        (emit :window-watcher.events/moved data)
+                        WindowFilter.windowCreated
+                        (emit :window-watcher.events/created data)
+                        WindowFilter.windowDestroyed
+                        (emit :window-watcher.events/destroyed data)
+                        WindowFilter.windowMinimized
+                        (emit :window-watcher.events/minimized data)
+                        WindowFilter.windowUnminimized
+                        (emit :window-watcher.events/deminimized data)
+                        WindowFilter.windowTitleChanged
+                        (emit :window-watcher.events/title-changed data)))))]
     (wf:subscribe
      [WindowFilter.windowFocused
       WindowFilter.windowVisible
       WindowFilter.windowNotVisible
       WindowFilter.windowFullscreened
       WindowFilter.windowUnfullscreened
-      WindowFilter.windowMoved]
+      WindowFilter.windowMoved
+      WindowFilter.windowCreated
+      WindowFilter.windowDestroyed
+      WindowFilter.windowMinimized
+      WindowFilter.windowUnminimized
+      WindowFilter.windowTitleChanged]
      handler)
     (let [current-windows (wf:getWindows)
           entries []]
@@ -82,6 +97,11 @@
             :window-watcher.events/fullscreened
             :window-watcher.events/unfullscreened
             :window-watcher.events/moved
+            :window-watcher.events/created
+            :window-watcher.events/destroyed
+            :window-watcher.events/minimized
+            :window-watcher.events/deminimized
+            :window-watcher.events/title-changed
             :window-watcher.events/initial-windows]
     :start-fn start-window-watcher
     :stop-fn stop-window-watcher}))

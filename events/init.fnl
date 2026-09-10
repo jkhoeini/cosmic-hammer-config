@@ -32,6 +32,11 @@
 ;; │   ├── :event.kind.window/unfullscreened
 ;; │   ├── :event.kind.window/moved
 ;; │   ├── :event.kind.window/resized
+;; │   ├── :event.kind.window/created
+;; │   ├── :event.kind.window/destroyed
+;; │   ├── :event.kind.window/minimized
+;; │   ├── :event.kind.window/deminimized
+;; │   ├── :event.kind.window/title-changed
 ;; │   └── :event.kind.window/initial
 ;; │
 ;; ├── :event.kind.app/any                 ;; Application events
@@ -89,6 +94,11 @@
 (derive! event-hierarchy :event.kind.window/moved :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/resized :event.kind.window/any)
 (derive! event-hierarchy :event.kind.window/initial :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/created :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/destroyed :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/minimized :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/deminimized :event.kind.window/any)
+(derive! event-hierarchy :event.kind.window/title-changed :event.kind.window/any)
 
 ;; --- Application ---
 (derive! event-hierarchy :event.kind.app/any :event.kind/any)
@@ -216,6 +226,36 @@
                "Window was moved or resized"
                {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
 (derive! event-hierarchy :window-watcher.events/moved :event.kind.window/moved)
+
+(define-event! event-registry
+               :window-watcher.events/created
+               "Window was created"
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/created :event.kind.window/created)
+
+(define-event! event-registry
+               :window-watcher.events/destroyed
+               "Window was destroyed (closed)"
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/destroyed :event.kind.window/destroyed)
+
+(define-event! event-registry
+               :window-watcher.events/minimized
+               "Window was minimized"
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/minimized :event.kind.window/minimized)
+
+(define-event! event-registry
+               :window-watcher.events/deminimized
+               "Window was unminimized (restored)"
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/deminimized :event.kind.window/deminimized)
+
+(define-event! event-registry
+               :window-watcher.events/title-changed
+               "Window title changed"
+               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(derive! event-hierarchy :window-watcher.events/title-changed :event.kind.window/title-changed)
 
 (define-event! event-registry
                :window-watcher.events/initial-windows

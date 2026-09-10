@@ -1002,6 +1002,11 @@ package.preload["events"] = package.preload["events"] or function(...)
   derive_21(event_hierarchy, "event.kind.window/moved", "event.kind.window/any")
   derive_21(event_hierarchy, "event.kind.window/resized", "event.kind.window/any")
   derive_21(event_hierarchy, "event.kind.window/initial", "event.kind.window/any")
+  derive_21(event_hierarchy, "event.kind.window/created", "event.kind.window/any")
+  derive_21(event_hierarchy, "event.kind.window/destroyed", "event.kind.window/any")
+  derive_21(event_hierarchy, "event.kind.window/minimized", "event.kind.window/any")
+  derive_21(event_hierarchy, "event.kind.window/deminimized", "event.kind.window/any")
+  derive_21(event_hierarchy, "event.kind.window/title-changed", "event.kind.window/any")
   derive_21(event_hierarchy, "event.kind.app/any", "event.kind/any")
   derive_21(event_hierarchy, "event.kind.app/launched", "event.kind.app/any")
   derive_21(event_hierarchy, "event.kind.app/terminated", "event.kind.app/any")
@@ -1051,6 +1056,16 @@ package.preload["events"] = package.preload["events"] or function(...)
   derive_21(event_hierarchy, "window-watcher.events/unfullscreened", "event.kind.window/unfullscreened")
   define_event_21(event_registry, "window-watcher.events/moved", "Window was moved or resized", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
   derive_21(event_hierarchy, "window-watcher.events/moved", "event.kind.window/moved")
+  define_event_21(event_registry, "window-watcher.events/created", "Window was created", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
+  derive_21(event_hierarchy, "window-watcher.events/created", "event.kind.window/created")
+  define_event_21(event_registry, "window-watcher.events/destroyed", "Window was destroyed (closed)", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
+  derive_21(event_hierarchy, "window-watcher.events/destroyed", "event.kind.window/destroyed")
+  define_event_21(event_registry, "window-watcher.events/minimized", "Window was minimized", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
+  derive_21(event_hierarchy, "window-watcher.events/minimized", "event.kind.window/minimized")
+  define_event_21(event_registry, "window-watcher.events/deminimized", "Window was unminimized (restored)", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
+  derive_21(event_hierarchy, "window-watcher.events/deminimized", "event.kind.window/deminimized")
+  define_event_21(event_registry, "window-watcher.events/title-changed", "Window title changed", {["window-id"] = number_3f, ["app-name"] = string_3f, ["bundle-id"] = nil_or_string_3f, ["window-title"] = string_3f, frame = table_3f})
+  derive_21(event_hierarchy, "window-watcher.events/title-changed", "event.kind.window/title-changed")
   define_event_21(event_registry, "window-watcher.events/initial-windows", "Snapshot of all visible windows at source startup", {windows = table_3f})
   derive_21(event_hierarchy, "window-watcher.events/initial-windows", "event.kind.window/initial")
   define_event_21(event_registry, "window-element-watcher.events/moved", "Window was moved", {["window-id"] = number_3f, frame = table_3f})
@@ -1871,6 +1886,16 @@ package.preload["event_sources.window-watcher"] = package.preload["event_sources
           return emit("window-watcher.events/unfullscreened", data)
         elseif (event == WindowFilter.windowMoved) then
           return emit("window-watcher.events/moved", data)
+        elseif (event == WindowFilter.windowCreated) then
+          return emit("window-watcher.events/created", data)
+        elseif (event == WindowFilter.windowDestroyed) then
+          return emit("window-watcher.events/destroyed", data)
+        elseif (event == WindowFilter.windowMinimized) then
+          return emit("window-watcher.events/minimized", data)
+        elseif (event == WindowFilter.windowUnminimized) then
+          return emit("window-watcher.events/deminimized", data)
+        elseif (event == WindowFilter.windowTitleChanged) then
+          return emit("window-watcher.events/title-changed", data)
         else
           return nil
         end
@@ -1879,7 +1904,7 @@ package.preload["event_sources.window-watcher"] = package.preload["event_sources
       end
     end
     handler = _214_
-    wf:subscribe({WindowFilter.windowFocused, WindowFilter.windowVisible, WindowFilter.windowNotVisible, WindowFilter.windowFullscreened, WindowFilter.windowUnfullscreened, WindowFilter.windowMoved}, handler)
+    wf:subscribe({WindowFilter.windowFocused, WindowFilter.windowVisible, WindowFilter.windowNotVisible, WindowFilter.windowFullscreened, WindowFilter.windowUnfullscreened, WindowFilter.windowMoved, WindowFilter.windowCreated, WindowFilter.windowDestroyed, WindowFilter.windowMinimized, WindowFilter.windowUnminimized, WindowFilter.windowTitleChanged}, handler)
     do
       local current_windows = wf:getWindows()
       local entries = {}
@@ -1911,7 +1936,7 @@ package.preload["event_sources.window-watcher"] = package.preload["event_sources
       return nil
     end
   end
-  local window_watcher_source_type = make_source_type("event-source.type/window-watcher", "Emits events on window focus, visibility, and fullscreen changes", {["config-schema"] = {}, emits = {"window-watcher.events/focused", "window-watcher.events/visible", "window-watcher.events/not-visible", "window-watcher.events/fullscreened", "window-watcher.events/unfullscreened", "window-watcher.events/moved", "window-watcher.events/initial-windows"}, ["start-fn"] = start_window_watcher, ["stop-fn"] = stop_window_watcher})
+  local window_watcher_source_type = make_source_type("event-source.type/window-watcher", "Emits events on window focus, visibility, and fullscreen changes", {["config-schema"] = {}, emits = {"window-watcher.events/focused", "window-watcher.events/visible", "window-watcher.events/not-visible", "window-watcher.events/fullscreened", "window-watcher.events/unfullscreened", "window-watcher.events/moved", "window-watcher.events/created", "window-watcher.events/destroyed", "window-watcher.events/minimized", "window-watcher.events/deminimized", "window-watcher.events/title-changed", "window-watcher.events/initial-windows"}, ["start-fn"] = start_window_watcher, ["stop-fn"] = stop_window_watcher})
   return {["window-watcher-source-type"] = window_watcher_source_type}
 end
 package.preload["event_sources.window-element-watcher"] = package.preload["event_sources.window-element-watcher"] or function(...)
