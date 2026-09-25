@@ -1516,11 +1516,13 @@ dispatcher (done).
 
 ** PROJ Sheaf Tiling Engine [0/8]
 Niri-style scrolling column tiler built on Sheaf primitives.
-Replaces paper-wm.fnl's monolithic tiling with composable behaviors and commands.
-Windows arranged in columns on an infinite horizontal strip per screen;
+Replaces the migrated PaperWM layout implementation behind its stable component
+state, user-intent commands, hotkey subscriptions, and window-event seams; it
+must not restore direct ownership of watchers or module-global state.
+Windows are arranged in columns on an infinite horizontal strip per screen;
 viewport scrolls to keep the focused column visible.
-Depends on: window-state component (done), window-watcher event source (done),
-tag system (done), dispatcher (done).
+Depends on: completed PaperWM Migration; window-state component (done),
+window-watcher event source (done), tag system (done), dispatcher (done).
 
 *** LATER [#A] Design tiling data model :architecture:
     Core state for a tiling-state component. Research from Niri, PaperWM, Karousel
@@ -1629,55 +1631,285 @@ tag system (done), dispatcher (done).
           at runtime switches algorithms without restart
     - [ ] Useful for A/B testing scroll strategies, width policies, convergence methods
 
-** PROJ PaperWM Migration [1/5]
-Migrate paper-wm.fnl to the Sheaf architecture in phases.
-Commands close over module-level state — no component migration needed.
+** PROJ PaperWM Migration [4/11]
+Migrate the existing PaperWM implementation completely behind Sheaf while
+preserving behavior after every phase. This is the compatibility path toward
+=PROJ Sheaf Tiling Engine=: it establishes component-owned state, stable user
+intentions, shared occurrence seams, and a replaceable layout interpreter
+without yet changing the tiling policy.
 
-*** LATER [#A] Phase 1: Extract commands :refactor:
-     - commands/paper-wm.fnl with all user-visible actions as make-command entries
-     - Commands close over module-level state vars (window-list, index-table, etc.)
-     - Include: focus-left/right/up/down, swap-left/right/up/down, center-window,
-       set-full-width, cycle-width/height-up/down, slurp-window, barf-window,
-       switch-to-space {index}, prev-space, next-space, refresh-windows
-     - paper-wm continues binding its own hotkeys and managing its own watchers
-     - No dependencies — can be implemented independently
+Current state: commands, component-owned hotkeys, parameterized behaviors and
+subscriptions, screen refresh, and post-placement refresh already use Sheaf.
+The remaining legacy path starts =paper-wm.fnl= directly from =core.fnl=, keeps
+layout and resource handles in module globals, owns a second window filter, and
+lets AX/timer callbacks mutate layout and retile outside the event loop. Its
+component =pending-window-id= and set/clear commands are unused; the real
+pending-window and space-focus operations remain private and partly untracked.
 
-*** LATER [#A] Phase 2: Hotkey event infrastructure :architecture:
-     - Register 25+ paper-wm hotkey source instances on the paper-wm component
-     - Navigation: alt+cmd+←/→/↑/↓ (4 hotkeys)
-     - Swap: alt+cmd+shift+←/→/↑/↓ (4 hotkeys)
-     - Sizing: alt+cmd+c/f/r, alt+cmd+shift+r, ctrl+alt+cmd+r, ctrl+alt+cmd+shift+r (6 hotkeys)
-     - Slurp/barf: alt+cmd+i/o (2 hotkeys)
-     - Space nav: alt+cmd+,/. (2 hotkeys)
-     - Switch-to-space: alt+cmd+1-9 (9 hotkeys, generate in a loop)
-     - Prerequisite: Phase 1 (commands exist to wire to)
+State model and Sheaf constraints:
+    - *Logical facts*: a serializable per-Space column layout, reverse window
+      index, focused window ID, and generation/attempt/deadline metadata for
+      pending operations; timer handles themselves are runtime resources.
+    - *Runtime resources*: window/AX watchers, timer handles, lifecycle epoch,
+      and bounded coalescing state. These are owned and stopped by the component
+      but excluded from the logical layout contract.
+    - *Choices*: gap, margins, ratios, and eligibility policy belong in component
+      instantiation config or subscription params, never in logical state.
+    - The PaperWM component is the single writer of layout facts. Commands are
+      the only logical mutation/effect edge and always receive the target component
+      from the dispatcher; behaviors remain pure inference over events, inputs,
+      and params. Callbacks may update only bounded resource bookkeeping needed
+      to coalesce/cancel delivery before publishing an occurrence.
+    - C/Obj-C callbacks and timers never mutate logical facts or invoke behaviors
+      directly. They publish occurrences; asynchronous work continues as bounded
+      conversations in later behavior invocations (ADR-0001).
+    - Logical state stores window IDs, never =hs.window= objects. Commands resolve
+      live windows at the effect edge and treat disappearance, Space changes,
+      duplicate delivery, and stale callbacks as normal races.
+    - Every deferred occurrence carries an operation/window generation. Commands
+      reject stale generations so remove/re-add, replacement, reload, and stop
+      cannot revive old work.
+    - Compute and validate the next logical state before applying frame/focus
+      effects. Do not mutate the current layout in place before a command can fail;
+      partial external effects are repaired by idempotent reconcile/retile.
+    - Never dual-write legacy and new layout models or run legacy and Sheaf handlers
+      for one signal. Each cutover changes one owner and deletes the old path in
+      the same commit.
 
-*** LATER [#A] Phase 3: Hotkey behaviors + subscriptions :refactor:
-     - One behavior per user action, declared in behaviors/paper-wm.fnl
-     - Each behavior's :commands map references Phase 1 commands
-     - Subscriptions wiring hotkey sources → behaviors
-     - Space 1-9 and move-to-space-1-9: 9 behaviors each, generated in a loop
-     - paper-wm start! no longer calls bind-hotkeys!
-     - Prerequisite: Phase 2 (hotkey sources), Phase 1 (commands)
+Parity contract for every phase:
+    - Existing navigation, swap, center/full-width/size, slurp/barf, Space
+      navigation, automatic membership, fullscreen, drag/resize, screen change,
+      and WMBB placement behavior remains observable after every commit.
+    - Preserve the anchor-frame override and watcher restart protections around
+      asynchronous =setFrame= calls. The known slurp read-after-write race is an
+      explicit migration fix, not silently accepted behavior.
+    - Verify with =./compile.sh=, a fresh live reload, focused deterministic
+      Fennel harnesses for logical transitions, and the phase's live scenarios.
+      Until global Sheaf shutdown is implemented, explicitly invoke PaperWM
+      =stop-fn= in a live probe; ordinary =hs.reload()= cannot prove it ran.
+    - Inspect state/resource counts after explicit stop and reload; no duplicate
+      handlers, unbounded event backlog, orphan watcher, or live timer is acceptable.
 
-*** LATER [#A] Phase 4: Window + screen + space behaviors :refactor:
-     - behaviors/paper-wm.fnl: on-window-created, on-window-destroyed, on-window-focused,
-       on-window-moved — wired to existing :tag/window-watcher
-     - on-space-changed → existing :tag/space-watcher (already running)
-     - on-screen-changed → existing :tag/screen-watcher (already running)
-     - paper-wm start! no longer creates own window-filter or screen-watcher
-     - Gotcha: paper-wm uses narrower allowRoles (AXStandardWindow only) vs shared
-       window-watcher (permissive) — may need filtering in behavior or separate source
-     - Gotcha: pending-window state machine with coroutine retry logic for space transitions
-     - Prerequisite: Phase 1 (commands exist)
+Out of scope: the Niri-style layout policy, viewport algorithms, width-state
+ADR-0003, virtual workspaces, Modules/Layers, persistence, and generic dynamic
+component lifecycle. Do not bake more instantiation choices into definitions
+while P5 is unresolved. Keep the action params and logical layout seam suitable
+for the future tiling engine to replace PaperWM without replacing keybindings.
 
-*** CANCEL [#B] Phase 5: Per-window component instances :architecture:
-     - Each tracked window becomes a Component instance tagged :paper-wm-managed
-     - uielement watchers become per-instance source instances started dynamically
-     - Subscriptions use require-tags [:paper-wm-managed]
-     - Cancelled: tiling algorithm fundamentally needs centralized per-space state
-       (window-list 3D table). Per-window components would decentralize this without benefit.
-       Dynamic component lifecycle not yet supported and not worth building for this use case.
+Execution order is strict: Phase 5 establishes evidence, Phase 6 transfers
+ownership without changing representation, Phase 7 changes representation behind
+that owner, Phases 8-10 cut over one asynchronous event class at a time, and
+Phase 11 removes compatibility code. Do not combine ownership and representation
+cutovers in one commit.
+
+*** DONE [#A] Phase 1: Expose PaperWM user actions as Sheaf commands [2/2] :refactor:
+    - [X] Wrap focus, swap, center, full-width, size, slurp/barf, Space navigation,
+      and refresh actions in =commands/paper-wm.fnl=.
+    - [X] Keep the legacy module as the implementation while commands provide the
+      dispatcher-facing compatibility seam.
+
+*** DONE [#A] Phase 2: Move PaperWM hotkeys into component-owned sources [2/2] :architecture:
+    - [X] Register the 27 navigation, swap, sizing, slurp/barf, and Space hotkeys
+      as sources owned by the PaperWM component.
+    - [X] Remove direct hotkey binding from =paper-wm.fnl=.
+
+*** DONE [#A] Phase 3: Route hotkeys through parameterized behaviors [3/3] :refactor:
+    - [X] Add behavior/subscription wiring for every migrated action.
+    - [X] Collapse directional and indexed variants into subscription params.
+    - [X] Preserve existing chords and user-visible action semantics.
+
+*** DONE [#A] Phase 4: Reuse shared refresh signals [2/2] :refactor:
+    - [X] Refresh through the shared screen-watcher instead of a private screen watcher.
+    - [X] Refresh after cross-screen WMBB placement once Space assignment settles.
+
+*** LATER [#A] Phase 5: Characterize parity and asynchronous ownership [0/8] :architecture:
+    - [ ] Inventory every logical fact, external effect, callback, and resource
+      owner. Include the private filter, AX watchers, watcher-restart timers,
+      pending-window retries, and =focus-space= =doUntil= timers/coroutines.
+    - [ ] Record the current event-to-transition matrix, including initial,
+      focused, visible/not-visible, fullscreen/unfullscreen, AX moved/resized,
+      screen change, Space navigation, and WMBB window-placed.
+    - [ ] Characterize exact private-filter eligibility: visible, non-fullscreen,
+      titlebar, =AXStandardWindow=, tab rejection, and all default filter rules.
+    - [ ] Add complete schemas to PaperWM commands and document the stable action
+      params that the future tiling implementation must preserve.
+    - [ ] Add a temporary read-only logical snapshot/diagnostic seam if needed to
+      compare column membership, reverse indexes, focus, pending work, and owned
+      resource counts before and after each cutover; remove temporary access later.
+    - [ ] Build a focused live parity smoke covering at least two columns, a
+      stacked column, two Spaces, fullscreen, hide/show, close, and screen refresh.
+    - [ ] Record baseline frames, focus, membership, handler counts, and timer
+      cleanup rather than relying only on absence of errors.
+    - [ ] Keep discovered behavioral bugs separate from migration parity; only the
+      known slurp race and bugs blocking safe ownership transfer enter this project.
+
+*** LATER [#A] Phase 6: Make the PaperWM component own the legacy runtime [0/10] :architecture:
+    - [ ] Introduce one explicit runtime table containing the legacy layout,
+      reverse index, focused window, pending operations, filter, AX watchers,
+      watcher-restart timers, and active Space-focus operation.
+    - [ ] Give the runtime an =active?= flag and lifecycle epoch captured by every
+      callback; stopped/superseded runtimes ignore late callbacks. Do not present
+      normal config reload as graceful component stop until Sheaf wires shutdown.
+    - [ ] Thread the runtime through helpers and actions; =start!= returns it and
+      =stop!= accepts it. Use one temporary singleton adapter only while old and
+      new callers coexist, then delete it at the ownership cutover.
+    - [ ] Track every timer handle, including pending membership and Space-focus
+      timers, so replacement and stop can cancel all asynchronous work.
+    - [ ] Store the runtime directly as PaperWM component state and temporarily
+      declare a migration-only runtime trait while preserving the legacy object
+      representation; do not overload =:trait/has-layout= with opaque resources.
+    - [ ] Make every PaperWM command require that runtime trait, operate on the
+      injected component state, and return the complete state for dispatcher capture.
+    - [ ] Move gap, margin, ratios, and eligibility choices into component
+      instance config with current defaults; expose immutable default ratios only
+      if later width-state work needs a shared definition-time value.
+    - [ ] Start and stop the runtime from component lifecycle; owned hotkey sources
+      stop before =stop-fn=. Add or separately track the missing global Sheaf
+      shutdown hook rather than claiming ordinary reload invokes component stop.
+    - [ ] In one cutover, remove the direct =paper-wm.start!= call from =core.fnl=
+      and delete the temporary singleton adapter so only one runtime exists.
+    - [ ] Delete unused =pending-window-id= component state and set/clear commands;
+      Phase 8 introduces the real keyed operation state.
+
+*** LATER [#A] Phase 7: Normalize state and extract the layout interpreter seam [0/10] :refactor:
+    - [ ] Define a stable =:trait/has-tiling-state= whose contract is the
+      serializable logical subtable, not PaperWM's opaque resource handles.
+    - [ ] Represent logical layout as =Space ID -> columns -> window ID= plus
+      ={window ID -> Space/column/row}= and =focused-window-id=.
+    - [ ] Put opaque handles under a separate resource subtable; they remain
+      component-owned but cannot leak into behavior inputs or layout snapshots.
+    - [ ] Replace stored window objects with IDs in one clean cutover. Do not keep
+      shadow object and ID layouts or attempt cross-model synchronization.
+    - [ ] Extract pure/copy-on-write topology transitions for add, remove,
+      reindex, focus, swap, slurp, and barf. Each returns next logical state plus
+      inert focus/frame intents for a small interpreter at the command seam.
+    - [ ] Validate uniqueness and exact reverse-index correspondence before
+      committing next state; invariant failure leaves current logical state intact
+      and causes the current command to fail visibly. Recovery is a later explicit
+      reconcile occurrence/command, never an undeclared side effect of validation.
+    - [ ] Resolve and snapshot live windows/frames once per command, then compute;
+      missing IDs become an idempotent cleanup/no-op, never a partial transition.
+    - [ ] Preserve anchor-frame overrides and per-window restart generations;
+      change =tile-column!= to return computed frames and fix the slurp race.
+    - [ ] Add a deterministic Fennel harness covering add/remove, empty-column
+      deletion, focus fallback, directional swap, slurp/barf, stale IDs, duplicate
+      delivery, invariant rejection, and frame-plan determinism.
+    - [ ] Expose an inspectable logical snapshot and invariant report suitable for
+      the REPL and later visualization without exposing resource handles.
+
+*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [0/11] :refactor:
+    - [ ] Extend shared window payloads with the minimum missing suitability facts
+      (role/subrole, titlebar, fullscreen/visibility as needed), with guarded AX
+      reads so torn-down windows cannot kill the watcher callback.
+    - [ ] Implement one pure eligibility predicate shared by initial, add, and
+      reconcile paths; keep relevance selection (tags) separate from suitability
+      (facts/trait contract) per Sheaf P2.
+    - [ ] Add an idempotent initialize-layout behavior/command for the queued
+      =:event.kind.window/initial= snapshot. It must not depend on sibling
+      subscription order or =window-state= processing first.
+    - [ ] Replace =refresh-windows!= dependence on the private filter with an
+      explicit window snapshot carried by the triggering occurrence. Screen and
+      WMBB refresh producers capture it; do not use =window-state= input because
+      sibling subscription ordering cannot provide a coherent post-event snapshot.
+    - [ ] Rewire screen-change and WMBB window-placed refresh through this
+      reconcile path, preserving current anchors and avoiding full reorder when
+      membership has not changed.
+    - [ ] Route visible and unfullscreened occurrences to idempotent add/reconcile;
+      route not-visible and fullscreened to idempotent remove with focus fallback.
+    - [ ] Handle duplicate, reordered, destroyed-before-visible, focus-before-add,
+      and Space-changing events without corrupting layout.
+    - [ ] Replace scalar recursive =pending-window= with a keyed operation map.
+      Retry occurrences carry window generation, attempt, and deadline; one timer
+      exists per window and is cancelled on success, disappearance, replacement,
+      timeout, or component stop.
+    - [ ] Cut over initial/add/remove/fullscreen/refresh one class per commit,
+      removing the equivalent private-filter responsibility in the same commit.
+    - [ ] Delete private-filter enumeration once no refresh or initialization path
+      reads it; retain only still-unmigrated focus subscriptions until Phase 9.
+    - [ ] Live-check cold startup, reload, create/open, unminimize, app hide/show,
+      fullscreen enter/exit, close, screen change, cross-screen placement, and a
+      window whose Space is temporarily unavailable.
+
+*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [0/10] :refactor:
+    - [ ] Route shared focused occurrences to a command that records the focused
+      ID and retiles only after membership and Space facts are coherent.
+    - [ ] Make focus-before-add and focus-during-membership-retry converge through
+      explicit state/generation checks, not timing inference.
+    - [ ] Keep one AX watcher per tracked window as a resource of the centralized
+      component; creation/removal remains coupled to membership commit and stop.
+    - [ ] Define PaperWM frame observations with window ID, live frame, AX event
+      kind, watcher generation, and monotonic per-window sequence.
+    - [ ] Have AX callbacks enqueue those occurrences from the PaperWM component;
+      they never call the tiler, dispatcher, or logical transition functions directly.
+    - [ ] Bound drag traffic by coalescing each window to its latest observation at
+      approximately one display tick; do not allow the 10ms event loop queue to
+      grow without bound during continuous resize.
+    - [ ] Retile through behavior -> command using the observed frame as anchor,
+      retaining responsive drag behavior unavailable from WindowFilter alone.
+    - [ ] Preserve watcher stop/restart suppression around programmatic moves;
+      stale restart/frame generations cannot reactivate removed watchers or
+      overwrite a newer manual frame.
+    - [ ] Remove the final private window-filter focus subscription once shared
+      focus owns the transition; add a Space-change subscription only if parity
+      evidence identifies an otherwise missing transition.
+    - [ ] Live-check mouse drag/resize, rapid sizing hotkeys, focus navigation,
+      close during drag, Space switching, screen changes, and WMBB placement;
+      record maximum queue depth/coalescing behavior during drag.
+
+*** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [0/8] :refactor:
+    - [ ] Replace =focus-space='s coroutine/=doUntil= loop with an explicit
+      component-state operation: target Space/window, attempt, deadline, generation,
+      and owned timer handle.
+    - [ ] The initiating command performs one synchronous focus/click attempt and
+      schedules a timer whose only outcome is a retry occurrence.
+    - [ ] A retry behavior checks authoritative focused Space/window facts, then
+      completes, retries, or times out through commands; no behavior invocation
+      spans the timer callback.
+    - [ ] Starting a newer Space operation cancels and supersedes the prior
+      generation; stop/reload cancels it and late events become no-ops.
+    - [ ] Preserve the empty-Space click fallback, three-observation stability
+      check, four-second bound, and final cursor-centering behavior.
+    - [ ] Keep absolute Space index and relative next/previous as subscription
+      choices over one implementation-neutral Space-navigation intention.
+    - [ ] Add deterministic timer/event harness cases for success, retry,
+      supersession, timeout, empty Space, disappearing target, and late callback.
+    - [ ] Live-check rapid repeated Space keys across multiple displays and verify
+      exactly one active operation and no timer after completion or stop.
+
+*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [0/9] :refactor:
+    - [ ] Delete the legacy generic =window-event-handler=, module lifecycle,
+      private filter, singleton adapter, and all module-level mutable state.
+    - [ ] Leave =paper-wm.fnl= as pure layout transitions/planning plus a small
+      =hs.*= effect interpreter over explicit component state—no registry lookup,
+      watcher ownership, or hidden configuration.
+    - [ ] Keep the user-intention interface stable: keyword directions, width
+      actions, slurp/barf, and indexed/relative Space navigation remain params
+      supplied by subscriptions, not facts inferred from hotkey events.
+    - [ ] Audit command depth: commands expose meaningful capabilities; private
+      reindex/frame helpers remain implementation, not shallow registry atoms.
+    - [ ] Add an idempotent reconcile/retile capability that repairs stale external
+      state from an explicit snapshot and reports added, removed, moved, and
+      rejected IDs; this is both recovery and migration verification.
+    - [ ] Inspect logical state and verify invariants, exactly one owner for every
+      hotkey/watcher, bounded queues, and no pending timer after completion/stop.
+    - [ ] Run the full parity matrix, compile, fresh reload, and inspect runtime
+      logs/telemetry for duplicate handling, rejected stale generations, retries,
+      command failures, and leaked callbacks.
+    - [ ] Remove temporary diagnostics while retaining the stable logical snapshot,
+      invariant report, and reconcile surface that earn ongoing operational value;
+      record graceful global Sheaf shutdown as separate engine debt if still absent.
+    - [ ] Update =PROJ Sheaf Tiling Engine= to replace only the layout
+      transitions/planner behind this state/action/event seam; it must not reach
+      back into PaperWM globals or re-own external watchers.
+
+Migration-enabled follow-ups, deliberately deferred:
+    - Worth pursuing next: configurable per-app/window eligibility expressed as
+      instantiation choices, and an inspect/validate/reconcile REPL view over the
+      serializable logical layout.
+    - Enabled but deferred to the tiling project: dry-run/replay interpreters,
+      layout history/undo, persisted restart restoration, width policy, viewport
+      strategies, and algorithm swapping. They should reuse the pure transition
+      and effect-plan seam rather than expand this parity migration.
 
 * Chores [0/3]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
