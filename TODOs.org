@@ -1417,28 +1417,32 @@ Depends on: window-watcher event source (done), app-watcher event source (done),
 screen event source (done), space event source (done), tag system (done),
 dispatcher (done).
 
-*** DONE [#B] Hover-raise windows (focus follows mouse, autoraise) :feature:
-     - Polls cursor position every 150ms through a component-owned event source
+*** DONE [#B] Focus windows after pointer dwell :feature:
+     - A mouse-moved eventtap observes pointer movement immediately; no polling
+       interval is added to the focus path
      - AX hit-testing resolves the topmost containing standard window; desktop,
-       CosmicHammer-owned, nonstandard, stationary-cursor, and drag cases skip
-     - Emits only when the hovered window ID changes; command re-hit-tests at
-       execution time and uses hs.window:raise(), never :focus()
+       CosmicHammer-owned, nonstandard, and drag cases skip
+     - Entering a different window starts a 60ms dwell; crossing another window
+       cancels the old dwell so transient pass-through does not steal focus
+     - After dwell, the command re-hit-tests and focuses only if the pointer is
+       still over the same window
      - Behavior excludes focused, fullscreen, and untracked windows using
        :shape/window-state
 
-*** DONE [#B] Cursor follows keyboard focus :feature:
+*** DONE [#B] Cursor follows non-pointer focus :feature:
      - Responds to :event.kind.window/focused from :tag/window-watcher
-     - Uses hs.mouse.absolutePosition and the event frame; mouse-click focus is
-       unchanged because the cursor is already inside the focused window
-     - Keyboard/programmatic focus with the cursor outside warps to frame center
+     - Hover focus records its window ID; the matching focus notification
+       consumes that provenance marker without moving the cursor
+     - Mouse-click focus is unchanged because the cursor is already inside the
+       focused window
+     - Other keyboard/programmatic focus with the cursor outside still warps to
+       the live window frame center
 
-*** DONE [#A] Decide hover-raise ↔ cursor-warp feedback-loop guard :architecture:
-     - No mutable suppression flag or focus-provenance guess is needed
-     - Invariant: hover acts only on the window containing the cursor; cursor
-       warp runs only when the cursor is outside the focused frame
-     - Even if AXRaise makes a same-application window key, the resulting focus
-       event sees the cursor inside that window and does not warp; hover IDs are
-       also deduplicated, so the conversation terminates
+*** DONE [#A] Decide hover-focus ↔ cursor-warp feedback-loop guard :architecture:
+     - A one-shot hover-focus window ID is component state, not timing inference
+     - The matching focus event clears it instead of invoking cursor centering
+     - Other focus events keep the existing geometry guard; dwell timers are
+       cancelled on pointer crossings, so stale windows cannot take focus
 
 *** DONE [#B] New windows appear at cursor's display :feature:
      - Responds to window-created, not visible, so unminimize/unhide do not move
