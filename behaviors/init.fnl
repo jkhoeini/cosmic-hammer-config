@@ -13,7 +13,7 @@
 (local {: toggle-expose-behavior} (require :behaviors.toggle-expose))
 (local {: update-space-indicator-behavior} (require :behaviors.update-space-indicator))
 (local {: reconcile-spaces-behavior} (require :behaviors.desktop-layout))
-(local {: raise-hovered-window-behavior
+(local {: focus-hovered-window-behavior
         : center-cursor-on-focus-behavior
         : schedule-created-window-behavior
         : note-space-change-behavior
@@ -49,7 +49,7 @@
 (add-behavior! behavior-registry toggle-expose-behavior)
 (add-behavior! behavior-registry update-space-indicator-behavior)
 (add-behavior! behavior-registry reconcile-spaces-behavior)
-(add-behavior! behavior-registry raise-hovered-window-behavior)
+(add-behavior! behavior-registry focus-hovered-window-behavior)
 (add-behavior! behavior-registry center-cursor-on-focus-behavior)
 (add-behavior! behavior-registry schedule-created-window-behavior)
 (add-behavior! behavior-registry note-space-change-behavior)

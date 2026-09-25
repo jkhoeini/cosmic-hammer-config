@@ -11,17 +11,41 @@
 (local table? #(= (type $) :table))
 (local string? #(= (type $) :string))
 
-(local raise-window-command
+(local focus-hovered-window-command
   (make-command
-   :mouse-window-management.commands/raise-window
-   "Raise the window still under the cursor without activating its application"
-   {:schema {:window-id number?}
+   :mouse-window-management.commands/focus-hovered-window
+   "Focus the window still under the cursor"
+   {:requires-traits [:trait/has-mouse-window-management-state]
+    :schema {:window-id number?}
     :fn (fn [component params]
           (let [point (hs.mouse.absolutePosition)
-                (ok window) (pcall window-at-point point)]
-            (when (and ok window (= (window:id) params.window-id))
-              (pcall #(window:raise))))
-          nil)}))
+                (ok window) (pcall window-at-point point)
+                matching? (and ok window (= (window:id) params.window-id))
+                focused-window (hs.window.focusedWindow)
+                already-focused? (and focused-window
+                                      (= (focused-window:id) params.window-id))
+                hover-focus-window-ids component.state.hover-focus-window-ids]
+            (when (and matching? (not already-focused?))
+              (let [(focused-ok) (pcall #(window:focus))]
+                (when focused-ok
+                  (tset hover-focus-window-ids params.window-id true))))
+            {:last-space-change-at component.state.last-space-change-at
+             :pending-placement-timers component.state.pending-placement-timers
+             :hover-focus-window-ids hover-focus-window-ids}))}))
+
+
+(local consume-hover-focus-command
+  (make-command
+   :mouse-window-management.commands/consume-hover-focus
+   "Clear a consumed mouse-originated focus marker"
+   {:requires-traits [:trait/has-mouse-window-management-state]
+    :schema {:window-id number?}
+    :fn (fn [component params]
+          (let [hover-focus-window-ids component.state.hover-focus-window-ids]
+            (tset hover-focus-window-ids params.window-id nil)
+            {:last-space-change-at component.state.last-space-change-at
+             :pending-placement-timers component.state.pending-placement-timers
+             :hover-focus-window-ids hover-focus-window-ids}))}))
 
 
 (local center-cursor-command
@@ -51,7 +75,8 @@
     :schema {:timestamp number?}
     :fn (fn [component params]
           {:last-space-change-at params.timestamp
-           :pending-placement-timers component.state.pending-placement-timers})}))
+           :pending-placement-timers component.state.pending-placement-timers
+           :hover-focus-window-ids component.state.hover-focus-window-ids})}))
 
 
 (local schedule-placement-command
@@ -78,7 +103,8 @@
                                        :created-at params.created-at
                                        :cursor-screen-uuid cursor-screen-uuid}))))
             {:last-space-change-at component.state.last-space-change-at
-             :pending-placement-timers pending}))}))
+             :pending-placement-timers pending
+             :hover-focus-window-ids component.state.hover-focus-window-ids}))}))
 
 (local place-window-command
   (make-command
@@ -109,10 +135,12 @@
                                             component.name
                                             {:window-id params.window-id})))))))
             {:last-space-change-at component.state.last-space-change-at
-             :pending-placement-timers pending}))}))
+             :pending-placement-timers pending
+             :hover-focus-window-ids component.state.hover-focus-window-ids}))}))
 
 
-{: raise-window-command
+{: focus-hovered-window-command
+ : consume-hover-focus-command
  : center-cursor-command
  : note-space-change-command
  : schedule-placement-command

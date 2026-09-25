@@ -207,9 +207,9 @@
 ;; --- Mouse Window Management ---
 
 (define-subscription! subscription-registry
- :sub/raise-window-on-hover
- {:description "Raise the standard window entered by the cursor"
-  :behavior :mouse-window-management.behaviors/raise-hovered-window
+ :sub/focus-window-on-hover
+ {:description "Focus a standard window after the cursor dwells over it"
+  :behavior :mouse-window-management.behaviors/focus-hovered-window
   :source-tag :tag/mouse-window-watcher
   :target-tag :tag/mouse-window-management
   :input-tag :tag/window-state
@@ -217,10 +217,11 @@
 
 (define-subscription! subscription-registry
  :sub/center-cursor-on-window-focus
- {:description "Center cursor when keyboard focus moves to another window"
+ {:description "Center cursor for focus changes not initiated by hover"
   :behavior :mouse-window-management.behaviors/center-cursor-on-focus
   :source-tag :tag/window-watcher
   :target-tag :tag/mouse-window-management
+  :input-tag :tag/mouse-window-management
   :event-selector :event.kind.window/focused})
 
 (define-subscription! subscription-registry

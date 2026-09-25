@@ -29,40 +29,57 @@
 
 
 (fn start-mouse-window-watcher [self emit]
-  "Start polling for changes to the window under the cursor."
-  (let [interval (or self.config.interval 0.15)
-        state {:last-position nil :last-window-id nil :timer nil}
-        poll! (fn []
-                (let [position (hs.mouse.absolutePosition)
-                      same-position? (and (= position.x (?. state :last-position :x))
-                                          (= position.y (?. state :last-position :y)))]
-                  (when (not same-position?)
-                    (tset state :last-position {:x position.x :y position.y})
-                    (when (not (mouse-buttons-down?))
-                      (let [(ok window) (pcall window-at-point position)
-                            window-id (and ok window (window:id))]
-                        (when (not= window-id state.last-window-id)
-                          (tset state :last-window-id window-id)
-                          (when window-id
-                            (emit :mouse-window-watcher.events/window-hovered
-                                  {:window-id window-id}))))))))
-        timer (hs.timer.new interval poll! true)]
-    (tset state :timer timer)
-    (timer:start)
+  "Observe mouse movement and emit after the cursor dwells on a new window."
+  (let [dwell (or self.config.dwell 0.06)
+        state {:candidate-window-id nil
+               :last-window-id nil
+               :dwell-timer nil
+               :eventtap nil}
+        observe! (fn [position]
+                   (when (not (mouse-buttons-down?))
+                     (let [(ok window) (pcall window-at-point position)
+                           window-id (and ok window (window:id))]
+                       (when (not= window-id state.candidate-window-id)
+                         (when state.dwell-timer
+                           (state.dwell-timer:stop)
+                           (tset state :dwell-timer nil))
+                         (tset state :candidate-window-id window-id)
+                         (when (and window-id
+                                    (not= window-id state.last-window-id))
+                           (let [candidate-id window-id
+                                 dwell-timer
+                                 (hs.timer.doAfter
+                                  dwell
+                                  (fn []
+                                    (when (= candidate-id state.candidate-window-id)
+                                      (tset state :last-window-id candidate-id)
+                                      (tset state :dwell-timer nil)
+                                      (emit :mouse-window-watcher.events/window-hovered
+                                            {:window-id candidate-id}))))]
+                             (tset state :dwell-timer dwell-timer)))))))
+        eventtap (hs.eventtap.new
+                  [hs.eventtap.event.types.mouseMoved]
+                  (fn [event]
+                    (observe! (event:location))
+                    false))]
+    (tset state :eventtap eventtap)
+    (eventtap:start)
     state))
 
 
 (fn stop-mouse-window-watcher [state]
-  "Stop polling for the window under the cursor."
-  (when (?. state :timer)
-    (state.timer:stop)))
+  "Stop mouse observation and pending dwell work."
+  (when (?. state :dwell-timer)
+    (state.dwell-timer:stop))
+  (when (?. state :eventtap)
+    (state.eventtap:stop)))
 
 
 (local mouse-window-watcher-source-type
   (make-source-type
    :event-source.type/mouse-window-watcher
    "Emits when the standard window under a moving cursor changes"
-   {:config-schema {:interval number?}
+   {:config-schema {:dwell number?}
     :emits [:mouse-window-watcher.events/window-hovered]
     :start-fn start-mouse-window-watcher
     :stop-fn stop-mouse-window-watcher}))

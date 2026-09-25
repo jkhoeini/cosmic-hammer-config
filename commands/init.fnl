@@ -8,7 +8,8 @@
 (local {: toggle-expose-command} (require :commands.toggle-expose))
 (local {: update-menubar-command} (require :commands.space-indicator))
 (local {: reconcile-spaces-command} (require :commands.desktop-layout))
-(local {: raise-window-command
+(local {: focus-hovered-window-command
+        : consume-hover-focus-command
         : center-cursor-command
         : note-space-change-command
         : schedule-placement-command
@@ -45,7 +46,8 @@
 (add-command! command-registry toggle-expose-command)
 (add-command! command-registry update-menubar-command)
 (add-command! command-registry reconcile-spaces-command)
-(add-command! command-registry raise-window-command)
+(add-command! command-registry focus-hovered-window-command)
+(add-command! command-registry consume-hover-focus-command)
 (add-command! command-registry center-cursor-command)
 (add-command! command-registry note-space-change-command)
 (add-command! command-registry schedule-placement-command)

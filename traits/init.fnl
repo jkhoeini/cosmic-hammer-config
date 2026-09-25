@@ -140,8 +140,9 @@
 
 (add-trait! trait-registry
   (make-trait :trait/has-mouse-window-management-state
-              "Component state tracks Space changes and delayed placement timers"
-              {:pending-placement-timers non-nil?}))
+              "Component state tracks hover focus, Space changes, and delayed placement"
+              {:pending-placement-timers non-nil?
+               :hover-focus-window-ids non-nil?}))
 
 
 ;; Export registry (hierarchy accessible via trait-registry.hierarchy)

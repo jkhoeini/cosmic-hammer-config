@@ -4,7 +4,7 @@
 (local {: make-behavior} (require :sheaf.behavior-registry))
 
 
-(fn should-raise-hovered? [window-id window-state]
+(fn should-focus-hovered? [window-id window-state]
   (let [window (?. window-state :windows window-id)]
     (and window
          (not window.fullscreen)
@@ -27,36 +27,45 @@
         (> created-at (+ last-change cooldown)))))
 
 
-(local raise-hovered-window-behavior
+(local focus-hovered-window-behavior
   (make-behavior
-   {:name :mouse-window-management.behaviors/raise-hovered-window
-    :description "Raise a non-focused, non-fullscreen window under the cursor"
+   {:name :mouse-window-management.behaviors/focus-hovered-window
+    :description "Focus a non-focused, non-fullscreen window after mouse dwell"
     :respond-to [:event.kind.mouse/window-hovered]
-    :commands {:raise :mouse-window-management.commands/raise-window}
+    :commands {:focus :mouse-window-management.commands/focus-hovered-window}
     :inputs {:window-state :shape/window-state}
     :fn (fn [event candidates send-cmd inputs]
-          (let [target (. candidates.raise 1)
+          (let [target (. candidates.focus 1)
                 window-id (?. event :event-data :window-id)
                 window-state (?. inputs :window-state)]
             (when (and target
                        window-id
                        window-state
-                       (should-raise-hovered? window-id window-state))
-              (send-cmd target :raise {:window-id window-id}))))}))
+                       (should-focus-hovered? window-id window-state))
+              (send-cmd target :focus {:window-id window-id}))))}))
 
 
 (local center-cursor-on-focus-behavior
   (make-behavior
    {:name :mouse-window-management.behaviors/center-cursor-on-focus
-    :description "Center the cursor when focus moves outside its current position"
+    :description "Center the cursor for focus changes not initiated by hover"
     :respond-to [:event.kind.window/focused]
-    :commands {:center :mouse-window-management.commands/center-cursor}
-    :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.center 1)
+    :commands {:center :mouse-window-management.commands/center-cursor
+               :consume-hover-focus :mouse-window-management.commands/consume-hover-focus}
+    :inputs {:mouse-state :shape/mouse-window-management-state}
+    :fn (fn [event candidates send-cmd inputs]
+          (let [center-target (. candidates.center 1)
+                consume-target (. candidates.consume-hover-focus 1)
                 window-id (?. event :event-data :window-id)
-                frame (?. event :event-data :frame)]
-            (when (and target window-id frame)
-              (send-cmd target :center {:window-id window-id :frame frame}))))}))
+                frame (?. event :event-data :frame)
+                hover-focus-window-ids (?. inputs :mouse-state :hover-focus-window-ids)]
+            (if (and consume-target
+                     (. (or hover-focus-window-ids {}) window-id))
+                (send-cmd consume-target :consume-hover-focus
+                          {:window-id window-id})
+                (when (and center-target window-id frame)
+                  (send-cmd center-target :center
+                            {:window-id window-id :frame frame})))))}))
 
 
 (local schedule-created-window-behavior
@@ -115,11 +124,11 @@
                          :cursor-screen-uuid cursor-screen-uuid}))))}))
 
 
-{: raise-hovered-window-behavior
+{: focus-hovered-window-behavior
  : center-cursor-on-focus-behavior
  : schedule-created-window-behavior
  : note-space-change-behavior
  : place-created-window-behavior
- : should-raise-hovered?
+ : should-focus-hovered?
  : likely-new-window?
  : placement-allowed-after-space-change?}
