@@ -2330,20 +2330,13 @@ end
 package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   local _local_346_ = require("paper-wm.layout")
   local empty_state = _local_346_["empty-state"]
-  local valid_3f = _local_346_["valid?"]
-  local layout_valid_3f = _local_346_["layout-valid?"]
-  local add_window = _local_346_["add-window"]
-  local layout_add_window = _local_346_["layout-add-window"]
-  local remove_window = _local_346_["remove-window"]
-  local layout_remove_window = _local_346_["layout-remove-window"]
-  local move_window = _local_346_["move-window"]
-  local layout_move_window = _local_346_["layout-move-window"]
-  local slurp_window = _local_346_["slurp-window"]
-  local layout_slurp_window = _local_346_["layout-slurp-window"]
-  local barf_window = _local_346_["barf-window"]
-  local layout_barf_window = _local_346_["layout-barf-window"]
-  local swap_window = _local_346_["swap-window"]
-  local layout_swap_window = _local_346_["layout-swap-window"]
+  local layout_valid_3f = _local_346_["valid?"]
+  local layout_add_window = _local_346_["add-window"]
+  local layout_remove_window = _local_346_["remove-window"]
+  local layout_move_window = _local_346_["move-window"]
+  local layout_slurp_window = _local_346_["slurp-window"]
+  local layout_barf_window = _local_346_["barf-window"]
+  local layout_swap_window = _local_346_["swap-window"]
   local focus_target = _local_346_["focus-target"]
   local set_focused_window = _local_346_["set-focused-window"]
   local _local_350_ = require("paper-wm.frames")
@@ -2466,6 +2459,11 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
     local tiling_state = ((runtime and runtime["tiling-state"]) or empty_state())
     local resources = ((runtime and runtime.resources) or {})
     return {["active?"] = (runtime and runtime["active?"]), epoch = (runtime and runtime.epoch), ["window-list"] = copy_table(tiling_state.spaces), ["index-table"] = copy_table(tiling_state.index), ["focused-window-id"] = tiling_state["focused-window-id"], ["pending-window-id"] = resources["pending-window-id"], resources = {["window-filter?"] = (nil ~= resources["window-filter"]), ["ui-watcher-count"] = table_count((resources["ui-watchers"] or {})), ["watcher-restart-timer-count"] = table_count((resources["watcher-restart-timers"] or {})), ["pending-window-timer-count"] = table_count((resources["pending-window-timers"] or {})), ["space-focus-timer?"] = (nil ~= resources["space-focus-timer"])}}
+  end
+  local function invariant_report(_3fruntime)
+    local runtime = (_3fruntime or current_runtime)
+    local ok, reason = layout_valid_3f(((runtime and runtime["tiling-state"]) or empty_state()))
+    return {["ok?"] = ok, reason = reason, epoch = (runtime and runtime.epoch)}
   end
   local function get_space(index)
     local layout = Spaces.allSpaces()
@@ -3166,7 +3164,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
       return nil
     end
   end
-  return {Direction = Direction, ["default-config"] = default_config, ["current-runtime"] = current_runtime_value, ["start!"] = start_21, ["stop!"] = stop_21, ["diagnostic-snapshot"] = diagnostic_snapshot, ["run-with-runtime!"] = run_with_runtime_21, ["focus-window"] = focus_window, ["swap-windows!"] = swap_windows_21, ["center-window!"] = center_window_21, ["set-window-full-width!"] = set_window_full_width_21, ["cycle-window-size!"] = cycle_window_size_21, ["slurp-window!"] = slurp_window_21, ["barf-window!"] = barf_window_21, ["switch-to-space!"] = switch_to_space_21, ["increment-space!"] = increment_space_21, ["refresh-windows!"] = refresh_windows_21}
+  return {Direction = Direction, ["default-config"] = default_config, ["current-runtime"] = current_runtime_value, ["start!"] = start_21, ["stop!"] = stop_21, ["diagnostic-snapshot"] = diagnostic_snapshot, ["invariant-report"] = invariant_report, ["run-with-runtime!"] = run_with_runtime_21, ["focus-window"] = focus_window, ["swap-windows!"] = swap_windows_21, ["center-window!"] = center_window_21, ["set-window-full-width!"] = set_window_full_width_21, ["cycle-window-size!"] = cycle_window_size_21, ["slurp-window!"] = slurp_window_21, ["barf-window!"] = barf_window_21, ["switch-to-space!"] = switch_to_space_21, ["increment-space!"] = increment_space_21, ["refresh-windows!"] = refresh_windows_21}
 end
 package.preload["paper-wm.layout"] = package.preload["paper-wm.layout"] or function(...)
   local function empty_state()

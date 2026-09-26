@@ -13,13 +13,13 @@
 ;; ---------------------------------------------------------------------------
 
 (local {: empty-state
-        : valid? : layout-valid?
-        : add-window : layout-add-window
-        : remove-window : layout-remove-window
-        : move-window : layout-move-window
-        : slurp-window : layout-slurp-window
-        : barf-window : layout-barf-window
-        : swap-window : layout-swap-window
+        :valid? layout-valid?
+        :add-window layout-add-window
+        :remove-window layout-remove-window
+        :move-window layout-move-window
+        :slurp-window layout-slurp-window
+        :barf-window layout-barf-window
+        :swap-window layout-swap-window
         : focus-target
         : set-focused-window} (require :paper-wm.layout))
 (local {: plan-column} (require :paper-wm.frames))
@@ -168,6 +168,13 @@
                  :pending-window-timer-count
                  (table-count (or resources.pending-window-timers {}))
                  :space-focus-timer? (not= nil resources.space-focus-timer)}}))
+
+(fn invariant-report [?runtime]
+  "Return the current logical invariant status without resource handles."
+  (let [runtime (or ?runtime current-runtime)
+        (ok reason) (layout-valid? (or (and runtime runtime.tiling-state)
+                                       (empty-state)))]
+    {:ok? ok :reason reason :epoch (and runtime runtime.epoch)}))
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -741,6 +748,7 @@
  : start!
  : stop!
  : diagnostic-snapshot
+ : invariant-report
  : run-with-runtime!
  ;; User-facing commands
  : focus-window
