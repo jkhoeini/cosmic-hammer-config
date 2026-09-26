@@ -2,59 +2,9 @@
 ;; Commands: Sheaf wrappers for paper-wm user-facing functions
 
 (local {: make-command} (require :sheaf.command-registry))
-(local {: eligible?} (require :paper-wm.eligibility))
-(local {:add-window layout-add-window
-        :remove-window layout-remove-window} (require :paper-wm.layout))
-
-(fn reconcile-fact [runtime fact]
-  "Reconcile one shared window fact into logical membership and owned handles."
-  (when (and fact.runtime-epoch (not= fact.runtime-epoch runtime.epoch))
-    (lua "return runtime"))
-  (let [window-id fact.window-id
-        tracked? (not= nil (. runtime.tiling-state.index window-id))]
-    (if (eligible? fact)
-        (do
-          (when (not tracked?)
-            (tset runtime :tiling-state
-                  (layout-add-window runtime.tiling-state window-id
-                                     fact.space-id
-                                     (+ (length (or (. runtime.tiling-state.spaces
-                                                      fact.space-id) [])) 1))))
-          (let [(ok window) (pcall hs.window.get window-id)]
-            (when (and ok window)
-              (tset runtime.resources.windows window-id window))))
-        tracked?
-        (do
-          (tset runtime :tiling-state
-                (layout-remove-window runtime.tiling-state window-id))
-          (tset runtime.resources.windows window-id nil)))
-    runtime))
-
-(local initialize-layout-command
-  (make-command
-   :paper-wm.commands/initialize-layout
-   "Initialize PaperWM membership from a shared window snapshot"
-   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:windows table?}
-    :fn (fn [component params]
-          (let [runtime component.state]
-            (each [_ fact (ipairs params.windows)]
-              (reconcile-fact runtime fact))
-            runtime))}))
-
-(local reconcile-window-command
-  (make-command
-   :paper-wm.commands/reconcile-window
-   "Reconcile one shared window fact into PaperWM membership"
-   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:window table?}
-    :fn (fn [component params]
-          (let [fact params.window]
-            (if (and params.runtime-epoch
-                     (not= params.runtime-epoch component.state.epoch))
-                component.state
-                (reconcile-fact component.state fact))))}))
 (local {: Direction
+        : initialize-layout!
+        : reconcile-window-fact!
         : run-with-runtime!
         : focus-window
         : swap-windows!
@@ -66,6 +16,25 @@
         : switch-to-space!
         : increment-space!
         : refresh-windows!} (require :paper-wm))
+
+(local initialize-layout-command
+  (make-command
+   :paper-wm.commands/initialize-layout
+   "Initialize PaperWM membership from a shared window snapshot"
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
+    :schema {:windows table?}
+    :fn (fn [component params]
+          (initialize-layout! component.state params.windows))}))
+
+(local reconcile-window-command
+  (make-command
+   :paper-wm.commands/reconcile-window
+   "Reconcile one shared window fact into PaperWM membership"
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
+    :schema {:window table?}
+    :fn (fn [component params]
+          (reconcile-window-fact! component.state params.window
+                                  {:runtime-epoch params.runtime-epoch}))}))
 
 (local direction-by-keyword
   {:left Direction.LEFT

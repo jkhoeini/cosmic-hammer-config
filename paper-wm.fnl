@@ -22,6 +22,7 @@
         :swap-window layout-swap-window
         : focus-target
         : set-focused-window} (require :paper-wm.layout))
+(local {: eligible?} (require :paper-wm.eligibility))
 (local {: plan-column} (require :paper-wm.frames))
 (local Window hs.window)
 (local Screen hs.screen)
@@ -326,6 +327,49 @@
               (let [bounds {:x nil :x2 x2 :y canvas.y :y2 canvas.y2}
                     column-width (tile-column! (get-column space col) bounds)]
                 (set x2 (math.max (- x2 column-width config.window-gap) left-margin))))))))))
+
+(fn resolve-window [window-id]
+  "Resolve one live window at the effect edge."
+  (let [(ok window) (pcall Window.get window-id)]
+    (and ok window)))
+
+(fn reconcile-window-fact! [runtime fact opts]
+  "Apply one shared membership fact and interpret ownership effects."
+  (when (and opts.runtime-epoch (not= opts.runtime-epoch runtime.epoch))
+    (lua "return runtime"))
+  (bind-runtime! runtime)
+  (let [window-id fact.window-id
+        tracked? (not= nil (. runtime.tiling-state.index window-id))]
+    (if (eligible? fact)
+        (do
+          (when (not tracked?)
+            (commit-tiling-state!
+             (layout-add-window runtime.tiling-state window-id fact.space-id
+                                (+ (length (or (. runtime.tiling-state.spaces
+                                                 fact.space-id) [])) 1))))
+          (let [window (resolve-window window-id)]
+            (when window
+              (tset runtime.resources.windows window-id window)))
+          (when (and (. runtime.resources.windows window-id)
+                     (. runtime.tiling-state.index window-id))
+            (tile-space! fact.space-id fact.frame)))
+        tracked?
+        (let [entry (. runtime.tiling-state.index window-id)
+              watcher (. runtime.resources.ui-watchers window-id)]
+          (when watcher (watcher:stop))
+          (tset runtime.resources.ui-watchers window-id nil)
+          (tset runtime.resources.windows window-id nil)
+          (commit-tiling-state!
+           (layout-remove-window runtime.tiling-state window-id))
+          (when (. runtime.tiling-state.spaces entry.space)
+            (tile-space! entry.space))))
+    (capture-runtime! runtime)))
+
+(fn initialize-layout! [runtime window-facts]
+  "Initialize PaperWM idempotently from one shared snapshot occurrence."
+  (each [_ fact (ipairs window-facts)]
+    (reconcile-window-fact! runtime fact {:runtime-epoch runtime.epoch}))
+  runtime)
 
 ;; ---------------------------------------------------------------------------
 ;; Window tracking
@@ -751,6 +795,8 @@
  : invariant-report
  : run-with-runtime!
  ;; User-facing commands
+ : initialize-layout!
+ : reconcile-window-fact!
  : focus-window
  : swap-windows!
  : center-window!

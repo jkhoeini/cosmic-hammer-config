@@ -16,10 +16,22 @@
 (tset package.loaded.paper-wm :initialize-layout!
       (fn [runtime facts]
         (table.insert membership-calls [:initialize (length facts)])
+        (let [layout-module (require :paper-wm.layout)]
+          (each [_ fact (ipairs facts)]
+            (tset runtime :tiling-state
+                  (layout-module.add-window runtime.tiling-state fact.window-id
+                                            fact.space-id 1))))
         runtime))
 (tset package.loaded.paper-wm :reconcile-window-fact!
       (fn [runtime fact opts]
         (table.insert membership-calls [:reconcile fact.window-id opts.runtime-epoch])
+        (when (= opts.runtime-epoch runtime.epoch)
+          (let [layout-module (require :paper-wm.layout)]
+            (tset runtime :tiling-state
+                  (if fact.fullscreen
+                      (layout-module.remove-window runtime.tiling-state fact.window-id)
+                      (layout-module.add-window runtime.tiling-state fact.window-id
+                                                fact.space-id 1)))))
         runtime))
 
 
