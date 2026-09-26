@@ -4,10 +4,10 @@
   {:id #42
    :application (fn [] {:name #"Editor" :bundleID #"com.example.Editor"})
    :title #"Document"
-   :frame #({:x 1 :y 2 :w 3 :h 4})
+   :frame (fn [] {:x 1 :y 2 :w 3 :h 4})
    :role #"AXWindow"
    :subrole #"AXStandardWindow"
-   :zoomButtonRect #({:x 0 :y 0 :w 1 :h 1})
+   :zoomButtonRect (fn [] {:x 0 :y 0 :w 1 :h 1})
    :isVisible #true
    :isFullScreen #false
    :tabCount #0})

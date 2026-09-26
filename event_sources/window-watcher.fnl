@@ -3,18 +3,17 @@
 ;; Event source type: emits events on window focus, visibility, and fullscreen changes
 
 (local {: make-source-type} (require :sheaf.source-registry))
+(local {: snapshot-window : snapshot-windows} (require :lib.window-facts))
 
 (local WindowFilter hs.window.filter)
 
 
 (fn make-event-data [window appName]
-  "Build the event payload from an hs.window object."
-  (let [app (window:application)]
-    {:window-id (window:id)
-     :app-name appName
-     :bundle-id (when app (app:bundleID))
-     :window-title (window:title)
-     :frame (window:frame)}))
+  "Build guarded event data from an hs.window object."
+  (let [data (snapshot-window window)]
+    (when (and data (= nil data.app-name))
+      (tset data :app-name appName))
+    data))
 
 
 (fn start-window-watcher [self emit]
@@ -27,29 +26,30 @@
         handler (fn [window appName event]
                   (when window
                     (let [data (make-event-data window appName)]
-                      (match event
-                        WindowFilter.windowFocused
-                        (emit :window-watcher.events/focused data)
-                        WindowFilter.windowVisible
-                        (emit :window-watcher.events/visible data)
-                        WindowFilter.windowNotVisible
-                        (emit :window-watcher.events/not-visible data)
-                        WindowFilter.windowFullscreened
-                        (emit :window-watcher.events/fullscreened data)
-                        WindowFilter.windowUnfullscreened
-                        (emit :window-watcher.events/unfullscreened data)
-                        WindowFilter.windowMoved
-                        (emit :window-watcher.events/moved data)
-                        WindowFilter.windowCreated
-                        (emit :window-watcher.events/created data)
-                        WindowFilter.windowDestroyed
-                        (emit :window-watcher.events/destroyed data)
-                        WindowFilter.windowMinimized
-                        (emit :window-watcher.events/minimized data)
-                        WindowFilter.windowUnminimized
-                        (emit :window-watcher.events/deminimized data)
-                        WindowFilter.windowTitleChanged
-                        (emit :window-watcher.events/title-changed data)))))]
+                      (when data
+                        (match event
+                          WindowFilter.windowFocused
+                          (emit :window-watcher.events/focused data)
+                          WindowFilter.windowVisible
+                          (emit :window-watcher.events/visible data)
+                          WindowFilter.windowNotVisible
+                          (emit :window-watcher.events/not-visible data)
+                          WindowFilter.windowFullscreened
+                          (emit :window-watcher.events/fullscreened data)
+                          WindowFilter.windowUnfullscreened
+                          (emit :window-watcher.events/unfullscreened data)
+                          WindowFilter.windowMoved
+                          (emit :window-watcher.events/moved data)
+                          WindowFilter.windowCreated
+                          (emit :window-watcher.events/created data)
+                          WindowFilter.windowDestroyed
+                          (emit :window-watcher.events/destroyed data)
+                          WindowFilter.windowMinimized
+                          (emit :window-watcher.events/minimized data)
+                          WindowFilter.windowUnminimized
+                          (emit :window-watcher.events/deminimized data)
+                          WindowFilter.windowTitleChanged
+                          (emit :window-watcher.events/title-changed data))))))]
     (wf:subscribe
      [WindowFilter.windowFocused
       WindowFilter.windowVisible
@@ -63,18 +63,8 @@
       WindowFilter.windowUnminimized
       WindowFilter.windowTitleChanged]
      handler)
-    (let [current-windows (wf:getWindows)
-          entries []]
-      (each [_ w (ipairs current-windows)]
-        (let [app (w:application)]
-          (table.insert entries
-                        {:window-id (w:id)
-                         :app-name (when app (app:name))
-                         :bundle-id (when app (app:bundleID))
-                         :window-title (w:title)
-                         :frame (w:frame)
-                         :fullscreen (w:isFullScreen)})))
-      (emit :window-watcher.events/initial-windows {:windows entries}))
+    (emit :window-watcher.events/initial-windows
+          {:windows (snapshot-windows)})
     wf))
 
 

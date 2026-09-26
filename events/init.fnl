@@ -12,6 +12,7 @@
 (local number? (fn [x] (= (type x) :number)))
 (local table? (fn [x] (= (type x) :table)))
 (local nil-or-string? (fn [x] (or (= x nil) (string? x))))
+(local nil-or-number? (fn [x] (or (= x nil) (number? x))))
 
 
 ;; ============================================================================
@@ -244,70 +245,62 @@
          :event.kind.window/placed)
 
 ;; --- Window Watcher Events ---
-(define-event! event-registry
-               :window-watcher.events/focused
-               "Window gained focus"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(local window-fact-schema
+  {:window-id number?
+   :app-name nil-or-string?
+   :bundle-id nil-or-string?
+   :window-title nil-or-string?
+   :frame table?
+   :role nil-or-string?
+   :subrole nil-or-string?
+   :has-titlebar boolean?
+   :visible boolean?
+   :fullscreen boolean?
+   :tab-count number?
+   :space-id nil-or-number?})
+
+(define-event! event-registry :window-watcher.events/focused
+               "Window gained focus" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/focused :event.kind.window/focused)
 
-(define-event! event-registry
-               :window-watcher.events/visible
-               "Window became visible"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/visible
+               "Window became visible" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/visible :event.kind.window/visible)
 
-(define-event! event-registry
-               :window-watcher.events/not-visible
-               "Window is no longer visible"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/not-visible
+               "Window is no longer visible" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/not-visible :event.kind.window/not-visible)
 
-(define-event! event-registry
-               :window-watcher.events/fullscreened
-               "Window entered fullscreen"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/fullscreened
+               "Window entered fullscreen" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/fullscreened :event.kind.window/fullscreened)
 
-(define-event! event-registry
-               :window-watcher.events/unfullscreened
-               "Window exited fullscreen"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/unfullscreened
+               "Window exited fullscreen" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/unfullscreened :event.kind.window/unfullscreened)
 
-(define-event! event-registry
-               :window-watcher.events/moved
-               "Window was moved or resized"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/moved
+               "Window was moved or resized" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/moved :event.kind.window/moved)
 
-(define-event! event-registry
-               :window-watcher.events/created
-               "Window was created"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/created
+               "Window was created" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/created :event.kind.window/created)
 
-(define-event! event-registry
-               :window-watcher.events/destroyed
-               "Window was destroyed (closed)"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/destroyed
+               "Window was destroyed (closed)" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/destroyed :event.kind.window/destroyed)
 
-(define-event! event-registry
-               :window-watcher.events/minimized
-               "Window was minimized"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/minimized
+               "Window was minimized" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/minimized :event.kind.window/minimized)
 
-(define-event! event-registry
-               :window-watcher.events/deminimized
-               "Window was unminimized (restored)"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/deminimized
+               "Window was unminimized (restored)" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/deminimized :event.kind.window/deminimized)
 
-(define-event! event-registry
-               :window-watcher.events/title-changed
-               "Window title changed"
-               {:window-id number? :app-name string? :bundle-id nil-or-string? :window-title string? :frame table?})
+(define-event! event-registry :window-watcher.events/title-changed
+               "Window title changed" window-fact-schema)
 (derive! event-hierarchy :window-watcher.events/title-changed :event.kind.window/title-changed)
 
 (define-event! event-registry
