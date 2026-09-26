@@ -1,10 +1,10 @@
 ;; components/paper-wm.fnl
-;; Component type: PaperWM tiling window manager (hotkey event sources)
+;; Component type: PaperWM tiling window manager
 ;;
-;; Stateless component that owns 27 hotkey source instances for PaperWM.
-;; Phase 2 of the paper-wm Sheaf migration — hotkey infrastructure only.
-;; No traits, no commands, no behaviors wired yet.
+;; Owns the legacy PaperWM runtime and 27 hotkey source instances during the
+;; migration. Commands target it through :trait/has-paper-wm-runtime.
 
+(local {: start! : stop!} (require :paper-wm))
 (local {: make-component-type} (require :sheaf.component-registry))
 
 ;; Build the sources array programmatically
@@ -102,7 +102,10 @@
 (local paper-wm-type
   (make-component-type
    :component.type/paper-wm
-   "PaperWM tiling window manager - hotkey event sources"
-   {:sources sources}))
+   "PaperWM tiling window manager"
+   {:traits [:trait/has-paper-wm-runtime]
+    :sources sources
+    :start-fn (fn [config] (start!))
+    :stop-fn stop!}))
 
 {: paper-wm-type}

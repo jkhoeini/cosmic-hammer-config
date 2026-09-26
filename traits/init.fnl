@@ -53,6 +53,7 @@
 ;; --- Windowing ---
 (derive! trait-hierarchy :trait/has-window-filter :trait.kind/windowing)
 (derive! trait-hierarchy :trait/has-layout :trait.kind/windowing)
+(derive! trait-hierarchy :trait/has-paper-wm-runtime :trait.kind/windowing)
 
 ;; --- Scheduling ---
 (derive! trait-hierarchy :trait/has-delayed-timer :trait.kind/scheduling)
@@ -108,6 +109,17 @@
   (make-trait :trait/has-layout
               "Component state includes window layout tables"
               {:window-list non-nil? :index-table non-nil?}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-paper-wm-runtime
+              "Component state is the owned legacy PaperWM runtime"
+              {:active? boolean?
+               :epoch number?
+               :window-list table?
+               :index-table table?
+               :ui-watchers table?
+               :watcher-restart-timers table?
+               :pending-window-timers table?}))
 
 ;; --- Scheduling ---
 (add-trait! trait-registry
