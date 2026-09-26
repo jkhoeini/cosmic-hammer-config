@@ -97,6 +97,40 @@
               (send-cmd target :switch-to-space {:index params.index}))))}))
 
 ;; ============================================================================
+;; Shared window membership
+;; ============================================================================
+
+(local initialize-layout-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/initialize-layout
+    :description "Initialize PaperWM from the shared window snapshot"
+    :respond-to [:event.kind.window/initial]
+    :commands {:initialize-layout :paper-wm.commands/initialize-layout}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.initialize-layout 1)
+                windows (?. event :event-data :windows)]
+            (when (and target windows)
+              (send-cmd target :initialize-layout {:windows windows}))))}))
+
+(local reconcile-membership-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/reconcile-membership
+    :description "Reconcile PaperWM membership from shared window facts"
+    :respond-to [:event.kind.window/visible
+                 :event.kind.window/not-visible
+                 :event.kind.window/fullscreened
+                 :event.kind.window/unfullscreened
+                 :event.kind.window/destroyed
+                 :event.kind.window/minimized
+                 :event.kind.window/deminimized]
+    :commands {:reconcile-window :paper-wm.commands/reconcile-window}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.reconcile-window 1)
+                fact event.event-data]
+            (when (and target fact)
+              (send-cmd target :reconcile-window {:window fact}))))}))
+
+;; ============================================================================
 ;; Screen change
 ;; ============================================================================
 
@@ -122,7 +156,9 @@
             (when target
               (send-cmd target :refresh-windows {}))))}))
 
-{: focus-behavior
+{: initialize-layout-behavior
+ : reconcile-membership-behavior
+ : focus-behavior
  : swap-behavior
  : center-window-behavior
  : set-full-width-behavior

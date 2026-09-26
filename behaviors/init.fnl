@@ -28,7 +28,9 @@
         : track-on-move-behavior
         : untrack-on-disappear-behavior
         : track-focus-behavior} (require :behaviors.window-state))
-(local {: focus-behavior
+(local {: initialize-layout-behavior
+        : reconcile-membership-behavior
+        : focus-behavior
         : swap-behavior
         : center-window-behavior
         : set-full-width-behavior
@@ -66,6 +68,8 @@
 (add-behavior! behavior-registry track-on-move-behavior)
 (add-behavior! behavior-registry untrack-on-disappear-behavior)
 (add-behavior! behavior-registry track-focus-behavior)
+(add-behavior! behavior-registry initialize-layout-behavior)
+(add-behavior! behavior-registry reconcile-membership-behavior)
 (add-behavior! behavior-registry focus-behavior)
 (add-behavior! behavior-registry swap-behavior)
 (add-behavior! behavior-registry center-window-behavior)

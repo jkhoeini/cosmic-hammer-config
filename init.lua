@@ -4317,18 +4317,20 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   local track_on_move_behavior = _local_833_["track-on-move-behavior"]
   local untrack_on_disappear_behavior = _local_833_["untrack-on-disappear-behavior"]
   local track_focus_behavior = _local_833_["track-focus-behavior"]
-  local _local_843_ = require("behaviors.paper-wm")
-  local focus_behavior = _local_843_["focus-behavior"]
-  local swap_behavior = _local_843_["swap-behavior"]
-  local center_window_behavior = _local_843_["center-window-behavior"]
-  local set_full_width_behavior = _local_843_["set-full-width-behavior"]
-  local cycle_window_size_behavior = _local_843_["cycle-window-size-behavior"]
-  local slurp_window_behavior = _local_843_["slurp-window-behavior"]
-  local barf_window_behavior = _local_843_["barf-window-behavior"]
-  local increment_space_behavior = _local_843_["increment-space-behavior"]
-  local switch_to_space_behavior = _local_843_["switch-to-space-behavior"]
-  local refresh_on_screen_change_behavior = _local_843_["refresh-on-screen-change-behavior"]
-  local refresh_on_window_placed_behavior = _local_843_["refresh-on-window-placed-behavior"]
+  local _local_850_ = require("behaviors.paper-wm")
+  local initialize_layout_behavior = _local_850_["initialize-layout-behavior"]
+  local reconcile_membership_behavior = _local_850_["reconcile-membership-behavior"]
+  local focus_behavior = _local_850_["focus-behavior"]
+  local swap_behavior = _local_850_["swap-behavior"]
+  local center_window_behavior = _local_850_["center-window-behavior"]
+  local set_full_width_behavior = _local_850_["set-full-width-behavior"]
+  local cycle_window_size_behavior = _local_850_["cycle-window-size-behavior"]
+  local slurp_window_behavior = _local_850_["slurp-window-behavior"]
+  local barf_window_behavior = _local_850_["barf-window-behavior"]
+  local increment_space_behavior = _local_850_["increment-space-behavior"]
+  local switch_to_space_behavior = _local_850_["switch-to-space-behavior"]
+  local refresh_on_screen_change_behavior = _local_850_["refresh-on-screen-change-behavior"]
+  local refresh_on_window_placed_behavior = _local_850_["refresh-on-window-placed-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry, ["shape-registry"] = shape_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
@@ -4352,6 +4354,8 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   add_behavior_21(behavior_registry, track_on_move_behavior)
   add_behavior_21(behavior_registry, untrack_on_disappear_behavior)
   add_behavior_21(behavior_registry, track_focus_behavior)
+  add_behavior_21(behavior_registry, initialize_layout_behavior)
+  add_behavior_21(behavior_registry, reconcile_membership_behavior)
   add_behavior_21(behavior_registry, focus_behavior)
   add_behavior_21(behavior_registry, swap_behavior)
   add_behavior_21(behavior_registry, center_window_behavior)
@@ -5640,8 +5644,42 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
     end
   end
   switch_to_space_behavior = make_behavior({name = "paper-wm.behaviors/switch-to-space", description = "Switch to a specific space", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["switch-to-space"] = "paper-wm.commands/switch-to-space"}, fn = _837_})
-  local refresh_on_screen_change_behavior
+  local initialize_layout_behavior
   local function _839_(event, candidates, send_cmd)
+    local target = candidates["initialize-layout"][1]
+    local windows
+    do
+      local t_840_ = event
+      if (nil ~= t_840_) then
+        t_840_ = t_840_["event-data"]
+      else
+      end
+      if (nil ~= t_840_) then
+        t_840_ = t_840_.windows
+      else
+      end
+      windows = t_840_
+    end
+    if (target and windows) then
+      return send_cmd(target, "initialize-layout", {windows = windows})
+    else
+      return nil
+    end
+  end
+  initialize_layout_behavior = make_behavior({name = "paper-wm.behaviors/initialize-layout", description = "Initialize PaperWM from the shared window snapshot", ["respond-to"] = {"event.kind.window/initial"}, commands = {["initialize-layout"] = "paper-wm.commands/initialize-layout"}, fn = _839_})
+  local reconcile_membership_behavior
+  local function _844_(event, candidates, send_cmd)
+    local target = candidates["reconcile-window"][1]
+    local fact = event["event-data"]
+    if (target and fact) then
+      return send_cmd(target, "reconcile-window", {window = fact})
+    else
+      return nil
+    end
+  end
+  reconcile_membership_behavior = make_behavior({name = "paper-wm.behaviors/reconcile-membership", description = "Reconcile PaperWM membership from shared window facts", ["respond-to"] = {"event.kind.window/visible", "event.kind.window/not-visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened", "event.kind.window/destroyed", "event.kind.window/minimized", "event.kind.window/deminimized"}, commands = {["reconcile-window"] = "paper-wm.commands/reconcile-window"}, fn = _844_})
+  local refresh_on_screen_change_behavior
+  local function _846_(event, candidates, send_cmd)
     local target = candidates["refresh-windows"][1]
     if target then
       return send_cmd(target, "refresh-windows", {})
@@ -5649,9 +5687,9 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  refresh_on_screen_change_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-screen-change", description = "Refresh PaperWM windows when screen layout changes", ["respond-to"] = {"event.kind.screen/layout-changed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _839_})
+  refresh_on_screen_change_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-screen-change", description = "Refresh PaperWM windows when screen layout changes", ["respond-to"] = {"event.kind.screen/layout-changed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _846_})
   local refresh_on_window_placed_behavior
-  local function _841_(event, candidates, send_cmd)
+  local function _848_(event, candidates, send_cmd)
     local target = candidates["refresh-windows"][1]
     if target then
       return send_cmd(target, "refresh-windows", {})
@@ -5659,20 +5697,20 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  refresh_on_window_placed_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-window-placed", description = "Refresh PaperWM after cross-screen window placement", ["respond-to"] = {"event.kind.window/placed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _841_})
-  return {["focus-behavior"] = focus_behavior, ["swap-behavior"] = swap_behavior, ["center-window-behavior"] = center_window_behavior, ["set-full-width-behavior"] = set_full_width_behavior, ["cycle-window-size-behavior"] = cycle_window_size_behavior, ["slurp-window-behavior"] = slurp_window_behavior, ["barf-window-behavior"] = barf_window_behavior, ["increment-space-behavior"] = increment_space_behavior, ["switch-to-space-behavior"] = switch_to_space_behavior, ["refresh-on-screen-change-behavior"] = refresh_on_screen_change_behavior, ["refresh-on-window-placed-behavior"] = refresh_on_window_placed_behavior}
+  refresh_on_window_placed_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-window-placed", description = "Refresh PaperWM after cross-screen window placement", ["respond-to"] = {"event.kind.window/placed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _848_})
+  return {["initialize-layout-behavior"] = initialize_layout_behavior, ["reconcile-membership-behavior"] = reconcile_membership_behavior, ["focus-behavior"] = focus_behavior, ["swap-behavior"] = swap_behavior, ["center-window-behavior"] = center_window_behavior, ["set-full-width-behavior"] = set_full_width_behavior, ["cycle-window-size-behavior"] = cycle_window_size_behavior, ["slurp-window-behavior"] = slurp_window_behavior, ["barf-window-behavior"] = barf_window_behavior, ["increment-space-behavior"] = increment_space_behavior, ["switch-to-space-behavior"] = switch_to_space_behavior, ["refresh-on-screen-change-behavior"] = refresh_on_screen_change_behavior, ["refresh-on-window-placed-behavior"] = refresh_on_window_placed_behavior}
 end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_870_ = require("sheaf.subscription-registry")
-  local make_subscription_registry = _local_870_["make-subscription-registry"]
-  local define_subscription_21 = _local_870_["define-subscription!"]
-  local _local_871_ = require("events")
-  local event_registry = _local_871_["event-registry"]
-  local _local_872_ = require("behaviors")
-  local behavior_registry = _local_872_["behavior-registry"]
-  local _local_873_ = require("components")
-  local tag_registry = _local_873_["tag-registry"]
+  local _local_877_ = require("sheaf.subscription-registry")
+  local make_subscription_registry = _local_877_["make-subscription-registry"]
+  local define_subscription_21 = _local_877_["define-subscription!"]
+  local _local_878_ = require("events")
+  local event_registry = _local_878_["event-registry"]
+  local _local_879_ = require("behaviors")
+  local behavior_registry = _local_879_["behavior-registry"]
+  local _local_880_ = require("components")
+  local tag_registry = _local_880_["tag-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["tag-registry"] = tag_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/reload-hammerspoon", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/compile-fennel", ["event-selector"] = "event.kind.fs/file-change"})
@@ -5697,6 +5735,10 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   define_subscription_21(subscription_registry, "sub/window-state-on-move", {description = "Track window frame on move/resize", behavior = "window-state.behaviors/track-on-move", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/window-state", ["event-selector"] = "event.kind.window/moved"})
   define_subscription_21(subscription_registry, "sub/window-state-on-disappear", {description = "Remove window from tracking on disappear", behavior = "window-state.behaviors/untrack-on-disappear", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/window-state", ["event-selector"] = "event.kind.window/not-visible"})
   define_subscription_21(subscription_registry, "sub/window-state-track-focus", {description = "Track focused window ID in window state", behavior = "window-state.behaviors/track-focus", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/window-state", ["event-selector"] = "event.kind.window/focused"})
+  define_subscription_21(subscription_registry, "sub/paper-wm-initialize-layout", {description = "Initialize PaperWM from shared window facts", behavior = "paper-wm.behaviors/initialize-layout", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/paper-wm", ["event-selector"] = "event.kind.window/initial"})
+  for _, event_kind in ipairs({"event.kind.window/visible", "event.kind.window/not-visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened", "event.kind.window/destroyed", "event.kind.window/minimized", "event.kind.window/deminimized"}) do
+    define_subscription_21(subscription_registry, ("sub/paper-wm-reconcile-" .. tostring(event_kind)), {description = ("Reconcile PaperWM membership for " .. tostring(event_kind)), behavior = "paper-wm.behaviors/reconcile-membership", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/paper-wm", ["event-selector"] = event_kind})
+  end
   define_subscription_21(subscription_registry, "sub/focus-window-on-hover", {description = "Focus a standard window after the cursor dwells over it", behavior = "mouse-window-management.behaviors/focus-hovered-window", ["source-tag"] = "tag/mouse-window-watcher", ["target-tag"] = "tag/mouse-window-management", ["input-tag"] = "tag/window-state", ["event-selector"] = "event.kind.mouse/window-hovered"})
   define_subscription_21(subscription_registry, "sub/center-cursor-on-window-focus", {description = "Center cursor for focus changes not initiated by hover", behavior = "mouse-window-management.behaviors/center-cursor-on-focus", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/mouse-window-management", ["input-tag"] = "tag/mouse-window-management", ["event-selector"] = "event.kind.window/focused"})
   define_subscription_21(subscription_registry, "sub/schedule-created-window-placement", {description = "Delay placement of a likely-new window", behavior = "mouse-window-management.behaviors/schedule-created-window", ["source-tag"] = "tag/window-watcher", ["target-tag"] = "tag/mouse-window-management", ["input-tag"] = "tag/window-state", ["event-selector"] = "event.kind.window/created"})
@@ -5728,20 +5770,20 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
-  local _local_844_ = require("lib.cljlib-shim")
-  local hash_set = _local_844_["hash-set"]
-  local conj = _local_844_.conj
-  local disj = _local_844_.disj
-  local into = _local_844_.into
-  local seq = _local_844_.seq
-  local _local_845_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_845_["valid-event-selector?"]
-  local _local_846_ = require("sheaf.behavior-registry")
-  local behavior_defined_3f = _local_846_["behavior-defined?"]
-  local _local_847_ = require("sheaf.tag-registry")
-  local get_tags = _local_847_["get-tags"]
-  local _local_848_ = require("lib.hierarchy")
-  local ancestors = _local_848_.ancestors
+  local _local_851_ = require("lib.cljlib-shim")
+  local hash_set = _local_851_["hash-set"]
+  local conj = _local_851_.conj
+  local disj = _local_851_.disj
+  local into = _local_851_.into
+  local seq = _local_851_.seq
+  local _local_852_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_852_["valid-event-selector?"]
+  local _local_853_ = require("sheaf.behavior-registry")
+  local behavior_defined_3f = _local_853_["behavior-defined?"]
+  local _local_854_ = require("sheaf.tag-registry")
+  local get_tags = _local_854_["get-tags"]
+  local _local_855_ = require("lib.hierarchy")
+  local ancestors = _local_855_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -5778,27 +5820,27 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
     local sub_name = subscription.name
     local sub_set
     do
-      local t_854_ = registry.index
-      if (nil ~= t_854_) then
-        t_854_ = t_854_[tag]
+      local t_861_ = registry.index
+      if (nil ~= t_861_) then
+        t_861_ = t_861_[tag]
       else
       end
-      if (nil ~= t_854_) then
-        t_854_ = t_854_[event]
+      if (nil ~= t_861_) then
+        t_861_ = t_861_[event]
       else
       end
-      sub_set = t_854_
+      sub_set = t_861_
     end
     if sub_set then
       do
         local new_set = disj(sub_set, sub_name)
-        local _857_
+        local _864_
         if seq(new_set) then
-          _857_ = new_set
+          _864_ = new_set
         else
-          _857_ = nil
+          _864_ = nil
         end
-        registry.index[tag][event] = _857_
+        registry.index[tag][event] = _864_
       end
       if (nil == registry.index[tag][event]) then
         if (nil == next(registry.index[tag])) then
@@ -5914,42 +5956,42 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-matching-subscriptions"] = get_matching_subscriptions}
 end
-local _local_874_ = require("subscriptions")
-local subscription_registry = _local_874_["subscription-registry"]
+local _local_881_ = require("subscriptions")
+local subscription_registry = _local_881_["subscription-registry"]
 package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or function(...)
-  local _local_875_ = require("sheaf.event-registry")
-  local add_event_handler_21 = _local_875_["add-event-handler!"]
-  local _local_876_ = require("sheaf.behavior-registry")
-  local behavior_responds_to_3f = _local_876_["behavior-responds-to?"]
-  local get_behavior = _local_876_["get-behavior"]
-  local _local_877_ = require("sheaf.subscription-registry")
-  local get_matching_subscriptions = _local_877_["get-matching-subscriptions"]
-  local _local_878_ = require("sheaf.command-registry")
-  local get_command = _local_878_["get-command"]
-  local _local_879_ = require("sheaf.tag-registry")
-  local components_with_tag = _local_879_["components-with-tag"]
-  local _local_880_ = require("sheaf.component-registry")
-  local get_component_instance = _local_880_["get-component-instance"]
-  local _local_881_ = require("sheaf.trait-registry")
-  local satisfies_all_3f = _local_881_["satisfies-all?"]
-  local _local_882_ = require("sheaf.shape-registry")
-  local conforms_3f = _local_882_["conforms?"]
+  local _local_882_ = require("sheaf.event-registry")
+  local add_event_handler_21 = _local_882_["add-event-handler!"]
+  local _local_883_ = require("sheaf.behavior-registry")
+  local behavior_responds_to_3f = _local_883_["behavior-responds-to?"]
+  local get_behavior = _local_883_["get-behavior"]
+  local _local_884_ = require("sheaf.subscription-registry")
+  local get_matching_subscriptions = _local_884_["get-matching-subscriptions"]
+  local _local_885_ = require("sheaf.command-registry")
+  local get_command = _local_885_["get-command"]
+  local _local_886_ = require("sheaf.tag-registry")
+  local components_with_tag = _local_886_["components-with-tag"]
+  local _local_887_ = require("sheaf.component-registry")
+  local get_component_instance = _local_887_["get-component-instance"]
+  local _local_888_ = require("sheaf.trait-registry")
+  local satisfies_all_3f = _local_888_["satisfies-all?"]
+  local _local_889_ = require("sheaf.shape-registry")
+  local conforms_3f = _local_889_["conforms?"]
   local function build_candidates(behavior, command_registry, component_registry, trait_registry, tag_registry, target_tag)
     local candidates = {}
     local target_instances = components_with_tag(tag_registry, target_tag)
     for alias, cmd_name in pairs((behavior.commands or {})) do
       local command = get_command(command_registry, cmd_name)
       local required_traits
-      local _884_
+      local _891_
       do
-        local t_883_ = command
-        if (nil ~= t_883_) then
-          t_883_ = t_883_["requires-traits"]
+        local t_890_ = command
+        if (nil ~= t_890_) then
+          t_890_ = t_890_["requires-traits"]
         else
         end
-        _884_ = t_883_
+        _891_ = t_890_
       end
-      required_traits = (_884_ or {})
+      required_traits = (_891_ or {})
       local matching = {}
       for instance_name, _ in pairs(target_instances) do
         local instance = get_component_instance(component_registry, instance_name)
@@ -5963,7 +6005,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
     return candidates
   end
   local function make_send_cmd(behavior, command_registry, component_registry, trait_registry)
-    local function _887_(instance_name, cmd_alias, params)
+    local function _894_(instance_name, cmd_alias, params)
       local cmd_name = behavior.commands[cmd_alias]
       if (nil == cmd_name) then
         print(("[WARN] send-cmd: unknown alias '" .. tostring(cmd_alias) .. "' in behavior '" .. tostring(behavior.name) .. "'"))
@@ -5994,7 +6036,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
         return print(("[WARN] send-cmd: instance '" .. tostring(instance_name) .. "' does not satisfy traits for command '" .. tostring(cmd_name) .. "'"))
       end
     end
-    return _887_
+    return _894_
   end
   local function build_inputs(behavior, shape_registry, component_registry, tag_registry, input_tag)
     local inputs = (behavior.inputs or {})
@@ -6062,27 +6104,27 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
   end
   local function start_dispatcher_21(subscription_registry, component_registry, _3fshape_registry)
     local event_registry = subscription_registry["event-registry"]
-    local function _900_(event)
+    local function _907_(event)
       local sub_matches = get_matching_subscriptions(subscription_registry, event["event-source"], event["event-name"])
       for _, sub_match in ipairs((sub_matches or {})) do
         dispatch_to_behavior(subscription_registry, component_registry, _3fshape_registry, event, sub_match.behavior, sub_match["target-tag"], sub_match["input-tag"], sub_match.params)
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _900_)
-    local function _901_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _907_)
+    local function _908_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _901_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _908_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_903_ = require("sheaf.dispatcher")
-local start_dispatcher_21 = _local_903_["start-dispatcher!"]
+local _local_910_ = require("sheaf.dispatcher")
+local start_dispatcher_21 = _local_910_["start-dispatcher!"]
 package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -6113,12 +6155,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     else
     end
     local timer
-    local function _908_()
+    local function _915_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _908_)
+    timer = hs.timer.new(0.01, _915_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -6134,9 +6176,9 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_910_ = require("sheaf.event-loop")
-local make_event_loop = _local_910_["make-event-loop"]
-local start_event_loop_21 = _local_910_["start-event-loop!"]
+local _local_917_ = require("sheaf.event-loop")
+local make_event_loop = _local_917_["make-event-loop"]
+local start_event_loop_21 = _local_917_["start-event-loop!"]
 start_dispatcher_21(subscription_registry, component_registry, shape_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)

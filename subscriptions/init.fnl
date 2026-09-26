@@ -204,6 +204,31 @@
   :event-selector :event.kind.window/focused})
 
 
+;; --- PaperWM shared membership ---
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-initialize-layout
+ {:description "Initialize PaperWM from shared window facts"
+  :behavior :paper-wm.behaviors/initialize-layout
+  :source-tag :tag/window-watcher
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.window/initial})
+
+(each [_ event-kind (ipairs [:event.kind.window/visible
+                             :event.kind.window/not-visible
+                             :event.kind.window/fullscreened
+                             :event.kind.window/unfullscreened
+                             :event.kind.window/destroyed
+                             :event.kind.window/minimized
+                             :event.kind.window/deminimized])]
+  (define-subscription! subscription-registry
+   (.. :sub/paper-wm-reconcile- (tostring event-kind))
+   {:description (.. "Reconcile PaperWM membership for " (tostring event-kind))
+    :behavior :paper-wm.behaviors/reconcile-membership
+    :source-tag :tag/window-watcher
+    :target-tag :tag/paper-wm
+    :event-selector event-kind}))
+
 ;; --- Mouse Window Management ---
 
 (define-subscription! subscription-registry
