@@ -62,6 +62,32 @@
 (var pending-window nil)
 (var window-filter nil)
 
+(var current-runtime nil)
+
+(fn make-runtime []
+  "Create one owner for legacy PaperWM logical state and resources."
+  {:window-list {}
+   :index-table {}
+   :ui-watchers {}
+   :focused-window nil
+   :watcher-restart-timers {}
+   :pending-window nil
+   :pending-window-timers {}
+   :space-focus-timer nil
+   :window-filter nil})
+
+(fn bind-runtime! [runtime]
+  "Bind the temporary compatibility globals to an explicit runtime."
+  (set current-runtime runtime)
+  (set window-list runtime.window-list)
+  (set index-table runtime.index-table)
+  (set ui-watchers runtime.ui-watchers)
+  (set focused-window runtime.focused-window)
+  (set watcher-restart-timers runtime.watcher-restart-timers)
+  (set pending-window runtime.pending-window)
+  (set window-filter runtime.window-filter)
+  runtime)
+
 (fn copy-table [source]
   "Copy a table recursively for read-only diagnostics."
   (let [result {}]
@@ -78,15 +104,24 @@
     (set count (+ count 1)))
   count)
 
-(fn diagnostic-snapshot []
+(fn diagnostic-snapshot [?runtime]
   "Return logical PaperWM state and resource counts without mutable handles."
-  {:window-list (copy-table window-list)
-   :index-table (copy-table index-table)
-   :focused-window-id (and focused-window (focused-window:id))
-   :pending-window-id (and pending-window (pending-window:id))
-   :resources {:window-filter? (not= nil window-filter)
-               :ui-watcher-count (table-count ui-watchers)
-               :watcher-restart-timer-count (table-count watcher-restart-timers)}})
+  (let [runtime (or ?runtime current-runtime)
+        runtime-window-list (if runtime runtime.window-list window-list)
+        runtime-index-table (if runtime runtime.index-table index-table)
+        runtime-focused-window (if runtime runtime.focused-window focused-window)
+        runtime-pending-window (if runtime runtime.pending-window pending-window)
+        runtime-window-filter (if runtime runtime.window-filter window-filter)
+        runtime-ui-watchers (if runtime runtime.ui-watchers ui-watchers)
+        runtime-restart-timers (if runtime runtime.watcher-restart-timers
+                                   watcher-restart-timers)]
+    {:window-list (copy-table runtime-window-list)
+     :index-table (copy-table runtime-index-table)
+     :focused-window-id (and runtime-focused-window (runtime-focused-window:id))
+     :pending-window-id (and runtime-pending-window (runtime-pending-window:id))
+     :resources {:window-filter? (not= nil runtime-window-filter)
+                 :ui-watcher-count (table-count runtime-ui-watchers)
+                 :watcher-restart-timer-count (table-count runtime-restart-timers)}}))
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -729,44 +764,43 @@
 ;; ---------------------------------------------------------------------------
 
 (fn start! []
-  "Start automatic window tiling."
+  "Start automatic window tiling and return its explicit runtime."
   (when (not (Spaces.screensHaveSeparateSpaces))
     (logger.e "please check 'Displays have separate Spaces' in System Preferences -> Mission Control"))
-  ;; clear state
-  (set window-list {})
-  (set index-table {})
-  (set ui-watchers {})
-  (set watcher-restart-timers {})
-  ;; create window filter
-  (set window-filter
-       (: (WindowFilter.new) :setOverrideFilter
-          {:visible true
-           :fullscreen false
-           :hasTitlebar true
-           :allowRoles :AXStandardWindow}))
-  ;; populate and tile
-  (refresh-windows!)
-  ;; listen for window events
-  (window-filter:subscribe
-   [WindowFilter.windowFocused
-    WindowFilter.windowVisible
-    WindowFilter.windowNotVisible
-    WindowFilter.windowFullscreened
-    WindowFilter.windowUnfullscreened]
-   (fn [window _ event]
-     (window-event-handler window event)))
-  )
+  (let [runtime (bind-runtime! (make-runtime))]
+    (set window-filter
+         (: (WindowFilter.new) :setOverrideFilter
+            {:visible true
+             :fullscreen false
+             :hasTitlebar true
+             :allowRoles :AXStandardWindow}))
+    (tset runtime :window-filter window-filter)
+    (refresh-windows!)
+    (window-filter:subscribe
+     [WindowFilter.windowFocused
+      WindowFilter.windowVisible
+      WindowFilter.windowNotVisible
+      WindowFilter.windowFullscreened
+      WindowFilter.windowUnfullscreened]
+     (fn [window _ event]
+       (window-event-handler window event)))
+    runtime))
 
-(fn stop! []
-  "Stop automatic window tiling and release all resources."
-  (when window-filter
-    (window-filter:unsubscribeAll))
-  (each [_ watcher (pairs ui-watchers)]
-    (watcher:stop))
-  (each [_ timer (pairs watcher-restart-timers)]
-    (timer:stop))
-  (set watcher-restart-timers {})
-)
+(fn stop! [?runtime]
+  "Stop an explicit PaperWM runtime and release its current resources."
+  (let [runtime (or ?runtime current-runtime)]
+    (when runtime
+      (when runtime.window-filter
+        (runtime.window-filter:unsubscribeAll))
+      (each [_ watcher (pairs runtime.ui-watchers)]
+        (watcher:stop))
+      (each [_ timer (pairs runtime.watcher-restart-timers)]
+        (timer:stop))
+      (tset runtime :window-filter nil)
+      (tset runtime :watcher-restart-timers {})
+      (when (= runtime current-runtime)
+        (set window-filter nil)
+        (set watcher-restart-timers runtime.watcher-restart-timers)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
