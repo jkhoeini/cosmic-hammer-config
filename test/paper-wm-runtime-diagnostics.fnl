@@ -44,6 +44,7 @@
         "diagnostic window list leaked mutable module state")
 (assert (= 0 (length fresh.index-table))
         "diagnostic index table leaked mutable module state")
+(assert (= nil paper-wm.config) "mutable module config export must be removed")
 
 (local runtime (paper-wm.start!))
 (assert (= :table (type runtime)) "start! must return the owned runtime")
@@ -55,6 +56,8 @@
 (local component-runtime (component-module.paper-wm-type.start-fn {}))
 (assert (and component-runtime component-runtime.active?)
         "component lifecycle must start an active PaperWM runtime")
+(assert (= component-runtime (paper-wm.current-runtime))
+        "component runtime must be the singular active runtime")
 (assert (= 35 component-runtime.config.window-gap))
 (assert (= 16 component-runtime.config.screen-margin))
 (assert (= 0.421875 (. component-runtime.config.window-ratios 1)))
