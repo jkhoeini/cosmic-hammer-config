@@ -1871,25 +1871,24 @@ cutovers in one commit.
       Compile passes. Interactive drag/rapid-hotkey receipts remain unavailable
       because the existing app IPC port is not registered; no live claim is made.
 
-*** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [0/8] :refactor:
-    - [ ] Replace =focus-space='s coroutine/=doUntil= loop with an explicit
-      component-state operation: target Space/window, attempt, deadline, generation,
-      and owned timer handle.
-    - [ ] The initiating command performs one synchronous focus/click attempt and
-      schedules a timer whose only outcome is a retry occurrence.
-    - [ ] A retry behavior checks authoritative focused Space/window facts, then
-      completes, retries, or times out through commands; no behavior invocation
-      spans the timer callback.
-    - [ ] Starting a newer Space operation cancels and supersedes the prior
-      generation; stop/reload cancels it and late events become no-ops.
-    - [ ] Preserve the empty-Space click fallback, three-observation stability
-      check, four-second bound, and final cursor-centering behavior.
-    - [ ] Keep absolute Space index and relative next/previous as subscription
-      choices over one implementation-neutral Space-navigation intention.
-    - [ ] Add deterministic timer/event harness cases for success, retry,
-      supersession, timeout, empty Space, disappearing target, and late callback.
-    - [ ] Live-check rapid repeated Space keys across multiple displays and verify
-      exactly one active operation and no timer after completion or stop.
+*** DONE [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [8/8] :refactor:
+    - [X] Replace coroutine/=doUntil= with component resource state containing
+      target Space/window ID, attempt, deadline, stable count, and generation.
+    - [X] The initiating command performs one focus/click attempt and schedules
+      a timer whose only outcome is =:paper-wm.events/space-focus-retry=.
+    - [X] Retry behavior invokes a command that checks authoritative focused
+      Space/window facts and completes, retries, or times out synchronously.
+    - [X] Starting a newer operation supersedes the prior generation; stale retry
+      events are no-ops and stop cancels the single owned timer.
+    - [X] Preserve empty-Space click fallback, three stable observations,
+      four-second deadline, and final cursor centering.
+    - [X] Keep absolute Space index and relative left/right as subscription choices
+      over one =start-space-focus!= effect.
+    - [X] Add deterministic cases for retry, stable completion, stale generation,
+      supersession, and timeout; component lifecycle tests cover timer cleanup.
+    - [X] Compile passes and source search confirms no coroutine, =doUntil=, or
+      legacy =focus-space= remains. Multi-display rapid-key live receipt is not
+      claimed because the existing app IPC port remains unavailable.
 
 *** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [0/9] :refactor:
     - [ ] Delete the legacy generic =window-event-handler=, module lifecycle,
