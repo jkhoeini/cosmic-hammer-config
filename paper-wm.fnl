@@ -67,8 +67,6 @@
 (var ui-watchers {})
 (var focused-window-id nil)
 (var watcher-restart-timers {})
-(var pending-window-id nil)
-(var window-filter nil)
 
 (var next-runtime-epoch 0)
 
@@ -88,8 +86,6 @@
      :resources {:windows {}
                  :ui-watchers {}
                  :watcher-restart-timers {}
-                 :pending-window-id nil
-                 :pending-window-timers {}
                  :space-focus-timer nil
                  :window-filter nil}}))
 (fn bind-runtime! [runtime]
@@ -101,8 +97,6 @@
   (set ui-watchers runtime.resources.ui-watchers)
   (set focused-window-id runtime.tiling-state.focused-window-id)
   (set watcher-restart-timers runtime.resources.watcher-restart-timers)
-  (set pending-window-id runtime.resources.pending-window-id)
-  (set window-filter runtime.resources.window-filter)
   (set config runtime.config)
   runtime)
 
@@ -113,8 +107,6 @@
 (fn capture-runtime! [runtime]
   "Capture compatibility scalar aliases after a legacy action."
   (tset runtime.tiling-state :focused-window-id focused-window-id)
-  (tset runtime.resources :pending-window-id pending-window-id)
-  (tset runtime.resources :window-filter window-filter)
   runtime)
 
 (fn commit-tiling-state! [next-state]
@@ -160,13 +152,9 @@
      :window-list (copy-table tiling-state.spaces)
      :index-table (copy-table tiling-state.index)
      :focused-window-id tiling-state.focused-window-id
-     :pending-window-id resources.pending-window-id
-     :resources {:window-filter? (not= nil resources.window-filter)
-                 :ui-watcher-count (table-count (or resources.ui-watchers {}))
+     :resources {:ui-watcher-count (table-count (or resources.ui-watchers {}))
                  :watcher-restart-timer-count
                  (table-count (or resources.watcher-restart-timers {}))
-                 :pending-window-timer-count
-                 (table-count (or resources.pending-window-timers {}))
                  :space-focus-timer? (not= nil resources.space-focus-timer)}}))
 
 (fn invariant-report [?runtime]
@@ -371,111 +359,10 @@
   runtime)
 
 ;; ---------------------------------------------------------------------------
-;; Window tracking
+;; User actions
 ;; ---------------------------------------------------------------------------
 
-(var add-window! nil)
-(var remove-window! nil)
 (var focus-window nil)
-(var window-event-handler nil)
-
-(set add-window!
-  (fn [add-win]
-    "Add a new window to owned resources and logical tiling state."
-    (when (> (add-win:tabCount) 0)
-      (hs.notify.show :PaperWM "Windows with tabs are not supported!"
-                      "See https://github.com/mogenson/PaperWM.spoon/issues/39")
-      (lua "return"))
-    (let [window-id (add-win:id)]
-      (when (. index-table window-id) (lua "return"))
-      (let [space (. (Spaces.windowSpaces add-win) 1)]
-        (when (not space)
-          (logger.e "add window does not have a space")
-          (lua "return"))
-        (var add-column 1)
-        (if (and focused-window-id
-                 (= (. (or (. index-table focused-window-id) {}) :space) space)
-                 (not= focused-window-id window-id))
-            (set add-column (+ (. index-table focused-window-id :col) 1))
-            (let [x (. (add-win:frame) :center :x)]
-              (each [col window-ids (ipairs (or (. window-list space) []))]
-                (let [first-window (. windows (. window-ids 1))]
-                  (when (and first-window (< x (. (first-window:frame) :center :x)))
-                    (set add-column col)
-                    (lua :break))))))
-        (tset windows window-id add-win)
-        (commit-tiling-state!
-         (layout-add-window current-runtime.tiling-state window-id space add-column))
-        (let [watcher (add-win:newWatcher
-                       (fn [window event] (window-event-handler window event)))]
-          (watcher:start [Watcher.windowMoved Watcher.windowResized])
-          (tset ui-watchers window-id watcher))
-        space))))
-
-(set remove-window!
-  (fn [remove-win ?skip-focus]
-    "Remove a window from resources and logical tiling state."
-    (let [window-id (remove-win:id)
-          remove-index (. index-table window-id)]
-      (when (not remove-index)
-        (logger.e "remove index not found")
-        (lua "return"))
-      (when (not ?skip-focus)
-        (let [fw (Window.focusedWindow)]
-          (when (and fw (= window-id (fw:id)))
-            (each [_ direction (ipairs [Direction.DOWN Direction.UP
-                                        Direction.LEFT Direction.RIGHT])]
-              (when (focus-window direction remove-index) (lua :break))))))
-      (let [watcher (. ui-watchers window-id)]
-        (when watcher (watcher:stop)))
-      (tset ui-watchers window-id nil)
-      (let [timer (. watcher-restart-timers window-id)]
-        (when timer (timer:stop)))
-      (tset watcher-restart-timers window-id nil)
-      (tset windows window-id nil)
-      (commit-tiling-state!
-       (layout-remove-window current-runtime.tiling-state window-id))
-      remove-index.space)))
-
-;; ---------------------------------------------------------------------------
-;; Event handling
-;; ---------------------------------------------------------------------------
-
-(set window-event-handler
-  (fn [window event]
-  "Callback for window filter and uielement watcher events."
-  (logger.df "%s for [%s] id: %d" event window
-             (or (and window (window:id)) -1))
-  (var space nil)
-  (if (= event :windowFocused)
-      (let [window-id (window:id)]
-        (when (and pending-window-id (= window-id pending-window-id))
-          (Timer.doAfter Window.animationDuration
-                         (fn []
-                           (logger.vf "pending window timer for %s" window)
-                           (window-event-handler window event)))
-          (lua "return"))
-        (commit-tiling-state!
-         (set-focused-window current-runtime.tiling-state window-id))
-        (set space (. (Spaces.windowSpaces window) 1)))
-      (or (= event :windowVisible) (= event :windowUnfullscreened))
-      (do
-        (set space (add-window! window))
-        (if (and pending-window-id (= (window:id) pending-window-id))
-            (set pending-window-id nil)
-            (not space)
-            (do
-              (set pending-window-id (window:id))
-              (Timer.doAfter Window.animationDuration
-                             #(window-event-handler window event))
-              (lua "return"))))
-      (= event :windowNotVisible)
-      (set space (remove-window! window))
-      (= event :windowFullscreened)
-      (set space (remove-window! window true))
-      (or (= event :AXWindowMoved) (= event :AXWindowResized))
-      (set space (. (Spaces.windowSpaces window) 1)))
-  (when space (tile-space! space))))
 
 (fn focus-space [space window]
   "Make the specified space the active space, focusing the given window."
@@ -720,20 +607,14 @@
     (when runtime
       (tset runtime :active? false)
       (let [resources runtime.resources]
-        (when resources.window-filter
-          (resources.window-filter:unsubscribeAll))
         (each [_ watcher (pairs resources.ui-watchers)] (watcher:stop))
         (each [_ timer (pairs resources.watcher-restart-timers)] (timer:stop))
-        (each [_ timer (pairs resources.pending-window-timers)] (timer:stop))
         (when resources.space-focus-timer (resources.space-focus-timer:stop))
-        (tset resources :window-filter nil)
         (tset resources :windows {})
         (tset resources :ui-watchers {})
         (tset resources :watcher-restart-timers {})
-        (tset resources :pending-window-timers {})
         (tset resources :space-focus-timer nil)
         (when (= runtime current-runtime)
-          (set window-filter nil)
           (set windows resources.windows)
           (set ui-watchers resources.ui-watchers)
           (set watcher-restart-timers resources.watcher-restart-timers))))))
