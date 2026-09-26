@@ -5,6 +5,7 @@
 (local {: dispatch-event!} (require :sheaf.event-registry))
 (local {: event-registry} (require :events))
 (local {: initialize-layout!
+        : reconcile-layout!
         : reconcile-window-fact!
         : record-focus!
         : retile-observed-frame!
@@ -26,7 +27,8 @@
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :schema {:windows table?}
     :fn (fn [component params]
-          (initialize-layout! component.state params.windows))}))
+          (reconcile-layout! component.state params.windows)
+          component.state)}))
 
 (local reconcile-window-command
   (make-command
@@ -190,7 +192,8 @@
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :schema {:windows table?}
     :fn (fn [component params]
-          (initialize-layout! component.state params.windows))}))
+          (reconcile-layout! component.state params.windows)
+          component.state)}))
 
 
 {: initialize-layout-command

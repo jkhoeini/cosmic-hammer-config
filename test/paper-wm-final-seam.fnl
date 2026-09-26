@@ -35,4 +35,14 @@
 (assert (< first.epoch second.epoch))
 (assert (not= first second))
 
+(local runtime (paper-wm.make-runtime {:epoch 3}))
+(let [layout (require :paper-wm.layout)]
+  (tset runtime :tiling-state
+        (layout.add-window runtime.tiling-state 10 1 1)))
+(local (reconciled report) (paper-wm.reconcile-layout! runtime []))
+(assert (= runtime reconciled))
+(assert (= 10 (. report.removed 1)))
+(assert (= nil (. runtime.tiling-state.index 10)))
+(assert (= 10 (. runtime.last-reconcile-report.removed 1)))
+
 (print "PaperWM final seam passed")

@@ -2491,11 +2491,8 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   local Watcher = hs.uielement.watcher
   local Rect = hs.geometry.rect
   local default_config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.421875, 0.84375}}
-  local last_runtime_epoch = 0
   local function runtime_epoch(config)
-    local candidate = (config.epoch or (Timer.absoluteTime and Timer.absoluteTime()) or Timer.secondsSinceEpoch())
-    last_runtime_epoch = math.max((last_runtime_epoch + 1), candidate)
-    return last_runtime_epoch
+    return (config.epoch or (Timer.absoluteTime and Timer.absoluteTime()) or (1000000 * Timer.secondsSinceEpoch()))
   end
   local function make_runtime(config)
     local config0 = (config or {})
@@ -4110,6 +4107,7 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local event_registry = _local_558_["event-registry"]
   local _local_559_ = require("paper-wm")
   local initialize_layout_21 = _local_559_["initialize-layout!"]
+  local reconcile_layout_21 = _local_559_["reconcile-layout!"]
   local reconcile_window_fact_21 = _local_559_["reconcile-window-fact!"]
   local record_focus_21 = _local_559_["record-focus!"]
   local retile_observed_frame_21 = _local_559_["retile-observed-frame!"]
@@ -4125,7 +4123,8 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local barf_window_21 = _local_559_["barf-window!"]
   local initialize_layout_command
   local function _560_(component, params)
-    return initialize_layout_21(component.state, params.windows)
+    reconcile_layout_21(component.state, params.windows)
+    return component.state
   end
   initialize_layout_command = make_command("paper-wm.commands/initialize-layout", "Initialize PaperWM membership from a shared window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = __fnl_global__table_3f}, fn = _560_})
   local reconcile_window_command
@@ -4224,7 +4223,8 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   retry_space_focus_command = make_command("paper-wm.commands/retry-space-focus", "Advance a generation-scoped Space focus conversation", {schema = {generation = __fnl_global__number_3f}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _581_})
   local refresh_windows_command
   local function _582_(component, params)
-    return initialize_layout_21(component.state, params.windows)
+    reconcile_layout_21(component.state, params.windows)
+    return component.state
   end
   refresh_windows_command = make_command("paper-wm.commands/refresh-windows", "Reconcile PaperWM from an explicit window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = __fnl_global__table_3f}, fn = _582_})
   return {["initialize-layout-command"] = initialize_layout_command, ["reconcile-window-command"] = reconcile_window_command, ["record-focus-command"] = record_focus_command, ["retile-observed-frame-command"] = retile_observed_frame_command, ["retry-space-focus-command"] = retry_space_focus_command, ["focus-command"] = focus_command, ["swap-command"] = swap_command, ["center-window-command"] = center_window_command, ["set-full-width-command"] = set_full_width_command, ["cycle-window-size-command"] = cycle_window_size_command, ["slurp-window-command"] = slurp_window_command, ["barf-window-command"] = barf_window_command, ["switch-to-space-command"] = switch_to_space_command, ["increment-space-command"] = increment_space_command, ["refresh-windows-command"] = refresh_windows_command}
