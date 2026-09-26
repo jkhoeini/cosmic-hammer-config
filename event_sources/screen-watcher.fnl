@@ -4,6 +4,7 @@
 
 (local {: make-source-type} (require :sheaf.source-registry))
 (local {: snapshot-desktop} (require :event_sources.desktop-snapshot))
+(local {: snapshot-windows} (require :lib.window-facts))
 
 
 (fn start-screen-watcher [self emit]
@@ -12,8 +13,9 @@
    emit: (fn [event-name event-data])
    Returns the watcher object as state."
   (let [handler (fn []
-                  (emit :screen-watcher.events/screen-changed
-                        (snapshot-desktop)))
+                  (let [snapshot (snapshot-desktop)]
+                    (tset snapshot :windows (snapshot-windows))
+                    (emit :screen-watcher.events/screen-changed snapshot)))
         watcher (hs.screen.watcher.new handler)]
     (watcher:start)
     watcher))

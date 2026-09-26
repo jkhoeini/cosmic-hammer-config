@@ -218,7 +218,8 @@
 (define-event! event-registry
                :screen-watcher.events/screen-changed
                "Screen layout changed"
-               {:all-spaces table? :active-spaces table? :screens table?})
+               {:all-spaces table? :active-spaces table? :screens table?
+                :windows table?})
 (derive! event-hierarchy :screen-watcher.events/screen-changed :event.kind.screen/layout-changed)
 
 
@@ -240,7 +241,7 @@
 (define-event! event-registry
                :mouse-window-management.events/window-placed
                "Window moved to the cursor's screen"
-               {:window-id number?})
+               {:window-id number? :windows table?})
 (derive! event-hierarchy :mouse-window-management.events/window-placed
          :event.kind.window/placed)
 

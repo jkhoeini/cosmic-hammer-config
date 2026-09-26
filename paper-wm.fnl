@@ -29,7 +29,6 @@
 (local Spaces hs.spaces)
 (local Timer hs.timer)
 (local Watcher hs.uielement.watcher)
-(local WindowFilter hs.window.filter)
 (local Rect hs.geometry.rect)
 
 ;; ---------------------------------------------------------------------------
@@ -681,16 +680,13 @@
 (fn switch-to-space! [index]
   "Switch to a Mission Control space by 1-based index."
   (let [space (get-space index)]
-    (when (not space)
-      (logger.d "space not found")
-      (lua "return"))
+    (when (not space) (lua "return"))
     (Spaces.gotoSpace space)
     (focus-space space)))
 
 (fn increment-space! [direction]
   "Switch to the next/previous Mission Control space."
   (when (and (not= direction Direction.LEFT) (not= direction Direction.RIGHT))
-    (logger.d "move is invalid, left and right only")
     (lua "return"))
   (let [curr-space-id (Spaces.focusedSpace)
         layout (Spaces.allSpaces)]
@@ -708,29 +704,6 @@
       (let [new-idx (+ (% (+ (- curr-space-idx 1) direction) num-spaces) 1)]
         (switch-to-space! new-idx)))))
 
-;; --- Refresh ---
-
-(fn refresh-windows! []
-  "Reconcile filter windows with owned resources and logical Spaces."
-  (let [all-windows (window-filter:getWindows)
-        retile-spaces {}]
-    (each [_ window (ipairs all-windows)]
-      (let [window-id (window:id)
-            index (. index-table window-id)
-            live-space (. (Spaces.windowSpaces window) 1)]
-        (if (not index)
-            (let [space (add-window! window)]
-              (when space (tset retile-spaces space true)))
-            (not= index.space live-space)
-            (do
-              (commit-tiling-state!
-               (layout-move-window current-runtime.tiling-state
-                                   window-id live-space 1))
-              (tset retile-spaces index.space true)
-              (tset retile-spaces live-space true)))))
-    (each [space _ (pairs retile-spaces)]
-      (tile-space! space))))
-
 ;; ---------------------------------------------------------------------------
 ;; Lifecycle
 ;; ---------------------------------------------------------------------------
@@ -739,24 +712,7 @@
   "Start automatic window tiling and return its explicit runtime."
   (when (not (Spaces.screensHaveSeparateSpaces))
     (logger.e "please check 'Displays have separate Spaces' in System Preferences -> Mission Control"))
-  (let [runtime (bind-runtime! (make-runtime ?config))]
-    (set window-filter
-         (: (WindowFilter.new) :setOverrideFilter
-            {:visible true
-             :fullscreen false
-             :hasTitlebar true
-             :allowRoles :AXStandardWindow}))
-    (tset runtime.resources :window-filter window-filter)
-    (refresh-windows!)
-    (window-filter:subscribe
-     [WindowFilter.windowFocused
-      WindowFilter.windowVisible
-      WindowFilter.windowNotVisible
-      WindowFilter.windowFullscreened
-      WindowFilter.windowUnfullscreened]
-     (fn [window _ event]
-       (window-event-handler window event)))
-    runtime))
+  (bind-runtime! (make-runtime ?config)))
 
 (fn stop! [?runtime]
   "Stop an explicit PaperWM runtime and release its current resources."
@@ -805,5 +761,4 @@
  : slurp-window!
  : barf-window!
  : switch-to-space!
- : increment-space!
- : refresh-windows!}
+ : increment-space!}

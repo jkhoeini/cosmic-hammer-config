@@ -14,8 +14,7 @@
         : slurp-window!
         : barf-window!
         : switch-to-space!
-        : increment-space!
-        : refresh-windows!} (require :paper-wm))
+        : increment-space!} (require :paper-wm))
 
 (local initialize-layout-command
   (make-command
@@ -158,10 +157,11 @@
 (local refresh-windows-command
   (make-command
    :paper-wm.commands/refresh-windows
-   "Refresh and re-tile all windows"
-   {:requires-traits [:trait/has-paper-wm-runtime]
+   "Reconcile PaperWM from an explicit window snapshot"
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
+    :schema {:windows table?}
     :fn (fn [component params]
-          (run-with-runtime! component.state refresh-windows!))}))
+          (initialize-layout! component.state params.windows))}))
 
 
 {: initialize-layout-command

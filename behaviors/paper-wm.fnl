@@ -137,24 +137,26 @@
 (local refresh-on-screen-change-behavior
   (make-behavior
    {:name :paper-wm.behaviors/refresh-on-screen-change
-    :description "Refresh PaperWM windows when screen layout changes"
+    :description "Reconcile PaperWM when screen layout changes"
     :respond-to [:event.kind.screen/layout-changed]
     :commands {:refresh-windows :paper-wm.commands/refresh-windows}
     :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.refresh-windows 1)]
-            (when target
-              (send-cmd target :refresh-windows {}))))}))
+          (let [target (. candidates.refresh-windows 1)
+                windows (?. event :event-data :windows)]
+            (when (and target windows)
+              (send-cmd target :refresh-windows {:windows windows}))))}))
 
 (local refresh-on-window-placed-behavior
   (make-behavior
    {:name :paper-wm.behaviors/refresh-on-window-placed
-    :description "Refresh PaperWM after cross-screen window placement"
+    :description "Reconcile PaperWM after cross-screen window placement"
     :respond-to [:event.kind.window/placed]
     :commands {:refresh-windows :paper-wm.commands/refresh-windows}
     :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.refresh-windows 1)]
-            (when target
-              (send-cmd target :refresh-windows {}))))}))
+          (let [target (. candidates.refresh-windows 1)
+                windows (?. event :event-data :windows)]
+            (when (and target windows)
+              (send-cmd target :refresh-windows {:windows windows}))))}))
 
 {: initialize-layout-behavior
  : reconcile-membership-behavior
