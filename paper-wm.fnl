@@ -391,45 +391,6 @@
 
 (var focus-window nil)
 
-(fn focus-space [space window]
-  "Make the specified space active, focusing the given window."
-  (let [screen (Screen (Spaces.spaceDisplay space))]
-    (when (not screen) (lua "return"))
-    (let [target-window (or window
-                            (get-first-visible-window (. window-list space) screen))
-          do-space-focus
-          (coroutine.wrap
-           (fn []
-             (if target-window
-                 (do
-                   (fn check-focus [win n]
-                     (var focused? true)
-                     (for [_ 1 n]
-                       (set focused? (and focused? (= (Window.focusedWindow) win)))
-                       (when (not focused?) (lua "return false"))
-                       (coroutine.yield false))
-                     focused?)
-                   (while true
-                     (target-window:focus)
-                     (coroutine.yield false)
-                     (when (and (= (Spaces.focusedSpace) space)
-                                (check-focus target-window 3))
-                       (lua :break))))
-                 (let [point (screen:frame)]
-                   (set point.x (+ point.x (math.floor (/ point.w 2))))
-                   (set point.y (- point.y 4))
-                   (while true
-                     (hs.eventtap.leftClick point)
-                     (coroutine.yield false)
-                     (when (= (Spaces.focusedSpace) space) (lua :break)))))
-             (hs.mouse.absolutePosition (hs.geometry.rectMidPoint (screen:frame)))
-             true))
-          start-time (Timer.secondsSinceEpoch)]
-      (Timer.doUntil do-space-focus
-                     (fn [timer]
-                       (when (> (- (Timer.secondsSinceEpoch) start-time) 4)
-                         (timer:stop)))
-                     Window.animationDuration))))
 
 (fn record-focus! [runtime window-id space-id frame]
   "Record coherent shared focus and retile its Space."
@@ -688,34 +649,6 @@
         (commit-tiling-state! next-state)
         (tile-space! fi.space (fw:frame))))))
 
-;; --- Space navigation ---
-
-(fn switch-to-space! [index]
-  "Switch to a Mission Control space by 1-based index."
-  (let [space (get-space index)]
-    (when (not space) (lua "return"))
-    (Spaces.gotoSpace space)
-    (focus-space space)))
-
-(fn increment-space! [direction]
-  "Switch to the next/previous Mission Control space."
-  (when (and (not= direction Direction.LEFT) (not= direction Direction.RIGHT))
-    (lua "return"))
-  (let [curr-space-id (Spaces.focusedSpace)
-        layout (Spaces.allSpaces)]
-    (var curr-space-idx -1)
-    (var num-spaces 0)
-    (each [_ screen (ipairs (Screen.allScreens))]
-      (let [screen-uuid (screen:getUUID)]
-        (when (< curr-space-idx 0)
-          (each [idx space-id (ipairs (. layout screen-uuid))]
-            (when (= curr-space-id space-id)
-              (set curr-space-idx (+ idx num-spaces))
-              (lua :break))))
-        (set num-spaces (+ num-spaces (length (. layout screen-uuid))))))
-    (when (>= curr-space-idx 0)
-      (let [new-idx (+ (% (+ (- curr-space-idx 1) direction) num-spaces) 1)]
-        (switch-to-space! new-idx)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Lifecycle
@@ -762,15 +695,13 @@
  : reconcile-window-fact!
  : record-focus!
  : retile-observed-frame!
- : focus-window
- : swap-windows!
  : start-space-focus!
  : retry-space-focus!
  : space-index-after-direction
+ : focus-window
+ : swap-windows!
  : center-window!
  : set-window-full-width!
  : cycle-window-size!
  : slurp-window!
- : barf-window!
- : switch-to-space!
- : increment-space!}
+ : barf-window!}
