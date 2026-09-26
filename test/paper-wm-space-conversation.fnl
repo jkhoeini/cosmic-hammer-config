@@ -1,0 +1,30 @@
+(local conversation (require :paper-wm.space-conversation))
+
+(local state {:next-generation 0 :active nil})
+(local first (conversation.start state 3 10 100 4))
+(assert (= 1 first.generation))
+(assert (= 3 first.target-space))
+(assert (= 10 first.target-window-id))
+(assert (= 104 first.deadline))
+(assert (= 0 first.attempt))
+
+(local retry (conversation.advance state 1 101 false false))
+(assert (= :retry retry.outcome))
+(assert (= 1 retry.operation.attempt))
+
+(local stable1 (conversation.advance state 1 102 true true))
+(assert (= :retry stable1.outcome))
+(assert (= 1 stable1.operation.stable-count))
+(local stable2 (conversation.advance state 1 102.1 true true))
+(local complete (conversation.advance state 1 102.2 true true))
+(assert (= :retry stable2.outcome))
+(assert (= :complete complete.outcome))
+(assert (= nil state.active))
+
+(local second (conversation.start state 4 nil 200 4))
+(assert (= 2 second.generation))
+(assert (= :stale (. (conversation.advance state 1 201 false false) :outcome)))
+(assert (= :timeout (. (conversation.advance state 2 205 false false) :outcome)))
+(assert (= nil state.active))
+
+(print "PaperWM Space conversation passed")
