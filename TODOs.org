@@ -1792,31 +1792,29 @@ cutovers in one commit.
     - [X] Delete unused =pending-window-id= component state and set/clear commands
       in the command-contract slice; Phase 8 introduces real keyed operation state.
 
-*** LATER [#A] Phase 7: Normalize state and extract the layout interpreter seam [0/10] :refactor:
-    - [ ] Define a stable =:trait/has-tiling-state= whose contract is the
-      serializable logical subtable, not PaperWM's opaque resource handles.
-    - [ ] Represent logical layout as =Space ID -> columns -> window ID= plus
-      ={window ID -> Space/column/row}= and =focused-window-id=.
-    - [ ] Put opaque handles under a separate resource subtable; they remain
-      component-owned but cannot leak into behavior inputs or layout snapshots.
-    - [ ] Replace stored window objects with IDs in one clean cutover. Do not keep
-      shadow object and ID layouts or attempt cross-model synchronization.
-    - [ ] Extract pure/copy-on-write topology transitions for add, remove,
-      reindex, focus, swap, slurp, and barf. Each returns next logical state plus
-      inert focus/frame intents for a small interpreter at the command seam.
-    - [ ] Validate uniqueness and exact reverse-index correspondence before
-      committing next state; invariant failure leaves current logical state intact
-      and causes the current command to fail visibly. Recovery is a later explicit
-      reconcile occurrence/command, never an undeclared side effect of validation.
-    - [ ] Resolve and snapshot live windows/frames once per command, then compute;
-      missing IDs become an idempotent cleanup/no-op, never a partial transition.
-    - [ ] Preserve anchor-frame overrides and per-window restart generations;
-      change =tile-column!= to return computed frames and fix the slurp race.
-    - [ ] Add a deterministic Fennel harness covering add/remove, empty-column
-      deletion, focus fallback, directional swap, slurp/barf, stale IDs, duplicate
-      delivery, invariant rejection, and frame-plan determinism.
-    - [ ] Expose an inspectable logical snapshot and invariant report suitable for
-      the REPL and later visualization without exposing resource handles.
+*** DONE [#A] Phase 7: Normalize state and extract the layout interpreter seam [10/10] :refactor:
+    - [X] Define stable =:trait/has-tiling-state= over the serializable
+      =:tiling-state= subtable, separate from the migration runtime trait.
+    - [X] Represent logical layout as =Space ID -> columns -> window ID= plus an
+      exact reverse index and =focused-window-id=.
+    - [X] Move live windows, filter, AX watchers, restart timers, pending timers,
+      and Space-focus timer into the runtime =:resources= subtable.
+    - [X] Replace the legacy object layout with IDs in one cutover. Commands and
+      tiling resolve live windows through the owned resource map at the effect edge.
+    - [X] Extract copy-on-write topology transitions in =paper-wm/layout.fnl= for
+      add, remove, move, focus selection, swap, slurp, barf, and focused ID.
+    - [X] Validate uniqueness and exact reverse-index correspondence before every
+      logical commit. Invalid next state raises visibly and leaves current facts intact.
+    - [X] Resolve missing IDs as idempotent no-ops in pure transitions and skip
+      absent resource windows during frame interpretation.
+    - [X] Preserve anchor-frame overrides and replace =tile-column!= calculation
+      with deterministic inert plans from =paper-wm/frames.fnl=. Slurp now supplies
+      the pre-effect focused frame, removing the known async read-after-write race.
+    - [X] Add deterministic Fennel harnesses for duplicate add, remove/reindex,
+      empty-column deletion, focus targets, directional swap, slurp/barf, Space
+      moves, invariant rejection, copy-on-write behavior, and frame determinism.
+    - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
+      REPL/visualization inspection without exposing handles.
 
 *** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [0/11] :refactor:
     - [ ] Extend shared window payloads with the minimum missing suitability facts
