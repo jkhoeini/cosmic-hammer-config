@@ -229,6 +229,22 @@
     :target-tag :tag/paper-wm
     :event-selector event-kind}))
 
+(define-subscription! subscription-registry
+ :sub/paper-wm-record-focus
+ {:description "Record PaperWM focus from shared window facts"
+  :behavior :paper-wm.behaviors/record-focus
+  :source-tag :tag/window-watcher
+  :target-tag :tag/paper-wm
+  :event-selector :event.kind.window/focused})
+
+(define-subscription! subscription-registry
+ :sub/paper-wm-retile-observed-frame
+ {:description "Retile PaperWM from coalesced component-owned frame observations"
+  :behavior :paper-wm.behaviors/retile-observed-frame
+  :source-tag :tag/paper-wm-frame-watcher
+  :target-tag :tag/paper-wm
+  :event-selector :paper-wm.events/frame-observed})
+
 ;; --- Mouse Window Management ---
 
 (define-subscription! subscription-registry

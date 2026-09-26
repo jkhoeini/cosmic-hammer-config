@@ -30,6 +30,8 @@
         : set-focused-window-command} (require :commands.window-state))
 (local {: initialize-layout-command
         : reconcile-window-command
+        : record-focus-command
+        : retile-observed-frame-command
         : focus-command
         : swap-command
         : center-window-command
@@ -68,6 +70,8 @@
 (add-command! command-registry set-focused-window-command)
 (add-command! command-registry initialize-layout-command)
 (add-command! command-registry reconcile-window-command)
+(add-command! command-registry record-focus-command)
+(add-command! command-registry retile-observed-frame-command)
 (add-command! command-registry focus-command)
 (add-command! command-registry swap-command)
 (add-command! command-registry center-window-command)

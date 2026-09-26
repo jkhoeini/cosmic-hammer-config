@@ -381,7 +381,7 @@
 (var focus-window nil)
 
 (fn focus-space [space window]
-  "Make the specified space the active space, focusing the given window."
+  "Make the specified space active, focusing the given window."
   (let [screen (Screen (Spaces.spaceDisplay space))]
     (when (not screen) (lua "return"))
     (let [target-window (or window
@@ -410,18 +410,38 @@
                    (while true
                      (hs.eventtap.leftClick point)
                      (coroutine.yield false)
-                     (when (= (Spaces.focusedSpace) space)
-                       (lua :break)))))
+                     (when (= (Spaces.focusedSpace) space) (lua :break)))))
              (hs.mouse.absolutePosition (hs.geometry.rectMidPoint (screen:frame)))
              true))
           start-time (Timer.secondsSinceEpoch)]
       (Timer.doUntil do-space-focus
                      (fn [timer]
                        (when (> (- (Timer.secondsSinceEpoch) start-time) 4)
-                         (logger.ef "focusSpace() timeout! space %d focused space %d"
-                                    space (Spaces.focusedSpace))
                          (timer:stop)))
                      Window.animationDuration))))
+
+(fn record-focus! [runtime window-id space-id frame]
+  "Record coherent shared focus and retile its Space."
+  (bind-runtime! runtime)
+  (when (. runtime.tiling-state.index window-id)
+    (commit-tiling-state!
+     (set-focused-window runtime.tiling-state window-id))
+    (when (. runtime.resources.windows window-id)
+      (tile-space! space-id frame)))
+  (capture-runtime! runtime))
+
+(fn retile-observed-frame! [runtime params]
+  "Retile only the current generation and latest coalesced observation."
+  (bind-runtime! runtime)
+  (let [generation (. runtime.resources.watcher-generations params.window-id)
+        latest (. runtime.resources.frame-observations.latest params.window-id)
+        entry (. runtime.tiling-state.index params.window-id)]
+    (when (and entry
+               (= generation params.generation)
+               (or (= nil latest) (<= latest.sequence params.sequence)))
+      (tset runtime.resources.frame-observations.latest params.window-id nil)
+      (tile-space! entry.space params.frame)))
+  (capture-runtime! runtime))
 
 ;; ---------------------------------------------------------------------------
 ;; User-facing commands
@@ -650,6 +670,8 @@
  ;; User-facing commands
  : initialize-layout!
  : reconcile-window-fact!
+ : record-focus!
+ : retile-observed-frame!
  : focus-window
  : swap-windows!
  : center-window!

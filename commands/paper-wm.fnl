@@ -5,6 +5,8 @@
 (local {: Direction
         : initialize-layout!
         : reconcile-window-fact!
+        : record-focus!
+        : retile-observed-frame!
         : run-with-runtime!
         : focus-window
         : swap-windows!
@@ -34,6 +36,25 @@
     :fn (fn [component params]
           (reconcile-window-fact! component.state params.window
                                   {:runtime-epoch params.runtime-epoch}))}))
+
+(local record-focus-command
+  (make-command
+   :paper-wm.commands/record-focus
+   "Record shared focus after membership is coherent"
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
+    :schema {:window-id number? :space-id number? :frame table?}
+    :fn (fn [component params]
+          (record-focus! component.state params.window-id
+                         params.space-id params.frame))}))
+
+(local retile-observed-frame-command
+  (make-command
+   :paper-wm.commands/retile-observed-frame
+   "Retile from the latest coalesced manual frame"
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
+    :schema {:window-id number? :frame table? :generation number? :sequence number?}
+    :fn (fn [component params]
+          (retile-observed-frame! component.state params))}))
 
 (local direction-by-keyword
   {:left Direction.LEFT
@@ -166,6 +187,8 @@
 
 {: initialize-layout-command
  : reconcile-window-command
+ : record-focus-command
+ : retile-observed-frame-command
  : focus-command
  : swap-command
  : center-window-command

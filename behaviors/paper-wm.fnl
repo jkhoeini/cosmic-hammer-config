@@ -130,6 +130,32 @@
             (when (and target fact)
               (send-cmd target :reconcile-window {:window fact}))))}))
 
+(local record-focus-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/record-focus
+    :description "Record coherent shared PaperWM focus"
+    :respond-to [:event.kind.window/focused]
+    :commands {:record-focus :paper-wm.commands/record-focus}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.record-focus 1)
+                fact event.event-data]
+            (when (and target fact.window-id fact.space-id fact.frame)
+              (send-cmd target :record-focus
+                        {:window-id fact.window-id
+                         :space-id fact.space-id
+                         :frame fact.frame}))))}))
+
+(local retile-observed-frame-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/retile-observed-frame
+    :description "Retile from the latest coalesced PaperWM frame"
+    :respond-to [:paper-wm.events/frame-observed]
+    :commands {:retile :paper-wm.commands/retile-observed-frame}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.retile 1)]
+            (when target
+              (send-cmd target :retile event.event-data))))}))
+
 ;; ============================================================================
 ;; Screen change
 ;; ============================================================================
@@ -160,6 +186,8 @@
 
 {: initialize-layout-behavior
  : reconcile-membership-behavior
+ : record-focus-behavior
+ : retile-observed-frame-behavior
  : focus-behavior
  : swap-behavior
  : center-window-behavior
