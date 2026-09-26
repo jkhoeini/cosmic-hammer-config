@@ -103,7 +103,6 @@
   (make-component-type
    :component.type/paper-wm
    "PaperWM tiling window manager - hotkey event sources"
-   {:sources sources
-    :start-fn (fn [config] {:pending-window-id nil})}))
+   {:sources sources}))
 
 {: paper-wm-type}

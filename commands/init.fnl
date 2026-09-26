@@ -37,9 +37,7 @@
         : barf-window-command
         : switch-to-space-command
         : increment-space-command
-        : refresh-windows-command
-        : set-pending-window-command
-        : clear-pending-window-command} (require :commands.paper-wm))
+        : refresh-windows-command} (require :commands.paper-wm))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry {:trait-registry trait-registry}))
@@ -76,7 +74,5 @@
 (add-command! command-registry switch-to-space-command)
 (add-command! command-registry increment-space-command)
 (add-command! command-registry refresh-windows-command)
-(add-command! command-registry set-pending-window-command)
-(add-command! command-registry clear-pending-window-command)
 
 {: command-registry}

@@ -32,7 +32,9 @@
   (make-command
    :paper-wm.commands/focus
    "Focus the window in a direction"
-   {:fn (fn [component params]
+   {:schema {:direction #(or (= $1 :left) (= $1 :right)
+                            (= $1 :up) (= $1 :down))}
+    :fn (fn [component params]
           (focus-window (. direction-by-keyword params.direction))
           nil)}))
 
@@ -44,7 +46,9 @@
   (make-command
    :paper-wm.commands/swap
    "Swap the focused window in a direction"
-   {:fn (fn [component params]
+   {:schema {:direction #(or (= $1 :left) (= $1 :right)
+                            (= $1 :up) (= $1 :down))}
+    :fn (fn [component params]
           (swap-windows! (. direction-by-keyword params.direction))
           nil)}))
 
@@ -72,7 +76,9 @@
   (make-command
    :paper-wm.commands/cycle-window-size
    "Cycle the focused window size"
-   {:fn (fn [component params]
+   {:schema {:direction #(or (= $1 :width) (= $1 :height))
+             :cycle-direction #(or (= $1 :ascending) (= $1 :descending))}
+    :fn (fn [component params]
           (cycle-window-size! (. direction-by-keyword params.direction)
                               (. direction-by-keyword params.cycle-direction))
           nil)}))
@@ -105,7 +111,8 @@
   (make-command
    :paper-wm.commands/switch-to-space
    "Switch to a specific space by index"
-   {:fn (fn [component params]
+   {:schema {:index #(and (= :number (type $1)) (<= 1 $1 9))}
+    :fn (fn [component params]
           (switch-to-space! params.index)
           nil)}))
 
@@ -113,7 +120,8 @@
   (make-command
    :paper-wm.commands/increment-space
    "Switch to an adjacent space"
-   {:fn (fn [component params]
+   {:schema {:direction #(or (= $1 :left) (= $1 :right))}
+    :fn (fn [component params]
           (increment-space! (. direction-by-keyword params.direction))
           nil)}))
 
@@ -129,23 +137,6 @@
           (refresh-windows!)
           nil)}))
 
-;; ============================================================================
-;; Pending window state
-;; ============================================================================
-
-(local set-pending-window-command
-  (make-command
-   :paper-wm.commands/set-pending-window
-   "Set the pending window ID during space transitions"
-   {:fn (fn [component params]
-          {:pending-window-id params.window-id})}))
-
-(local clear-pending-window-command
-  (make-command
-   :paper-wm.commands/clear-pending-window
-   "Clear the pending window ID"
-   {:fn (fn [component params]
-          {:pending-window-id nil})}))
 
 {: focus-command
  : swap-command
@@ -156,6 +147,4 @@
  : barf-window-command
  : switch-to-space-command
  : increment-space-command
- : refresh-windows-command
- : set-pending-window-command
- : clear-pending-window-command}
+ : refresh-windows-command}

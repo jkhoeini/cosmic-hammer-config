@@ -15,26 +15,35 @@
 
 (local commands (require :commands.paper-wm))
 
-(local function? #(= :function (type $1)))
-(local table? #(= :table (type $1)))
+(local member? (fn [members value]
+                 (not= nil (. members value))))
 
 (local expected
-  {:focus-command {:direction function?}
-   :swap-command {:direction function?}
+  {:focus-command {:direction #(member? {:left true :right true :up true :down true} $1)}
+   :swap-command {:direction #(member? {:left true :right true :up true :down true} $1)}
    :center-window-command {}
    :set-full-width-command {}
-   :cycle-window-size-command {:direction function? :cycle-direction function?}
+   :cycle-window-size-command
+   {:direction #(member? {:width true :height true} $1)
+    :cycle-direction #(member? {:ascending true :descending true} $1)}
    :slurp-window-command {}
    :barf-window-command {}
-   :switch-to-space-command {:index number?}
-   :increment-space-command {:direction function?}
+   :switch-to-space-command {:index #(and (= :number (type $1)) (<= 1 $1 9))}
+   :increment-space-command {:direction #(member? {:left true :right true} $1)}
    :refresh-windows-command {}})
 
 (fn assert-schema [command expected-schema]
-  (each [key predicate (pairs expected-schema)]
-    (assert (= predicate (. command.schema key))
-            (.. "unexpected schema entry " (tostring key) " for "
-                (tostring command.name))))
+  (each [key expected-predicate (pairs expected-schema)]
+    (let [actual-predicate (. command.schema key)]
+      (assert actual-predicate
+              (.. "missing schema entry " (tostring key) " for "
+                  (tostring command.name)))
+      (each [_ value (ipairs [:left :right :up :down :width :height
+                              :ascending :descending 0 1 9 10 "1" nil])]
+        (assert (= (not (not (expected-predicate value)))
+                   (not (not (actual-predicate value))))
+                (.. "unexpected validation for " (tostring key) "="
+                    (tostring value) " in " (tostring command.name))))))
   (each [key _ (pairs command.schema)]
     (assert (. expected-schema key)
             (.. "extra schema entry " (tostring key) " for "
