@@ -45,6 +45,8 @@
 (assert (= :table (type runtime.window-list)))
 (assert (= :table (type runtime.index-table)))
 (assert (= :table (type runtime.ui-watchers)))
+(assert runtime.active? "started runtime must be active")
+(assert (= :number (type runtime.epoch)))
 (assert (= :table (type runtime.watcher-restart-timers)))
 (assert (= filter runtime.window-filter))
 (assert (= nil runtime.focused-window))
@@ -55,5 +57,9 @@
 (paper-wm.stop! runtime)
 (local stopped (paper-wm.diagnostic-snapshot runtime))
 (assert (= false stopped.resources.window-filter?))
+(assert (= false runtime.active?))
+(assert (= false stopped.active?))
+(assert (= 0 stopped.resources.pending-window-timer-count))
+(assert (= false stopped.resources.space-focus-timer?))
 
 (print "PaperWM runtime diagnostics passed")
