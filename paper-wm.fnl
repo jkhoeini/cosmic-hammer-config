@@ -235,14 +235,17 @@
         (pending:stop)))
     (watcher:stop)
     (window:setFrame frame)
-    (tset watcher-restart-timers id
-          (Timer.doAfter (+ Window.animationDuration padding)
-                         (fn []
-                           (tset watcher-restart-timers id nil)
-                           ;; fetch fresh: watcher may have been torn down
-                           (let [w (. ui-watchers id)]
-                             (when w
-                               (w:start [Watcher.windowMoved Watcher.windowResized]))))))))
+    (let [generation (. current-runtime.resources.watcher-generations id)]
+      (tset watcher-restart-timers id
+            (Timer.doAfter (+ Window.animationDuration padding)
+                           (fn []
+                             (tset watcher-restart-timers id nil)
+                             (let [w (. ui-watchers id)]
+                               (when (and current-runtime.active?
+                                          w
+                                          (= generation
+                                             (. current-runtime.resources.watcher-generations id)))
+                                 (w:start [Watcher.windowMoved Watcher.windowResized])))))))))
 
 (fn tile-column! [column-windows bounds h w id h4id]
   "Plan a column deterministically, apply its frames, and return width plus plan."
@@ -361,6 +364,11 @@
               watcher (. runtime.resources.ui-watchers window-id)]
           (when watcher (watcher:stop))
           (tset runtime.resources.ui-watchers window-id nil)
+          (let [timer (. runtime.resources.watcher-restart-timers window-id)]
+            (when timer (timer:stop)))
+          (tset runtime.resources.watcher-restart-timers window-id nil)
+          (tset runtime.resources.frame-observations.latest window-id nil)
+          (tset runtime.resources.frame-observations.sequences window-id nil)
           (tset runtime.resources.windows window-id nil)
           (commit-tiling-state!
            (layout-remove-window runtime.tiling-state window-id))
