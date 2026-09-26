@@ -322,7 +322,7 @@
                :paper-wm.events/space-focus-retry
                "Retry one generation-scoped PaperWM Space focus operation"
                {:generation number?})
-(derive! event-hierarchy :paper-wm.events/space-focus-retry :event.kind.space/changed)
+(derive! event-hierarchy :paper-wm.events/space-focus-retry :event.kind/any)
 
 ;; --- Window Element Watcher Events ---
 (define-event! event-registry

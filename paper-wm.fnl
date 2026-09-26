@@ -267,18 +267,28 @@
   (when (and opts.runtime-epoch (not= opts.runtime-epoch runtime.epoch))
     (lua "return runtime"))
   (let [window-id fact.window-id
-        tracked? (not= nil (. runtime.tiling-state.index window-id))]
+        entry (. runtime.tiling-state.index window-id)
+        tracked? (not= nil entry)]
     (if (eligible? fact)
         (do
-          (when (not tracked?)
-            (commit-state! runtime
-                           (layout-add-window
-                            runtime.tiling-state window-id fact.space-id
-                            (+ 1 (length (or (. runtime.tiling-state.spaces
-                                               fact.space-id) []))))))
+          (if (not tracked?)
+              (commit-state! runtime
+                             (layout-add-window
+                              runtime.tiling-state window-id fact.space-id
+                              (+ 1 (length (or (. runtime.tiling-state.spaces
+                                                 fact.space-id) [])))))
+              (not= entry.space fact.space-id)
+              (let [old-space entry.space]
+                (commit-state! runtime
+                               (layout-move-window
+                                runtime.tiling-state window-id fact.space-id
+                                (+ 1 (length (or (. runtime.tiling-state.spaces
+                                                   fact.space-id) [])))))
+                (when (. runtime.tiling-state.spaces old-space)
+                  (tile-space! runtime old-space))))
           (attach-window! runtime window-id)
           (when (. runtime.resources.windows window-id)
-            (tile-space! runtime fact.space-id fact.frame)))
+            (tile-space! runtime fact.space-id)))
         tracked?
         (let [space (. runtime.tiling-state.index window-id :space)]
           (detach-window! runtime window-id)

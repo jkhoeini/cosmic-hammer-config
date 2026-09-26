@@ -45,4 +45,16 @@
 (assert (= nil (. runtime.tiling-state.index 10)))
 (assert (= 10 (. runtime.last-reconcile-report.removed 1)))
 
+(local moved-runtime (paper-wm.make-runtime {:epoch 4}))
+(let [layout (require :paper-wm.layout)]
+  (tset moved-runtime :tiling-state
+        (layout.add-window moved-runtime.tiling-state 20 1 1)))
+(local moved-fact {:window-id 20 :space-id 2 :subrole "AXStandardWindow"
+                   :has-titlebar true :visible true :fullscreen false :tab-count 0
+                   :frame {:x 10 :y 10 :w 100 :h 100}})
+(paper-wm.reconcile-window-fact! moved-runtime moved-fact
+                                 {:runtime-epoch moved-runtime.epoch})
+(assert (= 2 (. moved-runtime.tiling-state.index 20 :space))
+        "tracked window did not move to its observed Space")
+
 (print "PaperWM final seam passed")
