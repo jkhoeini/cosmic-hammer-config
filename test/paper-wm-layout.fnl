@@ -68,10 +68,10 @@
 (local focus-removed (layout.remove-window focused 20))
 (assert (= nil focus-removed.focused-window-id))
 
-(local invalid {:spaces {1 [[[10] [10]]]}
+(local invalid {:spaces {1 [[10 10]]}
                 :index {10 {:space 1 :col 1 :row 1}}
                 :focused-window-id nil})
-(local ok reason (layout.valid? invalid))
+(local (ok reason) (layout.valid? invalid))
 (assert (= false ok))
 (assert (= :duplicate-window-id reason))
 
