@@ -62,6 +62,32 @@
 (var pending-window nil)
 (var window-filter nil)
 
+(fn copy-table [source]
+  "Copy a table recursively for read-only diagnostics."
+  (let [result {}]
+    (each [key value (pairs source)]
+      (tset result key (if (= :table (type value))
+                           (copy-table value)
+                           value)))
+    result))
+
+(fn table-count [source]
+  "Count entries in a table regardless of key type."
+  (var count 0)
+  (each [_ _ (pairs source)]
+    (set count (+ count 1)))
+  count)
+
+(fn diagnostic-snapshot []
+  "Return logical PaperWM state and resource counts without mutable handles."
+  {:window-list (copy-table window-list)
+   :index-table (copy-table index-table)
+   :focused-window-id (and focused-window (focused-window:id))
+   :pending-window-id (and pending-window (pending-window:id))
+   :resources {:window-filter? (not= nil window-filter)
+               :ui-watcher-count (table-count ui-watchers)
+               :watcher-restart-timer-count (table-count watcher-restart-timers)}})
+
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
 ;; ---------------------------------------------------------------------------
@@ -750,6 +776,7 @@
  : config
  : start!
  : stop!
+ : diagnostic-snapshot
  ;; User-facing commands
  : focus-window
  : swap-windows!
