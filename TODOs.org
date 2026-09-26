@@ -1763,33 +1763,34 @@ cutovers in one commit.
       pending/Space-focus timers and late callbacks are ownership blockers handled
       by lifecycle epoch and tracked-operation work in Phase 6.
 
-*** LATER [#A] Phase 6: Make the PaperWM component own the legacy runtime [0/10] :architecture:
-    - [ ] Introduce one explicit runtime table containing the legacy layout,
-      reverse index, focused window, pending operations, filter, AX watchers,
-      watcher-restart timers, and active Space-focus operation.
-    - [ ] Give the runtime an =active?= flag and lifecycle epoch captured by every
-      callback; stopped/superseded runtimes ignore late callbacks. Do not present
-      normal config reload as graceful component stop until Sheaf wires shutdown.
-    - [ ] Thread the runtime through helpers and actions; =start!= returns it and
-      =stop!= accepts it. Use one temporary singleton adapter only while old and
-      new callers coexist, then delete it at the ownership cutover.
-    - [ ] Track every timer handle, including pending membership and Space-focus
-      timers, so replacement and stop can cancel all asynchronous work.
-    - [ ] Store the runtime directly as PaperWM component state and temporarily
-      declare a migration-only runtime trait while preserving the legacy object
-      representation; do not overload =:trait/has-layout= with opaque resources.
-    - [ ] Make every PaperWM command require that runtime trait, operate on the
-      injected component state, and return the complete state for dispatcher capture.
-    - [ ] Move gap, margin, ratios, and eligibility choices into component
-      instance config with current defaults; expose immutable default ratios only
-      if later width-state work needs a shared definition-time value.
-    - [ ] Start and stop the runtime from component lifecycle; owned hotkey sources
-      stop before =stop-fn=. Add or separately track the missing global Sheaf
-      shutdown hook rather than claiming ordinary reload invokes component stop.
-    - [ ] In one cutover, remove the direct =paper-wm.start!= call from =core.fnl=
-      and delete the temporary singleton adapter so only one runtime exists.
-    - [ ] Delete unused =pending-window-id= component state and set/clear commands;
-      Phase 8 introduces the real keyed operation state.
+*** DONE [#A] Phase 6: Make the PaperWM component own the legacy runtime [10/10] :architecture:
+    - [X] Introduce one explicit runtime table containing the legacy layout,
+      reverse index, focused/pending windows, filter, AX watchers, restart timers,
+      pending retry timers, active Space-focus timer, config, epoch, and active flag.
+    - [X] Give each runtime a monotonic lifecycle epoch and =active?= flag. Stop
+      marks it inactive before teardown; Phase 8-10 callbacks consume the epoch
+      when their event classes move behind Sheaf.
+    - [X] Thread the runtime through component lifecycle and command execution.
+      =start!= returns it; =stop!= accepts it; =run-with-runtime!= is the temporary
+      compatibility interpreter for legacy functions during the Phase 7 cutover.
+    - [X] Track ownership slots for every async resource. Stop cancels current AX
+      restart, pending membership, and Space-focus timer handles and clears their
+      tables/slots. Phase 8-10 replace legacy creation sites with those slots.
+    - [X] Store the runtime directly as PaperWM component state and declare the
+      migration-only =:trait/has-paper-wm-runtime= rather than overloading layout.
+    - [X] Make all ten PaperWM commands require that runtime trait, operate on
+      injected =component.state= through the compatibility interpreter, and return
+      the complete runtime for dispatcher capture.
+    - [X] Move gap, screen margin, and width ratios into component instance config
+      with preserved defaults; export immutable defaults, not mutable module config.
+    - [X] Start/stop the runtime from PaperWM component lifecycle. Live explicit
+      stop receipt: =active? false=, filter false, AX watcher count 0, restart timer
+      count 0, pending timer count 0, Space-focus timer false. Reload restored one
+      active filter with eight live AX watchers in the current desktop session.
+    - [X] Remove the direct =paper-wm.start!= call from =core.fnl=. Live reload
+      confirmed the component owns epoch 1 and one active runtime/filter.
+    - [X] Delete unused =pending-window-id= component state and set/clear commands
+      in the command-contract slice; Phase 8 introduces real keyed operation state.
 
 *** LATER [#A] Phase 7: Normalize state and extract the layout interpreter seam [0/10] :refactor:
     - [ ] Define a stable =:trait/has-tiling-state= whose contract is the
