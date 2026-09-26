@@ -30,8 +30,6 @@
 (set hs.window.animationDuration 0.0)
 
 
-(local paper-wm (require :paper-wm))
-(paper-wm.start!)
 
 
 (local notify (require :notify))

@@ -98,6 +98,10 @@
   (set config runtime.config)
   runtime)
 
+(fn current-runtime-value []
+  "Return the single currently bound PaperWM runtime."
+  current-runtime)
+
 (fn capture-runtime! [runtime]
   "Capture compatibility scalar globals after a legacy action."
   (tset runtime :focused-window focused-window)
@@ -845,6 +849,7 @@
 
 {: Direction
  : default-config
+ :current-runtime current-runtime-value
  : start!
  : stop!
  : diagnostic-snapshot
