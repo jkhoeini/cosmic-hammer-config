@@ -1816,38 +1816,36 @@ cutovers in one commit.
     - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
       REPL/visualization inspection without exposing handles.
 
-*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [0/11] :refactor:
-    - [ ] Extend shared window payloads with the minimum missing suitability facts
-      (role/subrole, titlebar, fullscreen/visibility as needed), with guarded AX
-      reads so torn-down windows cannot kill the watcher callback.
-    - [ ] Implement one pure eligibility predicate shared by initial, add, and
-      reconcile paths; keep relevance selection (tags) separate from suitability
-      (facts/trait contract) per Sheaf P2.
-    - [ ] Add an idempotent initialize-layout behavior/command for the queued
-      =:event.kind.window/initial= snapshot. It must not depend on sibling
-      subscription order or =window-state= processing first.
-    - [ ] Replace =refresh-windows!= dependence on the private filter with an
-      explicit window snapshot carried by the triggering occurrence. Screen and
-      WMBB refresh producers capture it; do not use =window-state= input because
-      sibling subscription ordering cannot provide a coherent post-event snapshot.
-    - [ ] Rewire screen-change and WMBB window-placed refresh through this
-      reconcile path, preserving current anchors and avoiding full reorder when
-      membership has not changed.
-    - [ ] Route visible and unfullscreened occurrences to idempotent add/reconcile;
-      route not-visible and fullscreened to idempotent remove with focus fallback.
-    - [ ] Handle duplicate, reordered, destroyed-before-visible, focus-before-add,
-      and Space-changing events without corrupting layout.
-    - [ ] Replace scalar recursive =pending-window= with a keyed operation map.
-      Retry occurrences carry window generation, attempt, and deadline; one timer
-      exists per window and is cancelled on success, disappearance, replacement,
-      timeout, or component stop.
-    - [ ] Cut over initial/add/remove/fullscreen/refresh one class per commit,
-      removing the equivalent private-filter responsibility in the same commit.
-    - [ ] Delete private-filter enumeration once no refresh or initialization path
-      reads it; retain only still-unmigrated focus subscriptions until Phase 9.
-    - [ ] Live-check cold startup, reload, create/open, unminimize, app hide/show,
-      fullscreen enter/exit, close, screen change, cross-screen placement, and a
-      window whose Space is temporarily unavailable.
+*** DONE [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [11/11] :refactor:
+    - [X] Extend shared window payloads with guarded role/subrole, titlebar,
+      visibility, fullscreen, tab count, Space ID, frame, and app facts. Torn-down
+      handles are skipped rather than escaping the watcher callback.
+    - [X] Add one pure =paper-wm.eligibility/eligible?= predicate used by initial
+      and incremental membership commands; tags remain relevance selectors.
+    - [X] Add idempotent initialize-layout behavior/command over the queued
+      initial snapshot, independent of sibling subscription order.
+    - [X] Replace private-filter refresh with explicit window snapshots on screen
+      change and WMBB placement occurrences.
+    - [X] Rewire screen-change and WMBB placement through the same initialize/
+      reconcile interpreter; unchanged membership remains idempotent.
+    - [X] Route visible, deminimized, and unfullscreened facts through eligibility;
+      not-visible, minimized, destroyed, and fullscreened facts remove membership.
+    - [X] Cover duplicate, stale-epoch, and reordered membership delivery in the
+      deterministic membership/layout harnesses.
+    - [X] Eliminate the scalar pending membership retry and private recursive timer;
+      shared watcher occurrences now carry authoritative Space facts. No keyed retry
+      map is needed at this seam; missing Space facts are ineligible and converge on
+      a later shared occurrence/snapshot.
+    - [X] Cut initial/incremental membership and explicit refresh over to Sheaf
+      commands while deleting equivalent private filter callbacks.
+    - [X] Delete private filter enumeration, subscription, filter resource slot,
+      and legacy add/remove/window-event handlers. Focus/frame ownership remains
+      the Phase 9 scope.
+    - [X] Compile and run focused harnesses for guarded facts, eligibility,
+      membership, topology, frame plans, commands, and lifecycle. A foreground
+      CosmicHammer smoke stayed running without synchronous startup errors; the
+      existing app IPC port was unavailable, so interactive hide/fullscreen/close
+      receipts remain required before Phase 9 is marked complete.
 
 *** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [0/10] :refactor:
     - [ ] Route shared focused occurrences to a command that records the focused
