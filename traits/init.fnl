@@ -113,14 +113,18 @@
 
 (add-trait! trait-registry
   (make-trait :trait/has-paper-wm-runtime
-              "Component state is the owned legacy PaperWM runtime"
+              "Component state owns PaperWM resources during migration"
               {:active? boolean?
                :epoch number?
-               :window-list table?
-               :index-table table?
-               :ui-watchers table?
-               :watcher-restart-timers table?
-               :pending-window-timers table?}))
+               :config table?
+               :tiling-state table?
+               :resources table?}
+              (fn [state]
+                (let [resources state.resources]
+                  (and (= :table (type resources.windows))
+                       (= :table (type resources.ui-watchers))
+                       (= :table (type resources.watcher-restart-timers))
+                       (= :table (type resources.pending-window-timers)))))))
 
 (add-trait! trait-registry
   (make-trait :trait/has-tiling-state
