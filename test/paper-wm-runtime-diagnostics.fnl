@@ -55,6 +55,17 @@
 (local component-runtime (component-module.paper-wm-type.start-fn {}))
 (assert (and component-runtime component-runtime.active?)
         "component lifecycle must start an active PaperWM runtime")
+(assert (= 35 component-runtime.config.window-gap))
+(assert (= 16 component-runtime.config.screen-margin))
+(assert (= 0.421875 (. component-runtime.config.window-ratios 1)))
+(assert (= 0.843750 (. component-runtime.config.window-ratios 2)))
+(local configured-runtime
+  (component-module.paper-wm-type.start-fn
+   {:window-gap 10 :screen-margin 4 :window-ratios [0.5 1.0]}))
+(assert (= 10 configured-runtime.config.window-gap))
+(assert (= 4 configured-runtime.config.screen-margin))
+(assert (= 0.5 (. configured-runtime.config.window-ratios 1)))
+(component-module.paper-wm-type.stop-fn configured-runtime)
 (assert (= :table (type runtime.watcher-restart-timers)))
 (assert (= filter runtime.window-filter))
 (assert (= nil runtime.focused-window))
