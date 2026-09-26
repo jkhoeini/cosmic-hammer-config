@@ -318,6 +318,11 @@
                {:window-id number? :event-kind string? :frame table?
                 :generation number? :sequence number?})
 (derive! event-hierarchy :paper-wm.events/frame-observed :event.kind.window/moved)
+(define-event! event-registry
+               :paper-wm.events/space-focus-retry
+               "Retry one generation-scoped PaperWM Space focus operation"
+               {:generation number?})
+(derive! event-hierarchy :paper-wm.events/space-focus-retry :event.kind.space/changed)
 
 ;; --- Window Element Watcher Events ---
 (define-event! event-registry

@@ -245,6 +245,14 @@
   :target-tag :tag/paper-wm
   :event-selector :paper-wm.events/frame-observed})
 
+(define-subscription! subscription-registry
+ :sub/paper-wm-retry-space-focus
+ {:description "Advance PaperWM Space focus on a retry occurrence"
+  :behavior :paper-wm.behaviors/retry-space-focus
+  :source-tag :tag/paper-wm
+  :target-tag :tag/paper-wm
+  :event-selector :paper-wm.events/space-focus-retry})
+
 ;; --- Mouse Window Management ---
 
 (define-subscription! subscription-registry

@@ -156,6 +156,18 @@
             (when target
               (send-cmd target :retile event.event-data))))}))
 
+(local retry-space-focus-behavior
+  (make-behavior
+   {:name :paper-wm.behaviors/retry-space-focus
+    :description "Advance a PaperWM Space focus conversation"
+    :respond-to [:paper-wm.events/space-focus-retry]
+    :commands {:retry :paper-wm.commands/retry-space-focus}
+    :fn (fn [event candidates send-cmd]
+          (let [target (. candidates.retry 1)
+                generation (?. event :event-data :generation)]
+            (when (and target generation)
+              (send-cmd target :retry {:generation generation}))))}))
+
 ;; ============================================================================
 ;; Screen change
 ;; ============================================================================
@@ -188,6 +200,7 @@
  : reconcile-membership-behavior
  : record-focus-behavior
  : retile-observed-frame-behavior
+ : retry-space-focus-behavior
  : focus-behavior
  : swap-behavior
  : center-window-behavior

@@ -32,6 +32,7 @@
         : reconcile-window-command
         : record-focus-command
         : retile-observed-frame-command
+        : retry-space-focus-command
         : focus-command
         : swap-command
         : center-window-command
@@ -72,6 +73,7 @@
 (add-command! command-registry reconcile-window-command)
 (add-command! command-registry record-focus-command)
 (add-command! command-registry retile-observed-frame-command)
+(add-command! command-registry retry-space-focus-command)
 (add-command! command-registry focus-command)
 (add-command! command-registry swap-command)
 (add-command! command-registry center-window-command)

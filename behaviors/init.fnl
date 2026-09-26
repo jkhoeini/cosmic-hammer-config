@@ -32,6 +32,7 @@
         : reconcile-membership-behavior
         : record-focus-behavior
         : retile-observed-frame-behavior
+        : retry-space-focus-behavior
         : focus-behavior
         : swap-behavior
         : center-window-behavior
@@ -74,6 +75,7 @@
 (add-behavior! behavior-registry reconcile-membership-behavior)
 (add-behavior! behavior-registry record-focus-behavior)
 (add-behavior! behavior-registry retile-observed-frame-behavior)
+(add-behavior! behavior-registry retry-space-focus-behavior)
 (add-behavior! behavior-registry focus-behavior)
 (add-behavior! behavior-registry swap-behavior)
 (add-behavior! behavior-registry center-window-behavior)

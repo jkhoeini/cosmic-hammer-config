@@ -2,11 +2,16 @@
 ;; Commands: Sheaf wrappers for paper-wm user-facing functions
 
 (local {: make-command} (require :sheaf.command-registry))
+(local {: dispatch-event!} (require :sheaf.event-registry))
+(local {: event-registry} (require :events))
 (local {: Direction
         : initialize-layout!
         : reconcile-window-fact!
         : record-focus!
         : retile-observed-frame!
+        : start-space-focus!
+        : retry-space-focus!
+        : space-index-after-direction
         : run-with-runtime!
         : focus-window
         : swap-windows!
@@ -14,9 +19,7 @@
         : set-window-full-width!
         : cycle-window-size!
         : slurp-window!
-        : barf-window!
-        : switch-to-space!
-        : increment-space!} (require :paper-wm))
+        : barf-window!} (require :paper-wm))
 
 (local initialize-layout-command
   (make-command
@@ -152,24 +155,43 @@
 ;; Space navigation
 ;; ============================================================================
 
+(fn emit-space-retry [component-name]
+  (fn [generation]
+    (dispatch-event! event-registry :paper-wm.events/space-focus-retry
+                     component-name {:generation generation})))
+
 (local switch-to-space-command
   (make-command
    :paper-wm.commands/switch-to-space
-   "Switch to a specific space by index"
+   "Start a Space focus conversation for an absolute index"
    {:schema {:index #(and (= :number (type $1)) (<= 1 $1 9))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state switch-to-space! [params.index]))}))
+          (start-space-focus! component.state params.index
+                              (emit-space-retry component.name)))}))
 
 (local increment-space-command
   (make-command
    :paper-wm.commands/increment-space
-   "Switch to an adjacent space"
+   "Start a Space focus conversation for a relative direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state increment-space!
-                             [(. direction-by-keyword params.direction)]))}))
+          (let [index (space-index-after-direction params.direction)]
+            (if index
+                (start-space-focus! component.state index
+                                    (emit-space-retry component.name))
+                component.state)))}))
+
+(local retry-space-focus-command
+  (make-command
+   :paper-wm.commands/retry-space-focus
+   "Advance a generation-scoped Space focus conversation"
+   {:schema {:generation number?}
+    :requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (retry-space-focus! component.state params.generation
+                              (emit-space-retry component.name)))}))
 
 ;; ============================================================================
 ;; Refresh
@@ -189,6 +211,7 @@
  : reconcile-window-command
  : record-focus-command
  : retile-observed-frame-command
+ : retry-space-focus-command
  : focus-command
  : swap-command
  : center-window-command

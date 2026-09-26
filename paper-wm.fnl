@@ -24,6 +24,8 @@
         : set-focused-window} (require :paper-wm.layout))
 (local {: eligible?} (require :paper-wm.eligibility))
 (local {: observe!} (require :event_sources.paper-wm-frame-watcher))
+(local {: start : start-space-operation
+        : advance : advance-space-operation} (require :paper-wm.space-conversation))
 (local {: plan-column} (require :paper-wm.frames))
 (local Window hs.window)
 (local Screen hs.screen)
@@ -90,6 +92,7 @@
                  :watcher-restart-timers {}
                  :frame-observations {:sequences {} :latest {} :timers {}}
                  :frame-source nil
+                 :space-focus {:next-generation 0 :active nil}
                  :space-focus-timer nil}}))
 (fn bind-runtime! [runtime]
   "Bind temporary compatibility aliases to an explicit runtime."
@@ -453,6 +456,85 @@
 
 ;; ---------------------------------------------------------------------------
 ;; User-facing commands
+
+(fn schedule-space-retry! [runtime generation emit-retry]
+  (when runtime.resources.space-focus-timer
+    (runtime.resources.space-focus-timer:stop))
+  (tset runtime.resources :space-focus-timer
+        (Timer.doAfter Window.animationDuration
+                       (fn []
+                         (tset runtime.resources :space-focus-timer nil)
+                         (when runtime.active? (emit-retry generation))))))
+
+(fn attempt-space-focus! [runtime operation]
+  (let [target-window (. runtime.resources.windows operation.target-window-id)
+        screen (Screen (Spaces.spaceDisplay operation.target-space))]
+    (if target-window
+        (target-window:focus)
+        screen
+        (let [point (screen:frame)]
+          (set point.x (+ point.x (math.floor (/ point.w 2))))
+          (set point.y (- point.y 4))
+          (hs.eventtap.leftClick point)))))
+
+(fn start-space-focus! [runtime index emit-retry]
+  "Start and schedule one bounded Space focus conversation."
+  (bind-runtime! runtime)
+  (let [space (get-space index)]
+    (when (= nil space) (lua "return runtime"))
+    (let [screen (Screen (Spaces.spaceDisplay space))
+          target-window (and screen (get-first-visible-window (. window-list space) screen))
+          operation (start-space-operation runtime.resources.space-focus
+                                           space
+                                           (and target-window (target-window:id))
+                                           (Timer.secondsSinceEpoch) 4)]
+      (Spaces.gotoSpace space)
+      (attempt-space-focus! runtime operation)
+      (schedule-space-retry! runtime operation.generation emit-retry)))
+  runtime)
+
+(fn retry-space-focus! [runtime generation emit-retry]
+  "Advance one retry occurrence; stale generations are inert."
+  (bind-runtime! runtime)
+  (let [operation runtime.resources.space-focus.active]
+    (when (= nil operation) (lua "return runtime"))
+    (let [target-window (. runtime.resources.windows operation.target-window-id)
+          result (advance-space-operation
+                  runtime.resources.space-focus generation
+                  (Timer.secondsSinceEpoch)
+                  (= (Spaces.focusedSpace) operation.target-space)
+                  (or (= nil operation.target-window-id)
+                      (= (Window.focusedWindow) target-window)))]
+      (if (= result.outcome :retry)
+          (do
+            (attempt-space-focus! runtime result.operation)
+            (schedule-space-retry! runtime generation emit-retry))
+          (= result.outcome :complete)
+          (let [screen (Screen (Spaces.spaceDisplay result.operation.target-space))]
+            (when screen
+              (hs.mouse.absolutePosition (hs.geometry.rectMidPoint (screen:frame))))))))
+  runtime)
+
+(fn space-index-after-direction [direction]
+  "Return the absolute Space index after a relative left/right choice."
+  (let [offset (if (= direction :left) Direction.LEFT
+                   (= direction :right) Direction.RIGHT
+                   nil)]
+    (when (= nil offset) (lua "return nil"))
+    (let [curr-space-id (Spaces.focusedSpace)
+          layout (Spaces.allSpaces)]
+      (var curr-space-idx -1)
+      (var num-spaces 0)
+      (each [_ screen (ipairs (Screen.allScreens))]
+        (let [screen-uuid (screen:getUUID)]
+          (when (< curr-space-idx 0)
+            (each [idx space-id (ipairs (. layout screen-uuid))]
+              (when (= curr-space-id space-id)
+                (set curr-space-idx (+ idx num-spaces))
+                (lua :break))))
+          (set num-spaces (+ num-spaces (length (. layout screen-uuid))))))
+      (when (and (>= curr-space-idx 0) (> num-spaces 0))
+        (+ (% (+ (- curr-space-idx 1) offset) num-spaces) 1)))))
 ;; ---------------------------------------------------------------------------
 ;; These are the actions exposed to Sheaf command wrappers.
 ;; Each takes simple parameters and performs a complete tiling operation.
@@ -682,6 +764,9 @@
  : retile-observed-frame!
  : focus-window
  : swap-windows!
+ : start-space-focus!
+ : retry-space-focus!
+ : space-index-after-direction
  : center-window!
  : set-window-full-width!
  : cycle-window-size!
