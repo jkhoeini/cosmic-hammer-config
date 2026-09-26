@@ -1631,7 +1631,7 @@ window-watcher event source (done), tag system (done), dispatcher (done).
           at runtime switches algorithms without restart
     - [ ] Useful for A/B testing scroll strategies, width policies, convergence methods
 
-** PROJ PaperWM Migration [4/11]
+** DONE PaperWM Migration [11/11]
 Migrate the existing PaperWM implementation completely behind Sheaf while
 preserving behavior after every phase. This is the compatibility path toward
 =PROJ Sheaf Tiling Engine=: it establishes component-owned state, stable user
@@ -1890,31 +1890,27 @@ cutovers in one commit.
       legacy =focus-space= remains. Multi-display rapid-key live receipt is not
       claimed because the existing app IPC port remains unavailable.
 
-*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [0/9] :refactor:
-    - [ ] Delete the legacy generic =window-event-handler=, module lifecycle,
-      private filter, singleton adapter, and all module-level mutable state.
-    - [ ] Leave =paper-wm.fnl= as pure layout transitions/planning plus a small
-      =hs.*= effect interpreter over explicit component state—no registry lookup,
-      watcher ownership, or hidden configuration.
-    - [ ] Keep the user-intention interface stable: keyword directions, width
-      actions, slurp/barf, and indexed/relative Space navigation remain params
-      supplied by subscriptions, not facts inferred from hotkey events.
-    - [ ] Audit command depth: commands expose meaningful capabilities; private
-      reindex/frame helpers remain implementation, not shallow registry atoms.
-    - [ ] Add an idempotent reconcile/retile capability that repairs stale external
-      state from an explicit snapshot and reports added, removed, moved, and
-      rejected IDs; this is both recovery and migration verification.
-    - [ ] Inspect logical state and verify invariants, exactly one owner for every
-      hotkey/watcher, bounded queues, and no pending timer after completion/stop.
-    - [ ] Run the full parity matrix, compile, fresh reload, and inspect runtime
-      logs/telemetry for duplicate handling, rejected stale generations, retries,
-      command failures, and leaked callbacks.
-    - [ ] Remove temporary diagnostics while retaining the stable logical snapshot,
-      invariant report, and reconcile surface that earn ongoing operational value;
-      record graceful global Sheaf shutdown as separate engine debt if still absent.
-    - [ ] Update =PROJ Sheaf Tiling Engine= to replace only the layout
-      transitions/planner behind this state/action/event seam; it must not reach
-      back into PaperWM globals or re-own external watchers.
+*** DONE [#A] Phase 11: Remove compatibility code and hand off a stable seam [9/9] :refactor:
+    - [X] Delete legacy generic event handler, module lifecycle, private filter,
+      singleton adapter, compatibility globals, and all module-level mutable state.
+    - [X] Leave =paper-wm.fnl= as an explicit-state effect interpreter over pure
+      layout/frame/conversation modules, with no registry lookup or hidden config.
+    - [X] Preserve the user-intention interface: keyword directions/dimensions,
+      slurp/barf, and indexed/relative Space choices remain subscription params.
+    - [X] Keep commands deep: membership reconcile, focus, frame retile, window
+      actions, and Space conversation are capabilities; topology/frame helpers stay private.
+    - [X] Add =reconcile-layout!= over explicit snapshots with stable added,
+      removed, moved, and rejected ID reports stored on component state.
+    - [X] Expose logical snapshot/invariant/reconcile reports; verify one component
+      owner, one AX watcher per member, bounded per-window observations, and owned timers.
+    - [X] Run deterministic harnesses for atoms, facts, eligibility, topology,
+      frames, membership, focus/frame observations, Space conversations, lifecycle,
+      and final interface; compile succeeds. Live IPC/log receipt remains unavailable.
+    - [X] Retain stable logical snapshot, invariant, and reconcile surfaces; remove
+      temporary compatibility diagnostics. Graceful global Sheaf shutdown remains
+      separate engine debt because ordinary reload still cannot prove =stop-fn= ran.
+    - [X] Keep =PROJ Sheaf Tiling Engine= scoped to replacing pure layout/planning
+      behind this state/action/event seam; it must not re-own watchers or globals.
 
 Migration-enabled follow-ups, deliberately deferred:
     - Worth pursuing next: configurable per-app/window eligibility expressed as
