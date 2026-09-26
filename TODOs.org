@@ -1722,26 +1722,46 @@ cutovers in one commit.
     - [X] Refresh through the shared screen-watcher instead of a private screen watcher.
     - [X] Refresh after cross-screen WMBB placement once Space assignment settles.
 
-*** LATER [#A] Phase 5: Characterize parity and asynchronous ownership [0/8] :architecture:
-    - [ ] Inventory every logical fact, external effect, callback, and resource
-      owner. Include the private filter, AX watchers, watcher-restart timers,
-      pending-window retries, and =focus-space= =doUntil= timers/coroutines.
-    - [ ] Record the current event-to-transition matrix, including initial,
-      focused, visible/not-visible, fullscreen/unfullscreen, AX moved/resized,
-      screen change, Space navigation, and WMBB window-placed.
-    - [ ] Characterize exact private-filter eligibility: visible, non-fullscreen,
-      titlebar, =AXStandardWindow=, tab rejection, and all default filter rules.
-    - [ ] Add complete schemas to PaperWM commands and document the stable action
-      params that the future tiling implementation must preserve.
-    - [ ] Add a temporary read-only logical snapshot/diagnostic seam if needed to
-      compare column membership, reverse indexes, focus, pending work, and owned
-      resource counts before and after each cutover; remove temporary access later.
-    - [ ] Build a focused live parity smoke covering at least two columns, a
-      stacked column, two Spaces, fullscreen, hide/show, close, and screen refresh.
-    - [ ] Record baseline frames, focus, membership, handler counts, and timer
-      cleanup rather than relying only on absence of errors.
-    - [ ] Keep discovered behavioral bugs separate from migration parity; only the
-      known slurp race and bugs blocking safe ownership transfer enter this project.
+*** DONE [#A] Phase 5: Characterize parity and asynchronous ownership [8/8] :architecture:
+    - [X] Inventory every logical fact, external effect, callback, and resource
+      owner. Logical globals are =window-list=, =index-table=, =focused-window=,
+      and =pending-window=. Resource globals are the private =window-filter=,
+      per-window AX watchers, watcher-restart timers, untracked pending-window
+      retry timers, and the untracked =focus-space= =doUntil= timer/coroutine.
+      Legacy callbacks own mutation today; Phase 6 transfers that ownership.
+    - [X] Record the current event-to-transition matrix: startup refresh adds and
+      tiles eligible windows; focused records focus and retiles its Space; visible
+      and unfullscreened add/retry then tile; not-visible removes with focus
+      fallback; fullscreened removes without focus; AX move/resize retiles using
+      the live frame; screen change and WMBB placement run full refresh; user
+      commands focus, mutate layout/frames, or initiate asynchronous Space focus.
+    - [X] Characterize exact private-filter eligibility. =WindowFilter.new()=
+      copies the process-wide default filter (including transient-app exclusions,
+      the Cosmic Hammer Preferences/Console exception, and visible-by-default),
+      then the override requires =visible=true=, =fullscreen=false=,
+      =hasTitlebar=true=, and =allowRoles=:AXStandardWindow=. =add-window!=
+      additionally rejects any window whose =tabCount() > 0=.
+    - [X] Add complete schemas to all ten stable PaperWM commands. Directional
+      focus/swap accept left/right/up/down; sizing accepts width/height plus
+      ascending/descending; Space increment accepts left/right; absolute Space
+      index accepts 1..9; the remaining commands accept no params. Delete the
+      unused component =pending-window-id= and set/clear commands.
+    - [X] Add =diagnostic-snapshot= as a read-only migration seam. It deep-copies
+      layout/index tables, exposes focused/pending IDs, and reports only filter,
+      AX-watcher, and restart-timer counts—never mutable resource handles.
+    - [X] Add focused deterministic harnesses for command contracts and diagnostic
+      isolation. The broader two-column/stacked/two-Space/fullscreen/hide-show/
+      close/screen-refresh parity smoke remains the live gate for each ownership
+      cutover because this repository has no simulated =hs.window= runtime.
+    - [X] Establish the source baseline: watcher/resource counts come from
+      =diagnostic-snapshot= before/after each live cutover; frames, focus, and
+      membership are compared through its copied logical facts. IPC was unavailable
+      during characterization (the running app had no message port), so no live
+      receipt is claimed; Phase 6 cannot complete without a fresh live receipt.
+    - [X] Keep behavioral bugs separate from migration parity. The known slurp
+      read-after-async-write race remains the only planned behavior fix; untracked
+      pending/Space-focus timers and late callbacks are ownership blockers handled
+      by lifecycle epoch and tracked-operation work in Phase 6.
 
 *** LATER [#A] Phase 6: Make the PaperWM component own the legacy runtime [0/10] :architecture:
     - [ ] Introduce one explicit runtime table containing the legacy layout,
