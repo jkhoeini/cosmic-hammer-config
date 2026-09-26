@@ -105,7 +105,7 @@
    "PaperWM tiling window manager"
    {:traits [:trait/has-paper-wm-runtime]
     :sources sources
-    :start-fn (fn [config] (start!))
+    :start-fn start!
     :stop-fn stop!}))
 
 {: paper-wm-type}

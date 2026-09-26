@@ -24,10 +24,10 @@
 ;; Configuration
 ;; ---------------------------------------------------------------------------
 
-;; These values can be overridden before calling start!
-(var config {:window-gap 35
-             :screen-margin 16
-             :window-ratios [0.421875 0.843750]})
+(local default-config {:window-gap 35
+                       :screen-margin 16
+                       :window-ratios [0.421875 0.843750]})
+(var config default-config)
 
 (local logger (hs.logger.new :PaperWM))
 
@@ -66,20 +66,25 @@
 
 (var current-runtime nil)
 
-(fn make-runtime []
+(fn make-runtime [?config]
   "Create one owner for legacy PaperWM logical state and resources."
   (set next-runtime-epoch (+ next-runtime-epoch 1))
-  {:active? true
-   :epoch next-runtime-epoch
-   :window-list {}
-   :index-table {}
-   :ui-watchers {}
-   :focused-window nil
-   :watcher-restart-timers {}
-   :pending-window nil
-   :pending-window-timers {}
-   :space-focus-timer nil
-   :window-filter nil})
+  (let [runtime-config {:window-gap (or (?. ?config :window-gap) default-config.window-gap)
+                        :screen-margin (or (?. ?config :screen-margin) default-config.screen-margin)
+                        :window-ratios (or (?. ?config :window-ratios)
+                                           default-config.window-ratios)}]
+    {:active? true
+     :epoch next-runtime-epoch
+     :config runtime-config
+     :window-list {}
+     :index-table {}
+     :ui-watchers {}
+     :focused-window nil
+     :watcher-restart-timers {}
+     :pending-window nil
+     :pending-window-timers {}
+     :space-focus-timer nil
+     :window-filter nil}))
 (fn bind-runtime! [runtime]
   "Bind the temporary compatibility globals to an explicit runtime."
   (set current-runtime runtime)
@@ -90,6 +95,7 @@
   (set watcher-restart-timers runtime.watcher-restart-timers)
   (set pending-window runtime.pending-window)
   (set window-filter runtime.window-filter)
+  (set config runtime.config)
   runtime)
 
 (fn capture-runtime! [runtime]
@@ -785,11 +791,11 @@
 ;; Lifecycle
 ;; ---------------------------------------------------------------------------
 
-(fn start! []
+(fn start! [?config]
   "Start automatic window tiling and return its explicit runtime."
   (when (not (Spaces.screensHaveSeparateSpaces))
     (logger.e "please check 'Displays have separate Spaces' in System Preferences -> Mission Control"))
-  (let [runtime (bind-runtime! (make-runtime))]
+  (let [runtime (bind-runtime! (make-runtime ?config))]
     (set window-filter
          (: (WindowFilter.new) :setOverrideFilter
             {:visible true
@@ -838,7 +844,7 @@
 ;; ---------------------------------------------------------------------------
 
 {: Direction
- : config
+ : default-config
  : start!
  : stop!
  : diagnostic-snapshot
