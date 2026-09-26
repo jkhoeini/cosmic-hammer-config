@@ -40,4 +40,20 @@
 (assert (= 0 (length fresh.index-table))
         "diagnostic index table leaked mutable module state")
 
+(local runtime (paper-wm.start!))
+(assert (= :table (type runtime)) "start! must return the owned runtime")
+(assert (= :table (type runtime.window-list)))
+(assert (= :table (type runtime.index-table)))
+(assert (= :table (type runtime.ui-watchers)))
+(assert (= :table (type runtime.watcher-restart-timers)))
+(assert (= filter runtime.window-filter))
+(assert (= nil runtime.focused-window))
+(assert (= nil runtime.pending-window))
+
+(local running (paper-wm.diagnostic-snapshot runtime))
+(assert running.resources.window-filter?)
+(paper-wm.stop! runtime)
+(local stopped (paper-wm.diagnostic-snapshot runtime))
+(assert (= false stopped.resources.window-filter?))
+
 (print "PaperWM runtime diagnostics passed")
