@@ -12,6 +12,16 @@
        :slurp-window! #nil :barf-window! #nil :switch-to-space! #nil
        :increment-space! #nil :refresh-windows! #nil})
 
+(local membership-calls [])
+(tset package.loaded.paper-wm :initialize-layout!
+      (fn [runtime facts]
+        (table.insert membership-calls [:initialize (length facts)])
+        runtime))
+(tset package.loaded.paper-wm :reconcile-window-fact!
+      (fn [runtime fact opts]
+        (table.insert membership-calls [:reconcile fact.window-id opts.runtime-epoch])
+        runtime))
+
 
 (local layout (require :paper-wm.layout))
 (local commands (require :commands.paper-wm))
@@ -32,11 +42,15 @@
   (commands.initialize-layout-command.fn component {:windows [facts]}))
 (assert (= 1 (. initialized.tiling-state.spaces 3 1 1)))
 (assert (= 1 (. initialized.tiling-state.index 1 :row)))
+(assert (= :initialize (. membership-calls 1 1))
+        "initialize command must delegate effects to PaperWM interpreter")
 
 (local duplicate
   (commands.reconcile-window-command.fn {:state initialized}
                                         {:window facts :runtime-epoch 1}))
 (assert (= 1 (length (. duplicate.tiling-state.spaces 3))))
+(assert (= :reconcile (. membership-calls 2 1))
+        "reconcile command must delegate effects to PaperWM interpreter")
 
 (local unsuitable {})
 (each [key value (pairs facts)] (tset unsuitable key value))
