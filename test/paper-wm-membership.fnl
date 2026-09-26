@@ -2,17 +2,21 @@
                            (when (= id 1)
                              {:id #1 :frame (fn [] {:x 0 :y 0 :w 100 :h 100})}))}})
 (tset package.loaded :paper-wm
-      {:Direction {:LEFT -1 :RIGHT 1 :UP -2 :DOWN 2
-                   :WIDTH 3 :HEIGHT 4 :ASCENDING 5 :DESCENDING 6}
-       :run-with-runtime! (fn [runtime action args]
-                            (action (table.unpack (or args [])))
-                            runtime)
-       :focus-window #nil :swap-windows! #nil :center-window! #nil
-       :set-window-full-width! #nil :cycle-window-size! #nil
-       :slurp-window! #nil :barf-window! #nil :switch-to-space! #nil
-       :increment-space! #nil :refresh-windows! #nil})
+      {:focus-window! (fn [runtime] runtime)
+       :swap-windows! (fn [runtime] runtime)
+       :center-window! (fn [runtime] runtime)
+       :set-window-full-width! (fn [runtime] runtime)
+       :cycle-window-size! (fn [runtime] runtime)
+       :slurp-window! (fn [runtime] runtime)
+       :barf-window! (fn [runtime] runtime)
+       :start-space-focus! (fn [runtime] runtime)
+       :retry-space-focus! (fn [runtime] runtime)
+       :space-index-after-direction #1})
 
 (local membership-calls [])
+(tset package.loaded.paper-wm :reconcile-layout!
+      (fn [runtime facts]
+        ((. package.loaded.paper-wm :initialize-layout!) runtime facts)))
 (tset package.loaded.paper-wm :initialize-layout!
       (fn [runtime facts]
         (table.insert membership-calls [:initialize (length facts)])
