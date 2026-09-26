@@ -62,11 +62,16 @@
 (var pending-window nil)
 (var window-filter nil)
 
+(var next-runtime-epoch 0)
+
 (var current-runtime nil)
 
 (fn make-runtime []
   "Create one owner for legacy PaperWM logical state and resources."
-  {:window-list {}
+  (set next-runtime-epoch (+ next-runtime-epoch 1))
+  {:active? true
+   :epoch next-runtime-epoch
+   :window-list {}
    :index-table {}
    :ui-watchers {}
    :focused-window nil
@@ -75,7 +80,6 @@
    :pending-window-timers {}
    :space-focus-timer nil
    :window-filter nil})
-
 (fn bind-runtime! [runtime]
   "Bind the temporary compatibility globals to an explicit runtime."
   (set current-runtime runtime)
@@ -115,13 +119,18 @@
         runtime-ui-watchers (if runtime runtime.ui-watchers ui-watchers)
         runtime-restart-timers (if runtime runtime.watcher-restart-timers
                                    watcher-restart-timers)]
-    {:window-list (copy-table runtime-window-list)
+    {:active? (and runtime runtime.active?)
+     :epoch (and runtime runtime.epoch)
+     :window-list (copy-table runtime-window-list)
      :index-table (copy-table runtime-index-table)
      :focused-window-id (and runtime-focused-window (runtime-focused-window:id))
      :pending-window-id (and runtime-pending-window (runtime-pending-window:id))
      :resources {:window-filter? (not= nil runtime-window-filter)
                  :ui-watcher-count (table-count runtime-ui-watchers)
-                 :watcher-restart-timer-count (table-count runtime-restart-timers)}}))
+                 :watcher-restart-timer-count (table-count runtime-restart-timers)
+                 :pending-window-timer-count
+                 (table-count (or (and runtime runtime.pending-window-timers) {}))
+                 :space-focus-timer? (not= nil (and runtime runtime.space-focus-timer))}}))
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -790,16 +799,25 @@
   "Stop an explicit PaperWM runtime and release its current resources."
   (let [runtime (or ?runtime current-runtime)]
     (when runtime
+      (tset runtime :active? false)
       (when runtime.window-filter
         (runtime.window-filter:unsubscribeAll))
       (each [_ watcher (pairs runtime.ui-watchers)]
         (watcher:stop))
       (each [_ timer (pairs runtime.watcher-restart-timers)]
         (timer:stop))
+      (each [_ timer (pairs runtime.pending-window-timers)]
+        (timer:stop))
+      (when runtime.space-focus-timer
+        (runtime.space-focus-timer:stop))
       (tset runtime :window-filter nil)
+      (tset runtime :ui-watchers {})
       (tset runtime :watcher-restart-timers {})
+      (tset runtime :pending-window-timers {})
+      (tset runtime :space-focus-timer nil)
       (when (= runtime current-runtime)
         (set window-filter nil)
+        (set ui-watchers runtime.ui-watchers)
         (set watcher-restart-timers runtime.watcher-restart-timers)))))
 
 ;; ---------------------------------------------------------------------------
