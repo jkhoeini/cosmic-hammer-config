@@ -34,19 +34,20 @@
 (assert (= 1 (. initialized.tiling-state.index 1 :row)))
 
 (local duplicate
-  (commands.reconcile-window-command.fn {:state initialized} {:window facts}))
+  (commands.reconcile-window-command.fn {:state initialized}
+                                        {:window facts :runtime-epoch 1}))
 (assert (= 1 (length (. duplicate.tiling-state.spaces 3))))
 
-(local unsuitable {} )
+(local unsuitable {})
 (each [key value (pairs facts)] (tset unsuitable key value))
 (tset unsuitable :fullscreen true)
 (local removed
-  (commands.reconcile-window-command.fn {:state duplicate} {:window unsuitable}))
+  (commands.reconcile-window-command.fn {:state duplicate}
+                                        {:window unsuitable :runtime-epoch 1}))
 (assert (= nil (. removed.tiling-state.index 1)))
 
 (local stale
   (commands.reconcile-window-command.fn {:state removed}
                                         {:window facts :runtime-epoch 0}))
 (assert (= removed stale) "stale membership occurrence changed state")
-
 (print "PaperWM membership commands passed")

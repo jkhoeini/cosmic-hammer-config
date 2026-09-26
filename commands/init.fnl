@@ -28,7 +28,9 @@
         : upsert-window-command
         : remove-window-command
         : set-focused-window-command} (require :commands.window-state))
-(local {: focus-command
+(local {: initialize-layout-command
+        : reconcile-window-command
+        : focus-command
         : swap-command
         : center-window-command
         : set-full-width-command
@@ -64,6 +66,8 @@
 (add-command! command-registry upsert-window-command)
 (add-command! command-registry remove-window-command)
 (add-command! command-registry set-focused-window-command)
+(add-command! command-registry initialize-layout-command)
+(add-command! command-registry reconcile-window-command)
 (add-command! command-registry focus-command)
 (add-command! command-registry swap-command)
 (add-command! command-registry center-window-command)
