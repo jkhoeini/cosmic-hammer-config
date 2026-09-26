@@ -104,7 +104,13 @@
    :component.type/paper-wm
    "PaperWM tiling window manager"
    {:traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :sources sources
+    :sources (doto sources
+               (table.insert
+                {:type :event-source.type/paper-wm-frame-watcher
+                 :instance-name "frames"
+                 :tags [:tag/paper-wm-frame-watcher]
+                 :config-fn (fn [state config instance-name]
+                              {:runtime state})}))
     :start-fn start!
     :stop-fn stop!}))
 

@@ -311,6 +311,14 @@
 (derive! event-hierarchy :window-watcher.events/initial-windows :event.kind.window/initial)
 
 
+;; --- PaperWM Events ---
+(define-event! event-registry
+               :paper-wm.events/frame-observed
+               "Latest coalesced frame observation for a PaperWM window"
+               {:window-id number? :event-kind string? :frame table?
+                :generation number? :sequence number?})
+(derive! event-hierarchy :paper-wm.events/frame-observed :event.kind.window/moved)
+
 ;; --- Window Element Watcher Events ---
 (define-event! event-registry
                :window-element-watcher.events/moved

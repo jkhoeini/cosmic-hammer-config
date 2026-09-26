@@ -12,6 +12,7 @@
 (local {: window-watcher-source-type} (require :event_sources.window-watcher))
 (local {: mouse-window-watcher-source-type} (require :event_sources.mouse-window-watcher))
 (local {: window-element-watcher-source-type} (require :event_sources.window-element-watcher))
+(local {: frame-watcher-source-type} (require :event_sources.paper-wm-frame-watcher))
 (local {: app-watcher-source-type} (require :event_sources.app-watcher))
 (local {: url-handler-source-type} (require :event_sources.url-handler))
 
@@ -28,6 +29,7 @@
 (add-source-type! source-registry window-watcher-source-type)
 (add-source-type! source-registry mouse-window-watcher-source-type)
 (add-source-type! source-registry window-element-watcher-source-type)
+(add-source-type! source-registry frame-watcher-source-type)
 (add-source-type! source-registry app-watcher-source-type)
 (add-source-type! source-registry url-handler-source-type)
 

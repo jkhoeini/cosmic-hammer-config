@@ -85,9 +85,11 @@
      :tiling-state (empty-state)
      :resources {:windows {}
                  :ui-watchers {}
+                 :watcher-generations {}
                  :watcher-restart-timers {}
-                 :space-focus-timer nil
-                 :window-filter nil}}))
+                 :frame-observations {:sequences {} :latest {} :timers {}}
+                 :frame-source nil
+                 :space-focus-timer nil}}))
 (fn bind-runtime! [runtime]
   "Bind temporary compatibility aliases to an explicit runtime."
   (set current-runtime runtime)
