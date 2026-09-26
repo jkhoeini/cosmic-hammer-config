@@ -1,6 +1,9 @@
 (tset package.loaded :paper-wm
       {:Direction {:LEFT -1 :RIGHT 1 :UP -2 :DOWN 2
                    :WIDTH 3 :HEIGHT 4 :ASCENDING 5 :DESCENDING 6}
+       :run-with-runtime! (fn [runtime action args]
+                            (action runtime (table.unpack (or args [])))
+                            runtime)
        :focus-window (fn [runtime direction] (tset runtime :called [:focus direction]))
        :swap-windows! (fn [runtime direction] (tset runtime :called [:swap direction]))
        :center-window! (fn [runtime] (tset runtime :called [:center]))

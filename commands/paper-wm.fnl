@@ -3,6 +3,7 @@
 
 (local {: make-command} (require :sheaf.command-registry))
 (local {: Direction
+        : run-with-runtime!
         : focus-window
         : swap-windows!
         : center-window!
@@ -34,9 +35,10 @@
    "Focus the window in a direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right)
                             (= $1 :up) (= $1 :down))}
+    :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (focus-window (. direction-by-keyword params.direction))
-          nil)}))
+          (run-with-runtime! component.state focus-window
+                             [(. direction-by-keyword params.direction)]))}))
 
 ;; ============================================================================
 ;; Swap
@@ -48,9 +50,10 @@
    "Swap the focused window in a direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right)
                             (= $1 :up) (= $1 :down))}
+    :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (swap-windows! (. direction-by-keyword params.direction))
-          nil)}))
+          (run-with-runtime! component.state swap-windows!
+                             [(. direction-by-keyword params.direction)]))}))
 
 ;; ============================================================================
 ;; Window sizing
@@ -60,17 +63,17 @@
   (make-command
    :paper-wm.commands/center-window
    "Center the focused window on screen"
-   {:fn (fn [component params]
-          (center-window!)
-          nil)}))
+   {:requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (run-with-runtime! component.state center-window!))}))
 
 (local set-full-width-command
   (make-command
    :paper-wm.commands/set-full-width
    "Set the focused window to full screen width"
-   {:fn (fn [component params]
-          (set-window-full-width!)
-          nil)}))
+   {:requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (run-with-runtime! component.state set-window-full-width!))}))
 
 (local cycle-window-size-command
   (make-command
@@ -78,10 +81,11 @@
    "Cycle the focused window size"
    {:schema {:direction #(or (= $1 :width) (= $1 :height))
              :cycle-direction #(or (= $1 :ascending) (= $1 :descending))}
+    :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (cycle-window-size! (. direction-by-keyword params.direction)
-                              (. direction-by-keyword params.cycle-direction))
-          nil)}))
+          (run-with-runtime! component.state cycle-window-size!
+                             [(. direction-by-keyword params.direction)
+                              (. direction-by-keyword params.cycle-direction)]))}))
 
 ;; ============================================================================
 ;; Column manipulation
@@ -91,17 +95,17 @@
   (make-command
    :paper-wm.commands/slurp-window
    "Slurp a window into the current column"
-   {:fn (fn [component params]
-          (slurp-window!)
-          nil)}))
+   {:requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (run-with-runtime! component.state slurp-window!))}))
 
 (local barf-window-command
   (make-command
    :paper-wm.commands/barf-window
    "Barf a window out of the current column"
-   {:fn (fn [component params]
-          (barf-window!)
-          nil)}))
+   {:requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (run-with-runtime! component.state barf-window!))}))
 
 ;; ============================================================================
 ;; Space navigation
@@ -112,18 +116,19 @@
    :paper-wm.commands/switch-to-space
    "Switch to a specific space by index"
    {:schema {:index #(and (= :number (type $1)) (<= 1 $1 9))}
+    :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (switch-to-space! params.index)
-          nil)}))
+          (run-with-runtime! component.state switch-to-space! [params.index]))}))
 
 (local increment-space-command
   (make-command
    :paper-wm.commands/increment-space
    "Switch to an adjacent space"
    {:schema {:direction #(or (= $1 :left) (= $1 :right))}
+    :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (increment-space! (. direction-by-keyword params.direction))
-          nil)}))
+          (run-with-runtime! component.state increment-space!
+                             [(. direction-by-keyword params.direction)]))}))
 
 ;; ============================================================================
 ;; Refresh
@@ -133,9 +138,9 @@
   (make-command
    :paper-wm.commands/refresh-windows
    "Refresh and re-tile all windows"
-   {:fn (fn [component params]
-          (refresh-windows!)
-          nil)}))
+   {:requires-traits [:trait/has-paper-wm-runtime]
+    :fn (fn [component params]
+          (run-with-runtime! component.state refresh-windows!))}))
 
 
 {: focus-command

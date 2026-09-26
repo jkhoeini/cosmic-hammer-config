@@ -92,6 +92,19 @@
   (set window-filter runtime.window-filter)
   runtime)
 
+(fn capture-runtime! [runtime]
+  "Capture compatibility scalar globals after a legacy action."
+  (tset runtime :focused-window focused-window)
+  (tset runtime :pending-window pending-window)
+  (tset runtime :window-filter window-filter)
+  runtime)
+
+(fn run-with-runtime! [runtime action args]
+  "Run one legacy action against injected component state."
+  (bind-runtime! runtime)
+  (action (table.unpack (or args [])))
+  (capture-runtime! runtime))
+
 (fn copy-table [source]
   "Copy a table recursively for read-only diagnostics."
   (let [result {}]
@@ -829,6 +842,7 @@
  : start!
  : stop!
  : diagnostic-snapshot
+ : run-with-runtime!
  ;; User-facing commands
  : focus-window
  : swap-windows!

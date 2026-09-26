@@ -39,6 +39,17 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
     window_filter = runtime["window-filter"]
     return runtime
   end
+  local function capture_runtime_21(runtime)
+    runtime["focused-window"] = focused_window
+    runtime["pending-window"] = pending_window
+    runtime["window-filter"] = window_filter
+    return runtime
+  end
+  local function run_with_runtime_21(runtime, action, args)
+    bind_runtime_21(runtime)
+    action(table.unpack((args or {})))
+    return capture_runtime_21(runtime)
+  end
   local function copy_table(source)
     local result = {}
     for key, value in pairs(source) do
@@ -889,7 +900,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
       return nil
     end
   end
-  return {Direction = Direction, config = config, ["start!"] = start_21, ["stop!"] = stop_21, ["diagnostic-snapshot"] = diagnostic_snapshot, ["focus-window"] = focus_window, ["swap-windows!"] = swap_windows_21, ["center-window!"] = center_window_21, ["set-window-full-width!"] = set_window_full_width_21, ["cycle-window-size!"] = cycle_window_size_21, ["slurp-window!"] = slurp_window_21, ["barf-window!"] = barf_window_21, ["switch-to-space!"] = switch_to_space_21, ["increment-space!"] = increment_space_21, ["refresh-windows!"] = refresh_windows_21}
+  return {Direction = Direction, config = config, ["start!"] = start_21, ["stop!"] = stop_21, ["diagnostic-snapshot"] = diagnostic_snapshot, ["run-with-runtime!"] = run_with_runtime_21, ["focus-window"] = focus_window, ["swap-windows!"] = swap_windows_21, ["center-window!"] = center_window_21, ["set-window-full-width!"] = set_window_full_width_21, ["cycle-window-size!"] = cycle_window_size_21, ["slurp-window!"] = slurp_window_21, ["barf-window!"] = barf_window_21, ["switch-to-space!"] = switch_to_space_21, ["increment-space!"] = increment_space_21, ["refresh-windows!"] = refresh_windows_21}
 end
 paper_wm = require("paper-wm")
 paper_wm["start!"]()
@@ -3843,6 +3854,7 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local make_command = _local_527_["make-command"]
   local _local_528_ = require("paper-wm")
   local Direction = _local_528_.Direction
+  local run_with_runtime_21 = _local_528_["run-with-runtime!"]
   local focus_window = _local_528_["focus-window"]
   local swap_windows_21 = _local_528_["swap-windows!"]
   local center_window_21 = _local_528_["center-window!"]
@@ -3859,31 +3871,27 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
     return ((_241 == "left") or (_241 == "right") or (_241 == "up") or (_241 == "down"))
   end
   local function _530_(component, params)
-    focus_window(direction_by_keyword[params.direction])
-    return nil
+    return run_with_runtime_21(component.state, focus_window, {direction_by_keyword[params.direction]})
   end
-  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _529_}, fn = _530_})
+  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _529_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _530_})
   local swap_command
   local function _531_(_241)
     return ((_241 == "left") or (_241 == "right") or (_241 == "up") or (_241 == "down"))
   end
   local function _532_(component, params)
-    swap_windows_21(direction_by_keyword[params.direction])
-    return nil
+    return run_with_runtime_21(component.state, swap_windows_21, {direction_by_keyword[params.direction]})
   end
-  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _531_}, fn = _532_})
+  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _531_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _532_})
   local center_window_command
   local function _533_(component, params)
-    center_window_21()
-    return nil
+    return run_with_runtime_21(component.state, center_window_21)
   end
-  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {fn = _533_})
+  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _533_})
   local set_full_width_command
   local function _534_(component, params)
-    set_window_full_width_21()
-    return nil
+    return run_with_runtime_21(component.state, set_window_full_width_21)
   end
-  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {fn = _534_})
+  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _534_})
   local cycle_window_size_command
   local function _535_(_241)
     return ((_241 == "width") or (_241 == "height"))
@@ -3892,46 +3900,40 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
     return ((_241 == "ascending") or (_241 == "descending"))
   end
   local function _537_(component, params)
-    cycle_window_size_21(direction_by_keyword[params.direction], direction_by_keyword[params["cycle-direction"]])
-    return nil
+    return run_with_runtime_21(component.state, cycle_window_size_21, {direction_by_keyword[params.direction], direction_by_keyword[params["cycle-direction"]]})
   end
-  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _535_, ["cycle-direction"] = _536_}, fn = _537_})
+  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _535_, ["cycle-direction"] = _536_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _537_})
   local slurp_window_command
   local function _538_(component, params)
-    slurp_window_21()
-    return nil
+    return run_with_runtime_21(component.state, slurp_window_21)
   end
-  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {fn = _538_})
+  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _538_})
   local barf_window_command
   local function _539_(component, params)
-    barf_window_21()
-    return nil
+    return run_with_runtime_21(component.state, barf_window_21)
   end
-  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {fn = _539_})
+  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _539_})
   local switch_to_space_command
   local function _540_(_241)
     return (("number" == type(_241)) and ((1 <= _241) and (_241 <= 9)))
   end
   local function _541_(component, params)
-    switch_to_space_21(params.index)
-    return nil
+    return run_with_runtime_21(component.state, switch_to_space_21, {params.index})
   end
-  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Switch to a specific space by index", {schema = {index = _540_}, fn = _541_})
+  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Switch to a specific space by index", {schema = {index = _540_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _541_})
   local increment_space_command
   local function _542_(_241)
     return ((_241 == "left") or (_241 == "right"))
   end
   local function _543_(component, params)
-    increment_space_21(direction_by_keyword[params.direction])
-    return nil
+    return run_with_runtime_21(component.state, increment_space_21, {direction_by_keyword[params.direction]})
   end
-  increment_space_command = make_command("paper-wm.commands/increment-space", "Switch to an adjacent space", {schema = {direction = _542_}, fn = _543_})
+  increment_space_command = make_command("paper-wm.commands/increment-space", "Switch to an adjacent space", {schema = {direction = _542_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _543_})
   local refresh_windows_command
   local function _544_(component, params)
-    refresh_windows_21()
-    return nil
+    return run_with_runtime_21(component.state, refresh_windows_21)
   end
-  refresh_windows_command = make_command("paper-wm.commands/refresh-windows", "Refresh and re-tile all windows", {fn = _544_})
+  refresh_windows_command = make_command("paper-wm.commands/refresh-windows", "Refresh and re-tile all windows", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _544_})
   return {["focus-command"] = focus_command, ["swap-command"] = swap_command, ["center-window-command"] = center_window_command, ["set-full-width-command"] = set_full_width_command, ["cycle-window-size-command"] = cycle_window_size_command, ["slurp-window-command"] = slurp_window_command, ["barf-window-command"] = barf_window_command, ["switch-to-space-command"] = switch_to_space_command, ["increment-space-command"] = increment_space_command, ["refresh-windows-command"] = refresh_windows_command}
 end
 require("commands")
