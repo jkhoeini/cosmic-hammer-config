@@ -33,6 +33,15 @@
                       (layout-module.add-window runtime.tiling-state fact.window-id
                                                 fact.space-id 1)))))
         runtime))
+(tset package.loaded.paper-wm :record-focus!
+      (fn [runtime window-id space-id frame]
+        (table.insert membership-calls [:focus window-id space-id frame])
+        (tset runtime.tiling-state :focused-window-id window-id)
+        runtime))
+(tset package.loaded.paper-wm :retile-observed-frame!
+      (fn [runtime params]
+        (table.insert membership-calls [:frame params.window-id params.sequence])
+        runtime))
 
 
 (local layout (require :paper-wm.layout))
@@ -50,6 +59,7 @@
               :has-titlebar true :visible true :fullscreen false :tab-count 0
               :frame {:x 0 :y 0 :w 100 :h 100}})
 
+
 (local initialized
   (commands.initialize-layout-command.fn component {:windows [facts]}))
 (assert (= 1 (. initialized.tiling-state.spaces 3 1 1)))
@@ -63,6 +73,18 @@
 (assert (= 1 (length (. duplicate.tiling-state.spaces 3))))
 (assert (= :reconcile (. membership-calls 2 1))
         "reconcile command must delegate effects to PaperWM interpreter")
+(local focused
+  (commands.record-focus-command.fn {:state duplicate}
+                                    {:window-id 1 :space-id 3 :frame facts.frame}))
+(assert (= 1 focused.tiling-state.focused-window-id))
+(assert (= :focus (. membership-calls 3 1)))
+
+(local framed
+  (commands.retile-observed-frame-command.fn
+   {:state focused}
+   {:window-id 1 :frame facts.frame :generation 1 :sequence 2}))
+(assert (= focused framed))
+(assert (= :frame (. membership-calls 4 1)))
 
 (local unsuitable {})
 (each [key value (pairs facts)] (tset unsuitable key value))
