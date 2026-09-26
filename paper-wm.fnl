@@ -12,7 +12,16 @@
 ;; Imports
 ;; ---------------------------------------------------------------------------
 
-(local {: empty-state} (require :paper-wm.layout))
+(local {: empty-state
+        : valid? : layout-valid?
+        : add-window : layout-add-window
+        : remove-window : layout-remove-window
+        : move-window : layout-move-window
+        : slurp-window : layout-slurp-window
+        : barf-window : layout-barf-window
+        : swap-window : layout-swap-window
+        : focus-target
+        : set-focused-window} (require :paper-wm.layout))
 (local Window hs.window)
 (local Screen hs.screen)
 (local Spaces hs.spaces)
@@ -49,18 +58,15 @@
 ;; State
 ;; ---------------------------------------------------------------------------
 ;;
-;; window-list: 3D table indexed by [space][column][row] -> window objects
-;; index-table: window-id -> {:space <id> :col <n> :row <n>}
-;; ui-watchers: window-id -> hs.uielement.watcher
-;; watcher-restart-timers: window-id -> hs.timer
-;; window-filter: hs.window.filter instance (created on start!)
-
+;; Temporary module aliases point into the current runtime during the migration.
+;; Layout tables contain window IDs; opaque handles live under resources.
 (var window-list {})
 (var index-table {})
+(var windows {})
 (var ui-watchers {})
-(var focused-window nil)
+(var focused-window-id nil)
 (var watcher-restart-timers {})
-(var pending-window nil)
+(var pending-window-id nil)
 (var window-filter nil)
 
 (var next-runtime-epoch 0)
@@ -78,25 +84,24 @@
      :epoch next-runtime-epoch
      :config runtime-config
      :tiling-state (empty-state)
-     :window-list {}
-     :index-table {}
-     :ui-watchers {}
-     :focused-window nil
-     :watcher-restart-timers {}
-     :pending-window nil
-     :pending-window-timers {}
-     :space-focus-timer nil
-     :window-filter nil}))
+     :resources {:windows {}
+                 :ui-watchers {}
+                 :watcher-restart-timers {}
+                 :pending-window-id nil
+                 :pending-window-timers {}
+                 :space-focus-timer nil
+                 :window-filter nil}}))
 (fn bind-runtime! [runtime]
-  "Bind the temporary compatibility globals to an explicit runtime."
+  "Bind temporary compatibility aliases to an explicit runtime."
   (set current-runtime runtime)
-  (set window-list runtime.window-list)
-  (set index-table runtime.index-table)
-  (set ui-watchers runtime.ui-watchers)
-  (set focused-window runtime.focused-window)
-  (set watcher-restart-timers runtime.watcher-restart-timers)
-  (set pending-window runtime.pending-window)
-  (set window-filter runtime.window-filter)
+  (set window-list runtime.tiling-state.spaces)
+  (set index-table runtime.tiling-state.index)
+  (set windows runtime.resources.windows)
+  (set ui-watchers runtime.resources.ui-watchers)
+  (set focused-window-id runtime.tiling-state.focused-window-id)
+  (set watcher-restart-timers runtime.resources.watcher-restart-timers)
+  (set pending-window-id runtime.resources.pending-window-id)
+  (set window-filter runtime.resources.window-filter)
   (set config runtime.config)
   runtime)
 
@@ -105,11 +110,22 @@
   current-runtime)
 
 (fn capture-runtime! [runtime]
-  "Capture compatibility scalar globals after a legacy action."
-  (tset runtime :focused-window focused-window)
-  (tset runtime :pending-window pending-window)
-  (tset runtime :window-filter window-filter)
+  "Capture compatibility scalar aliases after a legacy action."
+  (tset runtime.tiling-state :focused-window-id focused-window-id)
+  (tset runtime.resources :pending-window-id pending-window-id)
+  (tset runtime.resources :window-filter window-filter)
   runtime)
+
+(fn commit-tiling-state! [next-state]
+  "Validate and commit one copy-on-write logical transition."
+  (let [(ok reason) (layout-valid? next-state)]
+    (when (not ok)
+      (error (.. "PaperWM layout invariant failed: " (tostring reason))))
+    (tset current-runtime :tiling-state next-state)
+    (set window-list next-state.spaces)
+    (set index-table next-state.index)
+    (set focused-window-id next-state.focused-window-id)
+    next-state))
 
 (fn run-with-runtime! [runtime action args]
   "Run one legacy action against injected component state."
@@ -136,26 +152,21 @@
 (fn diagnostic-snapshot [?runtime]
   "Return logical PaperWM state and resource counts without mutable handles."
   (let [runtime (or ?runtime current-runtime)
-        runtime-window-list (if runtime runtime.window-list window-list)
-        runtime-index-table (if runtime runtime.index-table index-table)
-        runtime-focused-window (if runtime runtime.focused-window focused-window)
-        runtime-pending-window (if runtime runtime.pending-window pending-window)
-        runtime-window-filter (if runtime runtime.window-filter window-filter)
-        runtime-ui-watchers (if runtime runtime.ui-watchers ui-watchers)
-        runtime-restart-timers (if runtime runtime.watcher-restart-timers
-                                   watcher-restart-timers)]
+        tiling-state (or (and runtime runtime.tiling-state) (empty-state))
+        resources (or (and runtime runtime.resources) {})]
     {:active? (and runtime runtime.active?)
      :epoch (and runtime runtime.epoch)
-     :window-list (copy-table runtime-window-list)
-     :index-table (copy-table runtime-index-table)
-     :focused-window-id (and runtime-focused-window (runtime-focused-window:id))
-     :pending-window-id (and runtime-pending-window (runtime-pending-window:id))
-     :resources {:window-filter? (not= nil runtime-window-filter)
-                 :ui-watcher-count (table-count runtime-ui-watchers)
-                 :watcher-restart-timer-count (table-count runtime-restart-timers)
+     :window-list (copy-table tiling-state.spaces)
+     :index-table (copy-table tiling-state.index)
+     :focused-window-id tiling-state.focused-window-id
+     :pending-window-id resources.pending-window-id
+     :resources {:window-filter? (not= nil resources.window-filter)
+                 :ui-watcher-count (table-count (or resources.ui-watchers {}))
+                 :watcher-restart-timer-count
+                 (table-count (or resources.watcher-restart-timers {}))
                  :pending-window-timer-count
-                 (table-count (or (and runtime runtime.pending-window-timers) {}))
-                 :space-focus-timer? (not= nil (and runtime runtime.space-focus-timer))}}))
+                 (table-count (or resources.pending-window-timers {}))
+                 :space-focus-timer? (not= nil resources.space-focus-timer)}}))
 
 ;; ---------------------------------------------------------------------------
 ;; Internal helpers
@@ -175,22 +186,27 @@
     result))
 
 (fn get-first-visible-window [columns screen]
-  "Return the leftmost window that's completely on the screen."
+  "Return the leftmost live window that's completely on the screen."
   (let [x (. (screen:frame) :x)]
     (var result nil)
-    (each [_ windows (ipairs (or columns {})) &until result]
-      (let [window (. windows 1)]
-        (when (>= (. (window:frame) :x) x)
+    (each [_ window-ids (ipairs (or columns {})) &until result]
+      (let [window (. windows (. window-ids 1))]
+        (when (and window (>= (. (window:frame) :x) x))
           (set result window))))
     result))
 
 (fn get-column [space col]
-  "Get a column of windows for a space from window-list."
-  (. (or (. window-list space) {}) col))
+  "Resolve a column of window IDs to currently owned windows."
+  (let [result []]
+    (each [_ window-id (ipairs (. (or (. window-list space) {}) col))]
+      (let [window (. windows window-id)]
+        (when window (table.insert result window))))
+    result))
 
 (fn get-window [space col row]
-  "Get a window at [space][col][row] from window-list."
-  (. (or (get-column space col) {}) row))
+  "Resolve the window ID at [space][col][row]."
+  (let [window-id (. (or (. (or (. window-list space) {}) col) {}) row)]
+    (. windows window-id)))
 
 (fn get-canvas [screen]
   "Get the tileable bounds for a screen, inset by window-gap."
@@ -198,13 +214,6 @@
         gap config.window-gap]
     (Rect (+ f.x gap) (+ f.y gap)
           (- f.w (* 2 gap)) (- f.h (* 2 gap)))))
-
-(fn update-index-table! [space column]
-  "Update index-table entries from the given column number upward."
-  (let [columns (or (. window-list space) {})]
-    (for [col column (length columns)]
-      (each [row window (ipairs (get-column space col))]
-        (tset index-table (window:id) {:space space :col col :row row})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Tiling engine
@@ -288,17 +297,15 @@
               right-margin (- screen-frame.x2 config.screen-margin)
               canvas (get-canvas screen)
               anchor-frame (or ?anchor-frame-override (anchor-window:frame))]
-          ;; clamp anchor to canvas
           (set anchor-frame.x (math.max anchor-frame.x canvas.x))
           (set anchor-frame.w (math.min anchor-frame.w canvas.w))
           (set anchor-frame.h (math.min anchor-frame.h canvas.h))
           (when (> anchor-frame.x2 canvas.x2)
             (set anchor-frame.x (- canvas.x2 anchor-frame.w)))
           (let [column (get-column space anchor-index.col)]
-            (when (not column)
+            (when (= 0 (length column))
               (logger.e "no anchor window column")
               (lua "return"))
-            ;; tile anchor column
             (if (= (length column) 1)
                 (do
                   (set anchor-frame.y canvas.y)
@@ -312,13 +319,11 @@
                               :y canvas.y :y2 canvas.y2}]
                   (tile-column! column bounds h anchor-frame.w
                                 (anchor-window:id) anchor-frame.h)))
-            ;; tile columns right of anchor
             (var x (math.min (+ anchor-frame.x2 config.window-gap) right-margin))
             (for [col (+ anchor-index.col 1) (length (or (. window-list space) {}))]
               (let [bounds {:x x :x2 nil :y canvas.y :y2 canvas.y2}
                     column-width (tile-column! (get-column space col) bounds)]
                 (set x (math.min (+ x column-width config.window-gap) right-margin))))
-            ;; tile columns left of anchor
             (var x2 (math.max (- anchor-frame.x config.window-gap) left-margin))
             (for [col (- anchor-index.col 1) 1 -1]
               (let [bounds {:x nil :x2 x2 :y canvas.y :y2 canvas.y2}
@@ -329,7 +334,6 @@
 ;; Window tracking
 ;; ---------------------------------------------------------------------------
 
-;; Forward declarations for mutual references between tracking and commands
 (var add-window! nil)
 (var remove-window! nil)
 (var focus-window nil)
@@ -337,72 +341,60 @@
 
 (set add-window!
   (fn [add-win]
-    "Add a new window to be tracked and automatically tiled.
-     Returns the space containing the window, or nil."
+    "Add a new window to owned resources and logical tiling state."
     (when (> (add-win:tabCount) 0)
       (hs.notify.show :PaperWM "Windows with tabs are not supported!"
                       "See https://github.com/mogenson/PaperWM.spoon/issues/39")
       (lua "return"))
-    (when (. index-table (add-win:id))
-      (lua "return"))
-    (let [space (. (Spaces.windowSpaces add-win) 1)]
-      (when (not space)
-        (logger.e "add window does not have a space")
-        (lua "return"))
-      (when (not (. window-list space))
-        (tset window-list space {}))
-      (var add-column 1)
-      (if (and focused-window
-               (= (. (or (. index-table (focused-window:id)) {}) :space) space)
-               (not= (focused-window:id) (add-win:id)))
-          (set add-column (+ (. index-table (focused-window:id) :col) 1))
-          (let [x (. (add-win:frame) :center :x)]
-            (each [col windows (ipairs (. window-list space))]
-              (when (< x (. (: (. windows 1) :frame) :center :x))
-                (set add-column col)
-                (lua :break)))))
-      (table.insert (. window-list space) add-column [add-win])
-      (update-index-table! space add-column)
-      ;; subscribe to window moved/resized events
-      (let [watcher (add-win:newWatcher
-                      (fn [window event]
-                        (window-event-handler window event)))]
-        (watcher:start [Watcher.windowMoved Watcher.windowResized])
-        (tset ui-watchers (add-win:id) watcher))
-      space)))
+    (let [window-id (add-win:id)]
+      (when (. index-table window-id) (lua "return"))
+      (let [space (. (Spaces.windowSpaces add-win) 1)]
+        (when (not space)
+          (logger.e "add window does not have a space")
+          (lua "return"))
+        (var add-column 1)
+        (if (and focused-window-id
+                 (= (. (or (. index-table focused-window-id) {}) :space) space)
+                 (not= focused-window-id window-id))
+            (set add-column (+ (. index-table focused-window-id :col) 1))
+            (let [x (. (add-win:frame) :center :x)]
+              (each [col window-ids (ipairs (or (. window-list space) []))]
+                (let [first-window (. windows (. window-ids 1))]
+                  (when (and first-window (< x (. (first-window:frame) :center :x)))
+                    (set add-column col)
+                    (lua :break))))))
+        (tset windows window-id add-win)
+        (commit-tiling-state!
+         (layout-add-window current-runtime.tiling-state window-id space add-column))
+        (let [watcher (add-win:newWatcher
+                       (fn [window event] (window-event-handler window event)))]
+          (watcher:start [Watcher.windowMoved Watcher.windowResized])
+          (tset ui-watchers window-id watcher))
+        space))))
 
 (set remove-window!
   (fn [remove-win ?skip-focus]
-    "Remove a window from tracking. Returns the space it was in, or nil."
-    (let [remove-index (. index-table (remove-win:id))]
+    "Remove a window from resources and logical tiling state."
+    (let [window-id (remove-win:id)
+          remove-index (. index-table window-id)]
       (when (not remove-index)
         (logger.e "remove index not found")
         (lua "return"))
       (when (not ?skip-focus)
         (let [fw (Window.focusedWindow)]
-          (when (and fw (= (remove-win:id) (fw:id)))
+          (when (and fw (= window-id (fw:id)))
             (each [_ direction (ipairs [Direction.DOWN Direction.UP
                                         Direction.LEFT Direction.RIGHT])]
-              (when (focus-window direction remove-index)
-                (lua :break))))))
-      ;; remove from window-list
-      (table.remove (. window-list remove-index.space remove-index.col)
-                    remove-index.row)
-      (when (= (length (. window-list remove-index.space remove-index.col)) 0)
-        (table.remove (. window-list remove-index.space) remove-index.col))
-      ;; remove watcher and any pending restart timer
-      (: (. ui-watchers (remove-win:id)) :stop)
-      (tset ui-watchers (remove-win:id) nil)
-      (let [timer (. watcher-restart-timers (remove-win:id))]
-        (when timer
-          (timer:stop)))
-      (tset watcher-restart-timers (remove-win:id) nil)
-      ;; update index-table
-      (tset index-table (remove-win:id) nil)
-      (update-index-table! remove-index.space remove-index.col)
-      ;; remove space if empty
-      (when (= (length (. window-list remove-index.space)) 0)
-        (tset window-list remove-index.space nil))
+              (when (focus-window direction remove-index) (lua :break))))))
+      (let [watcher (. ui-watchers window-id)]
+        (when watcher (watcher:stop)))
+      (tset ui-watchers window-id nil)
+      (let [timer (. watcher-restart-timers window-id)]
+        (when timer (timer:stop)))
+      (tset watcher-restart-timers window-id nil)
+      (tset windows window-id nil)
+      (commit-tiling-state!
+       (layout-remove-window current-runtime.tiling-state window-id))
       remove-index.space)))
 
 ;; ---------------------------------------------------------------------------
@@ -416,23 +408,24 @@
              (or (and window (window:id)) -1))
   (var space nil)
   (if (= event :windowFocused)
-      (do
-        (when (and pending-window (= window pending-window))
+      (let [window-id (window:id)]
+        (when (and pending-window-id (= window-id pending-window-id))
           (Timer.doAfter Window.animationDuration
                          (fn []
                            (logger.vf "pending window timer for %s" window)
                            (window-event-handler window event)))
           (lua "return"))
-        (set focused-window window)
+        (commit-tiling-state!
+         (set-focused-window current-runtime.tiling-state window-id))
         (set space (. (Spaces.windowSpaces window) 1)))
       (or (= event :windowVisible) (= event :windowUnfullscreened))
       (do
         (set space (add-window! window))
-        (if (and pending-window (= window pending-window))
-            (set pending-window nil)
+        (if (and pending-window-id (= (window:id) pending-window-id))
+            (set pending-window-id nil)
             (not space)
             (do
-              (set pending-window window)
+              (set pending-window-id (window:id))
               (Timer.doAfter Window.animationDuration
                              #(window-event-handler window event))
               (lua "return"))))
@@ -493,34 +486,32 @@
 ;; These are the actions exposed to Sheaf command wrappers.
 ;; Each takes simple parameters and performs a complete tiling operation.
 
-;; --- Navigation ---
-
 (set focus-window
   (fn [direction ?focused-index]
     "Move focus to an adjacent window. Returns the newly focused window or nil."
-    (var fi ?focused-index)
-    (when (not fi)
+    (var focused-id focused-window-id)
+    (when ?focused-index
+      (set focused-id (. window-list ?focused-index.space
+                         ?focused-index.col ?focused-index.row)))
+    (when (not focused-id)
       (let [fw (Window.focusedWindow)]
-        (when (not fw)
-          (logger.d "focused window not found")
-          (lua "return"))
-        (set fi (. index-table (fw:id)))))
-    (when (not fi)
+        (set focused-id (and fw (fw:id)))))
+    (when (not (. index-table focused-id))
       (logger.e "focused index not found")
       (lua "return"))
-    (var new-focused nil)
-    (if (or (= direction Direction.LEFT) (= direction Direction.RIGHT))
-        (for [row fi.row 1 -1]
-          (set new-focused (get-window fi.space (+ fi.col direction) row))
-          (when new-focused (lua :break)))
-        (or (= direction Direction.UP) (= direction Direction.DOWN))
-        (set new-focused (get-window fi.space fi.col
-                                     (+ fi.row (math.floor (/ direction 2))))))
-    (when (not new-focused)
-      (logger.d "new focused window not found")
-      (lua "return"))
-    (new-focused:focus)
-    new-focused))
+    (let [direction-key (if (= direction Direction.LEFT) :left
+                            (= direction Direction.RIGHT) :right
+                            (= direction Direction.UP) :up
+                            (= direction Direction.DOWN) :down
+                            nil)
+          target-id (focus-target current-runtime.tiling-state
+                                  focused-id direction-key)
+          target-window (. windows target-id)]
+      (when (not target-window)
+        (logger.d "new focused window not found")
+        (lua "return"))
+      (target-window:focus)
+      target-window)))
 
 (fn swap-windows! [direction]
   "Swap the focused window with an adjacent window or column."
@@ -528,74 +519,23 @@
     (when (not fw)
       (logger.d "focused window not found")
       (lua "return"))
-    (let [fi (. index-table (fw:id))]
+    (let [window-id (fw:id)
+          fi (. index-table window-id)]
       (when (not fi)
         (logger.e "focused index not found")
         (lua "return"))
-      (var anchor-frame nil)
-      (if (or (= direction Direction.LEFT) (= direction Direction.RIGHT))
-          (let [target-col (+ fi.col direction)
-                target-column (get-column fi.space target-col)]
-            (when (not target-column)
-              (logger.d "target column not found")
-              (lua "return"))
-            (let [focused-column (get-column fi.space fi.col)]
-              ;; swap in window-list
-              (tset (. window-list fi.space) target-col focused-column)
-              (tset (. window-list fi.space) fi.col target-column)
-              ;; update index-table
-              (each [row window (ipairs target-column)]
-                (tset index-table (window:id)
-                      {:space fi.space :col fi.col :row row}))
-              (each [row window (ipairs focused-column)]
-                (tset index-table (window:id)
-                      {:space fi.space :col target-col :row row}))
-              ;; swap frames
-              (let [focused-frame (fw:frame)
-                    target-frame (: (. target-column 1) :frame)]
-                (if (= direction Direction.LEFT)
-                    (do
-                      (set focused-frame.x target-frame.x)
-                      (set target-frame.x (+ focused-frame.x2 config.window-gap)))
-                    (do
-                      (set target-frame.x focused-frame.x)
-                      (set focused-frame.x (+ target-frame.x2 config.window-gap))))
-                (each [_ window (ipairs target-column)]
-                  (let [frame (window:frame)]
-                    (set frame.x target-frame.x)
-                    (move-window! window frame)))
-                (each [_ window (ipairs focused-column)]
-                  (let [frame (window:frame)]
-                    (set frame.x focused-frame.x)
-                    (move-window! window frame)))
-              (set anchor-frame focused-frame))))
-          (or (= direction Direction.UP) (= direction Direction.DOWN))
-          (let [target-row (+ fi.row (math.floor (/ direction 2)))
-                target-window (get-window fi.space fi.col target-row)]
-            (when (not target-window)
-              (logger.d "target window not found")
-              (lua "return"))
-            ;; swap in window-list
-            (tset (. window-list fi.space fi.col) target-row fw)
-            (tset (. window-list fi.space fi.col) fi.row target-window)
-            ;; update index-table
-            (let [target-index {:space fi.space :col fi.col :row target-row}]
-              (tset index-table (target-window:id) fi)
-              (tset index-table (fw:id) target-index))
-            ;; swap frames
-            (let [focused-frame (fw:frame)
-                  target-frame (target-window:frame)]
-              (if (= direction Direction.UP)
-                  (do
-                    (set focused-frame.y target-frame.y)
-                    (set target-frame.y (+ focused-frame.y2 config.window-gap)))
-                  (do
-                    (set target-frame.y focused-frame.y)
-                    (set focused-frame.y (+ target-frame.y2 config.window-gap))))
-              (move-window! fw focused-frame)
-              (move-window! target-window target-frame)
-              (set anchor-frame focused-frame))))
-      (tile-space! fi.space anchor-frame))))
+      (let [direction-key (if (= direction Direction.LEFT) :left
+                              (= direction Direction.RIGHT) :right
+                              (= direction Direction.UP) :up
+                              (= direction Direction.DOWN) :down
+                              nil)
+            next-state (layout-swap-window current-runtime.tiling-state
+                                           window-id direction-key)]
+        (when (= next-state current-runtime.tiling-state)
+          (logger.d "target window not found")
+          (lua "return"))
+        (commit-tiling-state! next-state)
+        (tile-space! fi.space (fw:frame))))))
 
 ;; --- Window sizing ---
 
@@ -674,73 +614,26 @@
 (fn slurp-window! []
   "Move focused window into the bottom of the column to its left."
   (let [fw (Window.focusedWindow)]
-    (when (not fw)
-      (logger.d "focused window not found")
-      (lua "return"))
-    (let [fi (. index-table (fw:id))]
-      (when (not fi)
-        (logger.e "focused index not found")
-        (lua "return"))
-      (let [column (get-column fi.space (- fi.col 1))]
-        (when (not column)
-          (logger.d "column not found")
-          (lua "return"))
-        ;; remove from current column
-        (table.remove (. window-list fi.space fi.col) fi.row)
-        (when (= (length (. window-list fi.space fi.col)) 0)
-          (table.remove (. window-list fi.space) fi.col))
-        ;; append to left column
-        (table.insert column fw)
-        (let [num-windows (length column)]
-          (tset index-table (fw:id)
-                {:space fi.space :col (- fi.col 1) :row num-windows})
-          (update-index-table! fi.space fi.col)
-          ;; retile the column
-;; TODO: slurp-window! has the same read-after-async-write race as
-;; cycle-window-size! — tile-column! moves the focused window (async),
-;; then tile-space! reads its frame back mid-animation. Fix requires
-;; tile-column! to return computed frames so the intended anchor frame
-;; can be passed as an override to tile-space!.
-          (let [canvas (get-canvas (fw:screen))
-                bounds {:x (. (: (. column 1) :frame) :x) :x2 nil
-                        :y canvas.y :y2 canvas.y2}
-                h (math.floor (/ (math.max 0 (- canvas.h
-                                                (* (- num-windows 1) config.window-gap)))
-                                 num-windows))]
-            (tile-column! column bounds h)
-            (tile-space! fi.space)))))))
+    (when (not fw) (lua "return"))
+    (let [window-id (fw:id)
+          fi (. index-table window-id)]
+      (when (not fi) (lua "return"))
+      (let [next-state (layout-slurp-window current-runtime.tiling-state window-id)]
+        (when (= next-state current-runtime.tiling-state) (lua "return"))
+        (commit-tiling-state! next-state)
+        (tile-space! fi.space (fw:frame))))))
 
 (fn barf-window! []
-  "Remove focused window from its column and place into a new column to the right."
+  "Remove focused window from its column into a new column on the right."
   (let [fw (Window.focusedWindow)]
-    (when (not fw)
-      (logger.d "focused window not found")
-      (lua "return"))
-    (let [fi (. index-table (fw:id))]
-      (when (not fi)
-        (logger.e "focused index not found")
-        (lua "return"))
-      (let [column (get-column fi.space fi.col)]
-        (when (= (length column) 1)
-          (logger.d "only window in column")
-          (lua "return"))
-        ;; remove and insert as new column
-        (table.remove column fi.row)
-        (table.insert (. window-list fi.space) (+ fi.col 1) [fw])
-        (update-index-table! fi.space fi.col)
-        ;; retile
-        (let [num-windows (length column)
-              canvas (get-canvas (fw:screen))
-              frame (fw:frame)
-              bounds {:x frame.x :x2 nil :y canvas.y :y2 canvas.y2}
-              h (math.floor (/ (math.max 0 (- canvas.h
-                                              (* (- num-windows 1) config.window-gap)))
-                               num-windows))]
-          (set frame.y canvas.y)
-          (set frame.x (+ frame.x2 config.window-gap))
-          (set frame.h canvas.h)
-          (tile-column! column bounds h)
-          (tile-space! fi.space frame))))))
+    (when (not fw) (lua "return"))
+    (let [window-id (fw:id)
+          fi (. index-table window-id)]
+      (when (not fi) (lua "return"))
+      (let [next-state (layout-barf-window current-runtime.tiling-state window-id)]
+        (when (= next-state current-runtime.tiling-state) (lua "return"))
+        (commit-tiling-state! next-state)
+        (tile-space! fi.space (fw:frame))))))
 
 ;; --- Space navigation ---
 
@@ -777,19 +670,23 @@
 ;; --- Refresh ---
 
 (fn refresh-windows! []
-  "Get all windows across all spaces and retile them."
+  "Reconcile filter windows with owned resources and logical Spaces."
   (let [all-windows (window-filter:getWindows)
         retile-spaces {}]
     (each [_ window (ipairs all-windows)]
-      (let [index (. index-table (window:id))]
+      (let [window-id (window:id)
+            index (. index-table window-id)
+            live-space (. (Spaces.windowSpaces window) 1)]
         (if (not index)
             (let [space (add-window! window)]
               (when space (tset retile-spaces space true)))
-            (not= index.space (. (Spaces.windowSpaces window) 1))
+            (not= index.space live-space)
             (do
-              (remove-window! window true)
-              (let [space (add-window! window)]
-                (when space (tset retile-spaces space true)))))))
+              (commit-tiling-state!
+               (layout-move-window current-runtime.tiling-state
+                                   window-id live-space 1))
+              (tset retile-spaces index.space true)
+              (tset retile-spaces live-space true)))))
     (each [space _ (pairs retile-spaces)]
       (tile-space! space))))
 
@@ -808,7 +705,7 @@
              :fullscreen false
              :hasTitlebar true
              :allowRoles :AXStandardWindow}))
-    (tset runtime :window-filter window-filter)
+    (tset runtime.resources :window-filter window-filter)
     (refresh-windows!)
     (window-filter:subscribe
      [WindowFilter.windowFocused
@@ -825,25 +722,24 @@
   (let [runtime (or ?runtime current-runtime)]
     (when runtime
       (tset runtime :active? false)
-      (when runtime.window-filter
-        (runtime.window-filter:unsubscribeAll))
-      (each [_ watcher (pairs runtime.ui-watchers)]
-        (watcher:stop))
-      (each [_ timer (pairs runtime.watcher-restart-timers)]
-        (timer:stop))
-      (each [_ timer (pairs runtime.pending-window-timers)]
-        (timer:stop))
-      (when runtime.space-focus-timer
-        (runtime.space-focus-timer:stop))
-      (tset runtime :window-filter nil)
-      (tset runtime :ui-watchers {})
-      (tset runtime :watcher-restart-timers {})
-      (tset runtime :pending-window-timers {})
-      (tset runtime :space-focus-timer nil)
-      (when (= runtime current-runtime)
-        (set window-filter nil)
-        (set ui-watchers runtime.ui-watchers)
-        (set watcher-restart-timers runtime.watcher-restart-timers)))))
+      (let [resources runtime.resources]
+        (when resources.window-filter
+          (resources.window-filter:unsubscribeAll))
+        (each [_ watcher (pairs resources.ui-watchers)] (watcher:stop))
+        (each [_ timer (pairs resources.watcher-restart-timers)] (timer:stop))
+        (each [_ timer (pairs resources.pending-window-timers)] (timer:stop))
+        (when resources.space-focus-timer (resources.space-focus-timer:stop))
+        (tset resources :window-filter nil)
+        (tset resources :windows {})
+        (tset resources :ui-watchers {})
+        (tset resources :watcher-restart-timers {})
+        (tset resources :pending-window-timers {})
+        (tset resources :space-focus-timer nil)
+        (when (= runtime current-runtime)
+          (set window-filter nil)
+          (set windows resources.windows)
+          (set ui-watchers resources.ui-watchers)
+          (set watcher-restart-timers resources.watcher-restart-timers))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
