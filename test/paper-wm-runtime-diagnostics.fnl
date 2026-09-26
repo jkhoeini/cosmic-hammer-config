@@ -18,6 +18,11 @@
       :window {:animationDuration 0
                :filter {:new #filter}}})
 
+(local component-module (require :components.paper-wm))
+
+(assert (= :trait/has-paper-wm-runtime (. component-module.paper-wm-type.traits 1))
+        "PaperWM component must declare its runtime trait")
+
 (local paper-wm (require :paper-wm))
 
 (assert paper-wm.diagnostic-snapshot
@@ -47,6 +52,9 @@
 (assert (= :table (type runtime.ui-watchers)))
 (assert runtime.active? "started runtime must be active")
 (assert (= :number (type runtime.epoch)))
+(local component-runtime (component-module.paper-wm-type.start-fn {}))
+(assert (and component-runtime component-runtime.active?)
+        "component lifecycle must start an active PaperWM runtime")
 (assert (= :table (type runtime.watcher-restart-timers)))
 (assert (= filter runtime.window-filter))
 (assert (= nil runtime.focused-window))
@@ -57,6 +65,8 @@
 (paper-wm.stop! runtime)
 (local stopped (paper-wm.diagnostic-snapshot runtime))
 (assert (= false stopped.resources.window-filter?))
+(component-module.paper-wm-type.stop-fn component-runtime)
+(assert (= false component-runtime.active?))
 (assert (= false runtime.active?))
 (assert (= false stopped.active?))
 (assert (= 0 stopped.resources.pending-window-timer-count))
