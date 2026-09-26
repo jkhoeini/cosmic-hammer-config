@@ -1,22 +1,15 @@
 (local noop #nil)
-(local filter
-  {:getWindows #[]
-   :setOverrideFilter (fn [self override]
-                        (tset self :override override)
-                        self)
-   :subscribe noop
-   :unsubscribeAll noop})
 
 (set _G.hs
-     {:geometry {:rect {}}
+     {:eventtap {:leftClick noop}
+      :geometry {:rect {} :rectMidPoint (fn [] {})}
       :logger {:new (fn [] {:e noop :v noop :d noop :df noop :ef noop})}
-      :notify {:show noop}
+      :mouse {:absolutePosition noop}
       :screen {}
       :spaces {:screensHaveSeparateSpaces #true}
-      :timer {}
+      :timer {:secondsSinceEpoch #100}
       :uielement {:watcher {}}
-      :window {:animationDuration 0
-               :filter {:new #filter}}})
+      :window {:animationDuration 0}})
 
 (local component-module (require :components.paper-wm))
 
@@ -30,7 +23,8 @@
 (assert paper-wm.diagnostic-snapshot
         "PaperWM must expose a read-only diagnostic snapshot")
 
-(local initial (paper-wm.diagnostic-snapshot))
+(local runtime (paper-wm.make-runtime {}))
+(local initial (paper-wm.diagnostic-snapshot runtime))
 (assert (= 0 (length initial.window-list)))
 (assert (= 0 (length initial.index-table)))
 (assert (= nil initial.focused-window-id))
@@ -38,15 +32,12 @@
 
 (tset initial.window-list 1 [:mutated])
 (tset initial.index-table 1 {:space 1 :col 1 :row 1})
-(local fresh (paper-wm.diagnostic-snapshot))
+(local fresh (paper-wm.diagnostic-snapshot runtime))
 (assert (= 0 (length fresh.window-list))
-        "diagnostic window list leaked mutable module state")
+        "diagnostic window list leaked mutable component state")
 (assert (= 0 (length fresh.index-table))
-        "diagnostic index table leaked mutable module state")
+        "diagnostic index table leaked mutable component state")
 (assert (= nil paper-wm.config) "mutable module config export must be removed")
-
-(local runtime (paper-wm.start!))
-(assert (= :table (type runtime)) "start! must return the owned runtime")
 
 (assert (= nil runtime.window-list) "legacy object layout must be removed")
 (assert (= nil runtime.index-table) "legacy reverse index must be removed")
@@ -64,8 +55,6 @@
 (local component-runtime (component-module.paper-wm-type.start-fn {}))
 (assert (and component-runtime component-runtime.active?)
         "component lifecycle must start an active PaperWM runtime")
-(assert (= component-runtime (paper-wm.current-runtime))
-        "component runtime must be the singular active runtime")
 (assert (= 35 component-runtime.config.window-gap))
 (assert (= 16 component-runtime.config.screen-margin))
 (assert (= 0.421875 (. component-runtime.config.window-ratios 1)))
@@ -82,7 +71,7 @@
 
 (local running (paper-wm.diagnostic-snapshot runtime))
 (assert (= 0 running.resources.ui-watcher-count))
-(paper-wm.stop! runtime)
+(paper-wm.stop-runtime! runtime)
 (local stopped (paper-wm.diagnostic-snapshot runtime))
 (assert (= 0 stopped.resources.ui-watcher-count))
 (component-module.paper-wm-type.stop-fn component-runtime)

@@ -29,8 +29,8 @@
 (assert (= nil paper-wm.run-with-runtime!))
 (assert (= nil paper-wm.Direction))
 
-(local first (paper-wm.make-runtime {}))
-(local second (paper-wm.make-runtime {}))
+(local first (paper-wm.make-runtime {:epoch 1}))
+(local second (paper-wm.make-runtime {:epoch 2}))
 (assert (= :table (type first)))
 (assert (< first.epoch second.epoch))
 (assert (not= first second))

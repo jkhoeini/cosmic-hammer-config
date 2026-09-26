@@ -1,20 +1,18 @@
 (tset package.loaded :paper-wm
-      {:Direction {:LEFT -1 :RIGHT 1 :UP -2 :DOWN 2
-                   :WIDTH 3 :HEIGHT 4 :ASCENDING 5 :DESCENDING 6}
-       :run-with-runtime! (fn [runtime action args]
-                            (action runtime (table.unpack (or args [])))
-                            runtime)
-       :focus-window (fn [runtime direction] (tset runtime :called [:focus direction]))
-       :swap-windows! (fn [runtime direction] (tset runtime :called [:swap direction]))
-       :center-window! (fn [runtime] (tset runtime :called [:center]))
-       :set-window-full-width! (fn [runtime] (tset runtime :called [:full-width]))
-       :cycle-window-size! (fn [runtime direction cycle-direction]
-                             (tset runtime :called [:cycle direction cycle-direction]))
-       :slurp-window! (fn [runtime] (tset runtime :called [:slurp]))
-       :barf-window! (fn [runtime] (tset runtime :called [:barf]))
-       :switch-to-space! (fn [runtime index] (tset runtime :called [:space index]))
-       :increment-space! (fn [runtime direction] (tset runtime :called [:increment direction]))
-       :refresh-windows! (fn [runtime] (tset runtime :called [:refresh]))})
+      {:initialize-layout! (fn [runtime] runtime)
+       :reconcile-window-fact! (fn [runtime] runtime)
+       :record-focus! (fn [runtime] runtime)
+       :retile-observed-frame! (fn [runtime] runtime)
+       :start-space-focus! (fn [runtime] runtime)
+       :retry-space-focus! (fn [runtime] runtime)
+       :space-index-after-direction #1
+       :focus-window! (fn [runtime direction] (tset runtime :called [:focus direction]) runtime)
+       :swap-windows! (fn [runtime] runtime)
+       :center-window! (fn [runtime] runtime)
+       :set-window-full-width! (fn [runtime] runtime)
+       :cycle-window-size! (fn [runtime] runtime)
+       :slurp-window! (fn [runtime] runtime)
+       :barf-window! (fn [runtime] runtime)})
 
 (local commands (require :commands.paper-wm))
 
@@ -71,6 +69,6 @@
 (local returned (commands.focus-command.fn component {:direction :left}))
 (assert (= runtime returned) "PaperWM command must return the complete runtime")
 (assert (= :focus (. runtime.called 1)))
-(assert (= -1 (. runtime.called 2)))
+(assert (= :left (. runtime.called 2)))
 
 (print "PaperWM command contracts passed")

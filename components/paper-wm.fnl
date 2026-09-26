@@ -4,7 +4,7 @@
 ;; Owns the legacy PaperWM runtime and 27 hotkey source instances during the
 ;; migration. Commands target it through :trait/has-paper-wm-runtime.
 
-(local {: start! : stop!} (require :paper-wm))
+(local {: make-runtime : stop-runtime!} (require :paper-wm))
 (local {: make-component-type} (require :sheaf.component-registry))
 
 ;; Build the sources array programmatically
@@ -111,7 +111,7 @@
                  :tags [:tag/paper-wm-frame-watcher]
                  :config-fn (fn [state config instance-name]
                               {:runtime state})}))
-    :start-fn start!
-    :stop-fn stop!}))
+    :start-fn make-runtime
+    :stop-fn stop-runtime!}))
 
 {: paper-wm-type}

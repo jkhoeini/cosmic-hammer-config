@@ -4,16 +4,14 @@
 (local {: make-command} (require :sheaf.command-registry))
 (local {: dispatch-event!} (require :sheaf.event-registry))
 (local {: event-registry} (require :events))
-(local {: Direction
-        : initialize-layout!
+(local {: initialize-layout!
         : reconcile-window-fact!
         : record-focus!
         : retile-observed-frame!
         : start-space-focus!
         : retry-space-focus!
         : space-index-after-direction
-        : run-with-runtime!
-        : focus-window
+        : focus-window!
         : swap-windows!
         : center-window!
         : set-window-full-width!
@@ -59,15 +57,6 @@
     :fn (fn [component params]
           (retile-observed-frame! component.state params))}))
 
-(local direction-by-keyword
-  {:left Direction.LEFT
-   :right Direction.RIGHT
-   :up Direction.UP
-   :down Direction.DOWN
-   :width Direction.WIDTH
-   :height Direction.HEIGHT
-   :ascending Direction.ASCENDING
-   :descending Direction.DESCENDING})
 
 ;; ============================================================================
 ;; Focus navigation
@@ -81,8 +70,7 @@
                             (= $1 :up) (= $1 :down))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state focus-window
-                             [(. direction-by-keyword params.direction)]))}))
+          (focus-window! component.state params.direction))}))
 
 ;; ============================================================================
 ;; Swap
@@ -96,8 +84,7 @@
                             (= $1 :up) (= $1 :down))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state swap-windows!
-                             [(. direction-by-keyword params.direction)]))}))
+          (swap-windows! component.state params.direction))}))
 
 ;; ============================================================================
 ;; Window sizing
@@ -109,7 +96,7 @@
    "Center the focused window on screen"
    {:requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state center-window!))}))
+          (center-window! component.state))}))
 
 (local set-full-width-command
   (make-command
@@ -117,7 +104,7 @@
    "Set the focused window to full screen width"
    {:requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state set-window-full-width!))}))
+          (set-window-full-width! component.state))}))
 
 (local cycle-window-size-command
   (make-command
@@ -127,9 +114,8 @@
              :cycle-direction #(or (= $1 :ascending) (= $1 :descending))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state cycle-window-size!
-                             [(. direction-by-keyword params.direction)
-                              (. direction-by-keyword params.cycle-direction)]))}))
+          (cycle-window-size! component.state params.direction
+                              params.cycle-direction))}))
 
 ;; ============================================================================
 ;; Column manipulation
@@ -141,7 +127,7 @@
    "Slurp a window into the current column"
    {:requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state slurp-window!))}))
+          (slurp-window! component.state))}))
 
 (local barf-window-command
   (make-command
@@ -149,7 +135,7 @@
    "Barf a window out of the current column"
    {:requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (run-with-runtime! component.state barf-window!))}))
+          (barf-window! component.state))}))
 
 ;; ============================================================================
 ;; Space navigation
