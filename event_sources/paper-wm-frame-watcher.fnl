@@ -3,15 +3,17 @@
 
 (fn start-frame-watcher [self emit]
   "Create a component-owned emitter for bounded PaperWM frame observations."
-  {:emit emit
-   :runtime self.config.runtime
-   :observations self.config.runtime.resources.frame-observations})
-
+  (let [state {:emit emit
+               :runtime self.config.runtime
+               :observations self.config.runtime.resources.frame-observations}]
+    (tset self.config.runtime.resources :frame-source state)
+    state))
 (fn stop-frame-watcher [state]
   (each [_ timer (pairs state.observations.timers)]
     (timer:stop))
-  (tset state.observations :timers {}))
-
+  (tset state.observations :timers {})
+  (when (= state state.runtime.resources.frame-source)
+    (tset state.runtime.resources :frame-source nil)))
 (fn observe! [state window-id event-kind frame generation]
   "Coalesce one window to its latest observation and emit at display cadence."
   (let [observation (next-observation state.observations window-id event-kind

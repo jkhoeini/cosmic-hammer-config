@@ -23,6 +23,7 @@
         : focus-target
         : set-focused-window} (require :paper-wm.layout))
 (local {: eligible?} (require :paper-wm.eligibility))
+(local {: observe!} (require :event_sources.paper-wm-frame-watcher))
 (local {: plan-column} (require :paper-wm.frames))
 (local Window hs.window)
 (local Screen hs.screen)
@@ -338,7 +339,20 @@
                                                  fact.space-id) [])) 1))))
           (let [window (resolve-window window-id)]
             (when window
-              (tset runtime.resources.windows window-id window)))
+              (tset runtime.resources.windows window-id window)
+              (when (= nil (. runtime.resources.ui-watchers window-id))
+                (let [generation (+ 1 (or (. runtime.resources.watcher-generations
+                                            window-id) 0))
+                      watcher (window:newWatcher
+                               (fn [observed-window event-kind]
+                                 (let [frame-source runtime.resources.frame-source
+                                       (frame-ok frame) (pcall #(: observed-window :frame))]
+                                   (when (and runtime.active? frame-source frame-ok)
+                                     (observe! frame-source window-id
+                                               (tostring event-kind) frame generation)))))]
+                  (tset runtime.resources.watcher-generations window-id generation)
+                  (watcher:start [Watcher.windowMoved Watcher.windowResized])
+                  (tset runtime.resources.ui-watchers window-id watcher)))))
           (when (and (. runtime.resources.windows window-id)
                      (. runtime.tiling-state.index window-id))
             (tile-space! fact.space-id fact.frame)))
