@@ -12,6 +12,7 @@
 ;; Imports
 ;; ---------------------------------------------------------------------------
 
+(local {: empty-state} (require :paper-wm.layout))
 (local Window hs.window)
 (local Screen hs.screen)
 (local Spaces hs.spaces)
@@ -76,6 +77,7 @@
     {:active? true
      :epoch next-runtime-epoch
      :config runtime-config
+     :tiling-state (empty-state)
      :window-list {}
      :index-table {}
      :ui-watchers {}

@@ -54,6 +54,7 @@
 (derive! trait-hierarchy :trait/has-window-filter :trait.kind/windowing)
 (derive! trait-hierarchy :trait/has-layout :trait.kind/windowing)
 (derive! trait-hierarchy :trait/has-paper-wm-runtime :trait.kind/windowing)
+(derive! trait-hierarchy :trait/has-tiling-state :trait.kind/windowing)
 
 ;; --- Scheduling ---
 (derive! trait-hierarchy :trait/has-delayed-timer :trait.kind/scheduling)
@@ -120,6 +121,15 @@
                :ui-watchers table?
                :watcher-restart-timers table?
                :pending-window-timers table?}))
+
+(add-trait! trait-registry
+  (make-trait :trait/has-tiling-state
+              "Component state includes serializable PaperWM tiling facts"
+              {:tiling-state table?}
+              (fn [state]
+                (let [tiling-state state.tiling-state]
+                  (and (= :table (type tiling-state.spaces))
+                       (= :table (type tiling-state.index)))))))
 
 ;; --- Scheduling ---
 (add-trait! trait-registry

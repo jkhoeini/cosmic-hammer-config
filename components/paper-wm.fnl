@@ -103,7 +103,7 @@
   (make-component-type
    :component.type/paper-wm
    "PaperWM tiling window manager"
-   {:traits [:trait/has-paper-wm-runtime]
+   {:traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :sources sources
     :start-fn start!
     :stop-fn stop!}))
