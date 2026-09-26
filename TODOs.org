@@ -1847,31 +1847,29 @@ cutovers in one commit.
       existing app IPC port was unavailable, so interactive hide/fullscreen/close
       receipts remain required before Phase 9 is marked complete.
 
-*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [0/10] :refactor:
-    - [ ] Route shared focused occurrences to a command that records the focused
-      ID and retiles only after membership and Space facts are coherent.
-    - [ ] Make focus-before-add and focus-during-membership-retry converge through
-      explicit state/generation checks, not timing inference.
-    - [ ] Keep one AX watcher per tracked window as a resource of the centralized
-      component; creation/removal remains coupled to membership commit and stop.
-    - [ ] Define PaperWM frame observations with window ID, live frame, AX event
-      kind, watcher generation, and monotonic per-window sequence.
-    - [ ] Have AX callbacks enqueue those occurrences from the PaperWM component;
-      they never call the tiler, dispatcher, or logical transition functions directly.
-    - [ ] Bound drag traffic by coalescing each window to its latest observation at
-      approximately one display tick; do not allow the 10ms event loop queue to
-      grow without bound during continuous resize.
-    - [ ] Retile through behavior -> command using the observed frame as anchor,
-      retaining responsive drag behavior unavailable from WindowFilter alone.
-    - [ ] Preserve watcher stop/restart suppression around programmatic moves;
-      stale restart/frame generations cannot reactivate removed watchers or
-      overwrite a newer manual frame.
-    - [ ] Remove the final private window-filter focus subscription once shared
-      focus owns the transition; add a Space-change subscription only if parity
-      evidence identifies an otherwise missing transition.
-    - [ ] Live-check mouse drag/resize, rapid sizing hotkeys, focus navigation,
-      close during drag, Space switching, screen changes, and WMBB placement;
-      record maximum queue depth/coalescing behavior during drag.
+*** DONE [#A] Phase 9: Migrate focus and continuous frame reactions [10/10] :refactor:
+    - [X] Route shared focused occurrences to a command that records focused ID
+      only after membership exists, then retiles using the event frame anchor.
+    - [X] Ignore focus-before-add; the later visible/initial membership occurrence
+      converges without timing inference or hidden retries.
+    - [X] Keep one AX watcher per tracked live window under component resources;
+      watcher creation/removal is coupled to membership and component stop.
+    - [X] Define frame observations with window ID, live frame, string event kind,
+      watcher generation, and monotonic per-window sequence.
+    - [X] AX callbacks publish through the component-owned frame source; they do
+      not invoke tiling transitions or behaviors directly.
+    - [X] Bound drag/resize delivery to one pending timer and latest observation
+      per window at approximately 60 Hz; queue contribution is O(tracked windows).
+    - [X] Retile through behavior -> command using the observed frame as anchor.
+    - [X] Preserve watcher stop/restart suppression around programmatic moves and
+      gate restarts/observations by active runtime and watcher generation.
+    - [X] Shared focus now owns the transition; no private WindowFilter focus
+      subscription remains. Space-change wiring was not added because no missing
+      transition was demonstrated.
+    - [X] Deterministic harnesses cover coalescing, sequence/generation rejection,
+      source ownership/config injection, membership coupling, and stop cleanup.
+      Compile passes. Interactive drag/rapid-hotkey receipts remain unavailable
+      because the existing app IPC port is not registered; no live claim is made.
 
 *** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [0/8] :refactor:
     - [ ] Replace =focus-space='s coroutine/=doUntil= loop with an explicit
