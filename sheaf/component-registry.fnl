@@ -14,7 +14,7 @@
 ;;   {:name :component.type/space-indicator
 ;;    :description "Space indicator menubar component"
 ;;    :traits [:trait/has-menubar]
-;;    :sources [{:type :event-source.type/X :config {} :instance-name "name" :tags [:tag/foo]}]
+;;    :sources [{:type :event-source.type/X :config {} :config-fn fn :instance-name "name" :tags [:tag/foo]}]
 ;;    :config-schema {}
 ;;    :start-fn (fn [config] -> state)
 ;;    :stop-fn nil}
@@ -124,8 +124,8 @@
    opts:
      :start-fn - function to start the component (required)
      :traits - list of trait names (default [])
-     :sources - list of source declarations (default [])
-               each: {:type :event-source.type/X :config {} :instance-name \"name\" :tags [:tag/foo]}
+     :sources - list of source declarations; :config-fn may derive source config
+                as (fn [component-state component-config instance-name] -> config)
      :config-schema - schema for config validation (default {})
      :stop-fn - function to stop the component (optional)
    Returns: {:name :description :traits :sources :config-schema :start-fn :stop-fn}"
@@ -237,8 +237,11 @@
               (var err nil)
               (each [_ source-decl (ipairs (or component-type.sources [])) &until err]
                 (let [source-name (make-owned-source-name instance-name source-decl.type source-decl.instance-name)
+                      source-config (if source-decl.config-fn
+                                        (source-decl.config-fn state (or config {}) instance-name)
+                                        (or source-decl.config {}))
                       (ok result) (pcall start-event-source! registry.source-registry
-                                         source-name source-decl.type (or source-decl.config {}))]
+                                         source-name source-decl.type source-config)]
                   (if ok
                       (do
                         (each [_ tag (ipairs (or source-decl.tags []))]
