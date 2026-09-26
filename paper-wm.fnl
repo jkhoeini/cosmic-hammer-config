@@ -22,6 +22,7 @@
         : swap-window : layout-swap-window
         : focus-target
         : set-focused-window} (require :paper-wm.layout))
+(local {: plan-column} (require :paper-wm.frames))
 (local Window hs.window)
 (local Screen hs.screen)
 (local Spaces hs.spaces)
@@ -245,32 +246,21 @@
                              (when w
                                (w:start [Watcher.windowMoved Watcher.windowResized]))))))))
 
-(fn tile-column! [windows bounds h w id h4id]
-  "Tile a column of windows by moving and resizing.
-   Returns the width of the tiled column."
-  (var last-window nil)
-  (var frame nil)
-  (var col-width w)
-  (each [_ window (ipairs windows)]
-    (set frame (window:frame))
-    (set col-width (or col-width frame.w))
-    (if bounds.x (set frame.x bounds.x)
-        bounds.x2 (set frame.x (- bounds.x2 col-width)))
-    (when h
-      (if (and id h4id (= (window:id) id))
-          (set frame.h h4id)
-          (set frame.h h)))
-    (set frame.y bounds.y)
-    (set frame.w col-width)
-    (set frame.y2 (math.min frame.y2 bounds.y2))
-    (move-window! window frame)
-    (set bounds.y (math.min (+ frame.y2 config.window-gap) bounds.y2))
-    (set last-window window))
-  ;; expand last window height to bottom
-  (when (and frame (not= frame.y2 bounds.y2))
-    (set frame.y2 bounds.y2)
-    (move-window! last-window frame))
-  col-width)
+(fn tile-column! [column-windows bounds h w id h4id]
+  "Plan a column deterministically, apply its frames, and return width plus plan."
+  (let [entries (icollect [_ window (ipairs column-windows)]
+                  {:window-id (window:id) :frame (window:frame)})
+        (plan column-width)
+        (plan-column entries bounds
+                     {:gap config.window-gap
+                      :height h
+                      :width w
+                      :anchor-window-id id
+                      :anchor-height h4id})]
+    (each [_ intent (ipairs plan)]
+      (let [window (. windows intent.window-id)]
+        (when window (move-window! window intent.frame))))
+    (values column-width plan)))
 
 (fn tile-space! [space ?anchor-frame-override]
   "Tile all columns in a space by moving and resizing windows."

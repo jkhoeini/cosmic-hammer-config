@@ -5,7 +5,7 @@
    {:window-id 20 :frame {:x 20 :y 240 :w 400 :h 300 :x2 420 :y2 540}}])
 (local bounds {:x 100 :x2 nil :y 50 :y2 650})
 
-(local plan width
+(local (plan width)
   (frames.plan-column entries bounds
                       {:gap 10 :height 295 :width 500
                        :anchor-window-id 20 :anchor-height 200}))
@@ -23,7 +23,7 @@
 (assert (= 20 (. entries 1 :frame :x)) "planner mutated input frame")
 (assert (= 50 bounds.y) "planner mutated bounds")
 
-(local right-plan right-width
+(local (right-plan right-width)
   (frames.plan-column [(. entries 1)] {:x nil :x2 900 :y 0 :y2 300}
                       {:gap 10}))
 (assert (= 400 right-width))
