@@ -22,6 +22,8 @@
 
 (assert (= :trait/has-paper-wm-runtime (. component-module.paper-wm-type.traits 1))
         "PaperWM component must declare its runtime trait")
+(assert (= :trait/has-tiling-state (. component-module.paper-wm-type.traits 2))
+        "PaperWM component must declare its logical tiling-state trait")
 
 (local paper-wm (require :paper-wm))
 
@@ -51,6 +53,10 @@
 (assert (= :table (type runtime.window-list)))
 (assert (= :table (type runtime.index-table)))
 (assert (= :table (type runtime.ui-watchers)))
+(assert (= :table (type runtime.tiling-state)))
+(assert (= :table (type runtime.tiling-state.spaces)))
+(assert (= :table (type runtime.tiling-state.index)))
+(assert (= nil runtime.tiling-state.focused-window-id))
 (assert runtime.active? "started runtime must be active")
 (assert (= :number (type runtime.epoch)))
 (local component-runtime (component-module.paper-wm-type.start-fn {}))
