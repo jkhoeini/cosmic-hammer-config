@@ -124,7 +124,7 @@
                   (and (= :table (type resources.windows))
                        (= :table (type resources.ui-watchers))
                        (= :table (type resources.watcher-restart-timers))
-                       (= :table (type resources.pending-window-timers)))))))
+                       (= :table (type resources.frame-observations)))))))
 
 (add-trait! trait-registry
   (make-trait :trait/has-tiling-state

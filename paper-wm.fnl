@@ -15,6 +15,7 @@
 (local {: observe!} (require :event_sources.paper-wm-frame-watcher))
 (local {:start start-space-operation
         :advance advance-space-operation} (require :paper-wm.space-conversation))
+(local {: some} (require :lib.cljlib-shim))
 
 (local Window hs.window)
 (local Screen hs.screen)

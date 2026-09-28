@@ -18,6 +18,9 @@
 (assert (= :trait/has-tiling-state (. component-module.paper-wm-type.traits 2))
         "PaperWM component must declare its logical tiling-state trait")
 
+(local {: trait-registry} (require :traits))
+(local {: satisfies?} (require :sheaf.trait-registry))
+
 (local paper-wm (require :paper-wm))
 
 (assert paper-wm.diagnostic-snapshot
@@ -55,6 +58,11 @@
 (local component-runtime (component-module.paper-wm-type.start-fn {}))
 (assert (and component-runtime component-runtime.active?)
         "component lifecycle must start an active PaperWM runtime")
+(assert (satisfies? trait-registry :trait/has-paper-wm-runtime
+                    component-runtime)
+        "PaperWM runtime must satisfy its declared runtime trait")
+(assert (satisfies? trait-registry :trait/has-tiling-state component-runtime)
+        "PaperWM runtime must satisfy its declared tiling-state trait")
 (assert (= 35 component-runtime.config.window-gap))
 (assert (= 16 component-runtime.config.screen-margin))
 (assert (= 0.421875 (. component-runtime.config.window-ratios 1)))
