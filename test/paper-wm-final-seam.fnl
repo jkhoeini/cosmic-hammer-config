@@ -4,7 +4,7 @@
       :logger {:new (fn [] {:d #nil :e #nil :v #nil})}
       :mouse {:absolutePosition #nil}
       :screen {}
-      :spaces {}
+      :spaces {:spaceType #:fullscreen}
       :timer {:secondsSinceEpoch #100}
       :uielement {:watcher {}}
       :window {:animationDuration 0}})

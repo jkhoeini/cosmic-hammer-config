@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [37/165]
+* Projects [40/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1915,7 +1915,7 @@ cutovers in one commit.
       REVIEW (2026-10-01): source search re-confirmed; the live receipt that the
       parity contract requires is still missing.
 
-*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [7/9] :refactor:
+*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [8/9] :refactor:
     - [X] Delete legacy generic event handler, module lifecycle, private filter,
       singleton adapter, compatibility globals, and all module-level mutable state.
     - [X] Leave =paper-wm.fnl= as an explicit-state effect interpreter over pure
@@ -1924,10 +1924,10 @@ cutovers in one commit.
       slurp/barf, and indexed/relative Space choices remain subscription params.
     - [X] Keep commands deep: membership reconcile, focus, frame retile, window
       actions, and Space conversation are capabilities; topology/frame helpers stay private.
-    - [ ] Add =reconcile-layout!= over explicit snapshots with stable added,
+    - [X] Add =reconcile-layout!= over explicit snapshots with stable added,
       removed, moved, and rejected ID reports stored on component state.
-      REVIEW (2026-10-01): tracked windows that become ineligible are removed
-      but reported as =:rejected=, not =:removed=.
+      REVIEW (2026-10-01): tracked windows that become ineligible were reported
+      as =:rejected=; fixed, they are now =:removed=.
     - [X] Expose logical snapshot/invariant/reconcile reports; verify one component
       owner, one AX watcher per member, bounded per-window observations, and owned timers.
     - [ ] Run deterministic harnesses for atoms, facts, eligibility, topology,
@@ -1952,7 +1952,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [7/24]
+** PROJ PaperWM Review Fixes [10/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2046,15 +2046,19 @@ close when their matching fix here lands with a live receipt. Should land before
     - =animationDuration= 0 turns retries into a 4s zero-delay click loop
     - Only act while unstable; enforce a minimum retry delay; avoid menu bar clicks
 
-*** LATER [#B] Tile each affected Space once per reconcile :perf:
+*** DONE [#B] Tile each affected Space once per reconcile :perf:
     - =reconcile-window-fact!= retiles on every eligible fact, including already
       tracked same-Space windows
     - =reconcile-layout!= therefore runs ~N =tile-space!= passes per snapshot
     - Apply membership first, then tile each touched Space once
+    - Done: =apply-membership!= tiles each touched Space once; an unchanged
+      tracked fact no longer retiles (legacy parity). Tile-once case in
+      =test/paper-wm-tile-anchor.fnl=
 
-*** LATER [#B] Report ineligible removals as removed :feature:
+*** DONE [#B] Report ineligible removals as removed :feature:
     - =reconcile-layout!= lists tracked-then-ineligible windows under =:rejected=
       even though they are removed from the layout (=paper-wm.fnl:315=)
+    - Done: =:rejected= now means ineligible or unresolvable and never tracked
 
 *** LATER [#B] Re-emit Space-focus retries through a component-owned source :architecture:
     - =commands/paper-wm.fnl= requires the live =event-registry= and calls
@@ -2075,11 +2079,16 @@ close when their matching fix here lands with a live receipt. Should land before
       =tiling-state.focused-window-id= is stored, validated, and never read
     - Pick one source of truth; consider window-state as a shaped input (P3)
 
-*** LATER [#B] Compute and validate next state before effects :refactor:
+*** DONE [#B] Compute and validate next state before effects :refactor:
     - =reconcile-window-fact!= runs =detach-window!= before =commit-state!=; a
       failed commit leaves a member without resources (=paper-wm.fnl:295-297=)
     - Commands return the in-place-mutated runtime, so dispatcher state capture
       is a no-op; the migration contract requires validate-then-effect
+    - Done: pure =paper-wm/membership.fnl= plans the next state; =commit-state!=
+      validates before any detach/attach/tile. Additions require a resolvable
+      window, so no ghost members. Commands still return the same runtime table
+      (resources are handles); logical state is replaced, never edited in place.
+      Covered by =test/paper-wm-membership-plan.fnl=
 
 *** DONE [#B] Guard nil Space lookups at the effect edge :feature:
     - =(. (Spaces.windowSpaces w) 1)= throws when =windowSpaces= returns nil

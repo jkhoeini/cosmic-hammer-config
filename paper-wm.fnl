@@ -2,15 +2,12 @@
 
 (local {: empty-state
         :valid? layout-valid?
-        :add-window layout-add-window
-        :remove-window layout-remove-window
-        :move-window layout-move-window
         :slurp-window layout-slurp-window
         :barf-window layout-barf-window
         :swap-window layout-swap-window
         : focus-target
         : set-focused-window} (require :paper-wm.layout))
-(local {: eligible?} (require :paper-wm.eligibility))
+(local {: plan-membership} (require :paper-wm.membership))
 (local {: plan-column} (require :paper-wm.frames))
 (local {: observe!} (require :event_sources.paper-wm-frame-watcher))
 (local {: consume-latest} (require :paper-wm.observations))
@@ -94,7 +91,7 @@
 
 (fn resolve-window [window-id]
   (let [(ok window) (pcall Window.get window-id)]
-    (and ok window)))
+    (when ok window)))
 
 (fn get-space [index]
   (let [layout (Spaces.allSpaces)]
@@ -281,66 +278,28 @@
     (tset runtime.resources.frame-observations.sequences window-id nil)
     (tset runtime.resources.windows window-id nil)))
 
+(fn apply-membership! [runtime facts remove-unseen?]
+  "Plan and validate membership, then attach/detach handles and tile each
+   touched Space once."
+  (let [plan (plan-membership runtime.tiling-state facts
+                              {:live? #(not= nil (resolve-window $1))
+                               :remove-unseen? remove-unseen?})]
+    (commit-state! runtime plan.state)
+    (each [_ window-id (ipairs plan.detach)] (detach-window! runtime window-id))
+    (each [_ window-id (ipairs plan.attach)] (attach-window! runtime window-id))
+    (each [_ space (ipairs plan.touched-spaces)]
+      (when (. runtime.tiling-state.spaces space) (tile-space! runtime space)))
+    plan.report))
+
 (fn reconcile-window-fact! [runtime fact opts]
   "Reconcile one shared fact; stale runtime epochs are inert."
-  (when (and opts.runtime-epoch (not= opts.runtime-epoch runtime.epoch))
-    (lua "return runtime"))
-  (let [window-id fact.window-id
-        entry (. runtime.tiling-state.index window-id)
-        tracked? (not= nil entry)]
-    (if (eligible? fact)
-        (do
-          (if (not tracked?)
-              (commit-state! runtime
-                             (layout-add-window
-                              runtime.tiling-state window-id fact.space-id
-                              (+ 1 (length (or (. runtime.tiling-state.spaces
-                                                 fact.space-id) [])))))
-              (not= entry.space fact.space-id)
-              (let [old-space entry.space]
-                (commit-state! runtime
-                               (layout-move-window
-                                runtime.tiling-state window-id fact.space-id
-                                (+ 1 (length (or (. runtime.tiling-state.spaces
-                                                   fact.space-id) [])))))
-                (when (. runtime.tiling-state.spaces old-space)
-                  (tile-space! runtime old-space))))
-          (attach-window! runtime window-id)
-          (when (. runtime.resources.windows window-id)
-            (tile-space! runtime fact.space-id)))
-        tracked?
-        (let [space (. runtime.tiling-state.index window-id :space)]
-          (detach-window! runtime window-id)
-          (commit-state! runtime
-                         (layout-remove-window runtime.tiling-state window-id))
-          (when (. runtime.tiling-state.spaces space)
-            (tile-space! runtime space))))
-    runtime))
+  (when (or (= nil opts.runtime-epoch) (= opts.runtime-epoch runtime.epoch))
+    (apply-membership! runtime [fact] false))
+  runtime)
 
 (fn reconcile-layout! [runtime window-facts]
   "Reconcile an explicit snapshot and retain an inspectable report."
-  (let [before (copy-table runtime.tiling-state.index)
-        seen {}
-        report {:added [] :removed [] :moved [] :rejected []}]
-    (each [_ fact (ipairs window-facts)]
-      (tset seen fact.window-id true)
-      (let [prior (. before fact.window-id)]
-        (if (eligible? fact)
-            (do
-              (when (= nil prior) (table.insert report.added fact.window-id))
-              (when (and prior (not= prior.space fact.space-id))
-                (table.insert report.moved fact.window-id)))
-            (table.insert report.rejected fact.window-id)))
-      (reconcile-window-fact! runtime fact {:runtime-epoch runtime.epoch}))
-    (each [window-id _ (pairs before)]
-      (when (= nil (. seen window-id))
-        (let [space (. runtime.tiling-state.index window-id :space)]
-          (detach-window! runtime window-id)
-          (commit-state! runtime
-                         (layout-remove-window runtime.tiling-state window-id))
-          (table.insert report.removed window-id)
-          (when (and space (. runtime.tiling-state.spaces space))
-            (tile-space! runtime space)))))
+  (let [report (apply-membership! runtime window-facts true)]
     (tset runtime :last-reconcile-report report)
     (values runtime report)))
 

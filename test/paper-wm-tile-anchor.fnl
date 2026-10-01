@@ -12,11 +12,13 @@
 
 (local screen {:frame #(rect 0 0 1000 800) :getUUID #"screen-1"})
 (var focused nil)
+(var space-type-calls 0)
 
 (set _G.hs
      {:geometry {:rect rect}
       :screen (setmetatable {} {:__call (fn [_ display] (when display screen))})
-      :spaces {:spaceType #:user :spaceDisplay #"screen-1" :windowSpaces #[7]}
+      :spaces {:spaceType (fn [] (set space-type-calls (+ 1 space-type-calls)) :user)
+               :spaceDisplay #"screen-1" :windowSpaces #[7]}
       :timer {:doAfter (fn [] {:stop #nil}) :secondsSinceEpoch #100}
       :uielement {:watcher {:windowMoved :moved :windowResized :resized}}
       :window {:animationDuration 0
@@ -67,6 +69,16 @@
   (paper-wm.reconcile-window-fact! runtime {:window-id 2 :fullscreen true} {})
   (assert (= nil (. runtime.tiling-state.index 2)))
   (assert first.applied "untracked focus prevented retiling the remaining member"))
+
+;; A snapshot reconcile tiles each touched Space once, not once per fact.
+(let [(runtime first) (make-two-column-runtime)
+      eligible {:window-id 1 :space-id 7 :subrole "AXStandardWindow"
+                :has-titlebar true :visible true :fullscreen false :tab-count 0}]
+  (set focused first)
+  (set space-type-calls 0)
+  (let [(_ report) (paper-wm.reconcile-layout! runtime [eligible])]
+    (assert (= 2 (. report.removed 1)))
+    (assert (= 1 space-type-calls) "reconcile tiled the Space more than once")))
 
 ;; Frame observations retile once, only for the latest sequence of a live watcher.
 (let [(runtime first) (make-two-column-runtime)
