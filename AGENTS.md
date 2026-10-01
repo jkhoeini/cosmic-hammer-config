@@ -10,6 +10,7 @@ A **Hammerspoon configuration** written in **Fennel** (a Lisp that compiles to L
 
 ```bash
 ./compile.sh   # Compile Fennel → Lua. Required after editing any .fnl file.
+test/run.sh    # Run deterministic harnesses (strict globals) and check init.lua.
 ```
 
 `compile.sh` runs the `deps` tool (via `mise x --`) with `--require-as-include`, which inlines every `require`d Fennel module into a single Lua file. It first compiles `lib/cljlib-shim.fnl → lib/cljlib-shim.lua`, then compiles `core.fnl → init.lua`, skipping the pre-compiled shim.
@@ -17,7 +18,7 @@ A **Hammerspoon configuration** written in **Fennel** (a Lisp that compiles to L
 - **`init.lua` is generated output — never hand-edit it.** Edit `core.fnl` (or a module it requires) and re-run `./compile.sh`.
 - Reload after compiling: `Cmd+Ctrl+Q`, or `hs.reload()` in the Hammerspoon console. The `config-watcher` component also watches the config dir — `.fnl` changes trigger a recompile and `init.lua` changes trigger a reload.
 
-**Requirements:** [mise](https://mise.jdx.dev/) for tooling, plus the `deps` tool (from the deps.fnl project). **No test framework** — test manually via the Hammerspoon console. **No linter** — rely on Fennel compiler errors.
+**Requirements:** [mise](https://mise.jdx.dev/) for tooling, plus the `deps` tool (from the deps.fnl project). `test/run.sh` also needs a `fennel` (≥ 1.5) binary on PATH; it is not mise-managed. **No test framework** — `test/*.fnl` are plain assert scripts that stub `hs`; `test/run.sh` runs them with `fennel --globals hs` so unbound identifiers fail instead of compiling to nil globals. Live behavior is still checked manually via the Hammerspoon console. **No linter** — rely on Fennel compiler errors.
 
 ### Shell / Tooling Notes
 
