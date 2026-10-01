@@ -1656,21 +1656,33 @@ watcher and timer (0/0/0, no retry timer). The remaining checks were invalid
 runs, not PaperWM verdicts: Mission Control invalidated the CLI's IPC session,
 and from then on every =print= in the app (including lazy "Loading extension"
 lines inside event handlers) raised "ipc port is no longer valid", so window
-events were dropped (see Chores). Still needed, on a live session:
-    - hide, minimize, fullscreen, and close a member; it leaves the layout and
-      its column closes (Phase 8)
-    - focus a window on a not-yet-visited Space; it joins. Move a member to
-      another Space and focus it; it follows (Phase 9)
-    - drag and resize a member; neighbors follow at about 60 Hz and settle
-      (Phase 9)
-    - rapid focus/swap hotkeys; each press advances (Phase 9)
-    - Space switching by index and left/right, including an empty Space and a
-      second display; focus lands and the cursor centers (Phase 10)
-    - explicit =stop-fn= on the component instance, then counts in
-      =diagnostic-snapshot=: zero watchers and timers, =active?= false
-      (Phase 11). Needs a console handle to the component registry, which
-      =core.fnl= keeps local; the deterministic stop path is covered by
-      =test/paper-wm-runtime-diagnostics.fnl= and =test/paper-wm-effects.fnl=
+events were dropped (see Chores).
+
+Live runs 2026-10-01 20:12-20:25 (extensions preloaded, steps started after the
+CLI returned, results written to a file; scripts located the instance through
+the Lua registry, which also reaches =stop-fn=):
+    - PASS Phase 8: new windows join; minimize removes and deminimize rejoins;
+      app hide removes and unhide rejoins; fullscreen removes and leaving it
+      rejoins; close removes the member, releases its AX watcher (10->9), and
+      the rest retile without overlap
+    - PASS Phase 9: two members tile side by side; focus-left and two rapid
+      focus-right presses each advance; =swap-windows!= reorders columns;
+      dragging a member keeps it where dropped and moves the neighbor beside it
+    - PASS Phase 10: index switch to the original Space, to a fresh empty Space,
+      and to the second display's Space; the conversation ends without a timer;
+      focus and cursor land on the target display
+    - PASS Phase 11: removing test Spaces leaves no stray members; explicit
+      =stop-fn= sets =active?= false and leaves 0 watchers, 0 restart timers,
+      0 frame timers, and no retry timer
+    - Not testable synthetically, so still manual: (a) the ⌘⌥⇧ swap chords.
+      Synthesized ⌘⌥⇧← never reached the hotkey (registered; non-shift chords
+      fire), though the swap it dispatches works. (b) Following a window moved
+      to another Space: =hs.spaces.moveWindowToSpace= returns true but the
+      window stays put on macOS 26.7, so focusing it pulls you back to its
+      Space and PaperWM correctly keeps it there.
+    - Earlier "empty Space bounces back" failures came from the test: Finder
+      had windows on the test Space, so macOS switched back on activation
+      (auto-swoosh). From a clean state the empty-Space switch passes.
 
 State model and Sheaf constraints:
     - *Logical facts*: a serializable per-Space column layout, reverse window
