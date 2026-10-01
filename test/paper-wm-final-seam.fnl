@@ -39,7 +39,7 @@
 (let [layout (require :paper-wm.layout)]
   (tset runtime :tiling-state
         (layout.add-window runtime.tiling-state 10 1 1)))
-(local (reconciled report) (paper-wm.reconcile-layout! runtime []))
+(local (reconciled report) (paper-wm.reconcile-layout! runtime [] [1]))
 (assert (= runtime reconciled))
 (assert (= 10 (. report.removed 1)))
 (assert (= nil (. runtime.tiling-state.index 10)))

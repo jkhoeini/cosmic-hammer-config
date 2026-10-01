@@ -28,9 +28,9 @@
    :paper-wm.commands/initialize-layout
    "Initialize PaperWM membership from a shared window snapshot"
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:windows table?}
+    :schema {:windows table? :observed-spaces table?}
     :fn (fn [component params]
-          (reconcile-layout! component.state params.windows)
+          (reconcile-layout! component.state params.windows params.observed-spaces)
           component.state)}))
 
 (local reconcile-window-command
@@ -193,9 +193,9 @@
    :paper-wm.commands/refresh-windows
    "Reconcile PaperWM from an explicit window snapshot"
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:windows table?}
+    :schema {:windows table? :observed-spaces table?}
     :fn (fn [component params]
-          (reconcile-layout! component.state params.windows)
+          (reconcile-layout! component.state params.windows params.observed-spaces)
           component.state)}))
 
 

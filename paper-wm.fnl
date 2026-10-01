@@ -278,12 +278,12 @@
     (tset runtime.resources.frame-observations.sequences window-id nil)
     (tset runtime.resources.windows window-id nil)))
 
-(fn apply-membership! [runtime facts remove-unseen?]
+(fn apply-membership! [runtime facts ?observed-spaces]
   "Plan and validate membership, then attach/detach handles and tile each
-   touched Space once."
+   touched Space once. ?observed-spaces makes facts a snapshot of those Spaces."
   (let [plan (plan-membership runtime.tiling-state facts
                               {:live? #(not= nil (resolve-window $1))
-                               :remove-unseen? remove-unseen?})]
+                               :observed-spaces ?observed-spaces})]
     (commit-state! runtime plan.state)
     (each [_ window-id (ipairs plan.detach)] (detach-window! runtime window-id))
     (each [_ window-id (ipairs plan.attach)] (attach-window! runtime window-id))
@@ -294,12 +294,12 @@
 (fn reconcile-window-fact! [runtime fact opts]
   "Reconcile one shared fact; stale runtime epochs are inert."
   (when (or (= nil opts.runtime-epoch) (= opts.runtime-epoch runtime.epoch))
-    (apply-membership! runtime [fact] false))
+    (apply-membership! runtime [fact]))
   runtime)
 
-(fn reconcile-layout! [runtime window-facts]
-  "Reconcile an explicit snapshot and retain an inspectable report."
-  (let [report (apply-membership! runtime window-facts true)]
+(fn reconcile-layout! [runtime window-facts observed-spaces]
+  "Reconcile a snapshot of the observed Spaces and retain an inspectable report."
+  (let [report (apply-membership! runtime window-facts (or observed-spaces []))]
     (tset runtime :last-reconcile-report report)
     (values runtime report)))
 

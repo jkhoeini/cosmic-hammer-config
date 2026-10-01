@@ -5,7 +5,7 @@
 (local {: dispatch-event!} (require :sheaf.event-registry))
 (local {: event-registry} (require :events))
 (local {: window-at-point} (require :event_sources.mouse-window-watcher))
-(local {: snapshot-windows} (require :lib.window-facts))
+(local {: snapshot-observed-windows} (require :lib.window-facts))
 
 
 (local number? #(= (type $) :number))
@@ -134,8 +134,8 @@
                            (dispatch-event! event-registry
                                             :mouse-window-management.events/window-placed
                                             component.name
-                                            {:window-id params.window-id
-                                             :windows (snapshot-windows)})))))))
+                                            (doto (snapshot-observed-windows)
+                                              (tset :window-id params.window-id)))))))))
             {:last-space-change-at component.state.last-space-change-at
              :pending-placement-timers pending
              :hover-focus-window-ids component.state.hover-focus-window-ids}))}))

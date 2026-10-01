@@ -3,7 +3,7 @@
 ;; Event source type: emits events on window focus, visibility, and fullscreen changes
 
 (local {: make-source-type} (require :sheaf.source-registry))
-(local {: snapshot-window : snapshot-windows} (require :lib.window-facts))
+(local {: snapshot-window : snapshot-observed-windows} (require :lib.window-facts))
 
 (local WindowFilter hs.window.filter)
 
@@ -64,7 +64,7 @@
       WindowFilter.windowTitleChanged]
      handler)
     (emit :window-watcher.events/initial-windows
-          {:windows (snapshot-windows)})
+          (snapshot-observed-windows))
     wf))
 
 

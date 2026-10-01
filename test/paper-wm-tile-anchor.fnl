@@ -76,7 +76,7 @@
                 :has-titlebar true :visible true :fullscreen false :tab-count 0}]
   (set focused first)
   (set space-type-calls 0)
-  (let [(_ report) (paper-wm.reconcile-layout! runtime [eligible])]
+  (let [(_ report) (paper-wm.reconcile-layout! runtime [eligible] [7])]
     (assert (= 2 (. report.removed 1)))
     (assert (= 1 space-type-calls) "reconcile tiled the Space more than once")))
 

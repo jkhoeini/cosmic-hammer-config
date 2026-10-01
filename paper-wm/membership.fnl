@@ -31,7 +31,9 @@
 (fn plan-membership [state facts opts]
   "Fold window facts into the next layout state without effects.
    opts.live? (window-id -> bool) gates additions on a resolvable window;
-   opts.remove-unseen? also removes tracked windows absent from facts.
+   opts.observed-spaces (Space IDs) marks facts as a snapshot of those Spaces:
+   tracked windows indexed there but absent from facts are removed, while
+   members of unobserved Spaces are kept.
    Returns {:state :report :attach :detach :touched-spaces}. Report lists
    :added/:moved/:removed IDs that changed membership and :rejected IDs that
    were ineligible or unresolvable and never tracked."
@@ -59,10 +61,12 @@
             entry
             (remove! window-id)
             (table.insert report.rejected window-id))))
-    (when opts.remove-unseen?
-      (each [_ window-id (ipairs (sorted-keys next-state.index))]
-        (when (= nil (. seen window-id))
-          (remove! window-id))))
+    (when opts.observed-spaces
+      (let [observed (collect [_ space (ipairs opts.observed-spaces)] space true)]
+        (each [_ window-id (ipairs (sorted-keys next-state.index))]
+          (when (and (= nil (. seen window-id))
+                     (. observed (. next-state.index window-id :space)))
+            (remove! window-id)))))
     (let [effects (membership-effects state next-state)]
       {:state next-state
        :report report

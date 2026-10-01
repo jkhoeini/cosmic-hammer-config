@@ -110,7 +110,9 @@
           (let [target (. candidates.initialize-layout 1)
                 windows (?. event :event-data :windows)]
             (when (and target windows)
-              (send-cmd target :initialize-layout {:windows windows}))))}))
+              (send-cmd target :initialize-layout
+                        {:windows windows
+                         :observed-spaces (or event.event-data.observed-spaces [])}))))}))
 
 (local reconcile-membership-behavior
   (make-behavior
@@ -182,7 +184,9 @@
           (let [target (. candidates.refresh-windows 1)
                 windows (?. event :event-data :windows)]
             (when (and target windows)
-              (send-cmd target :refresh-windows {:windows windows}))))}))
+              (send-cmd target :refresh-windows
+                        {:windows windows
+                         :observed-spaces (or event.event-data.observed-spaces [])}))))}))
 
 (local refresh-on-window-placed-behavior
   (make-behavior
@@ -194,7 +198,9 @@
           (let [target (. candidates.refresh-windows 1)
                 windows (?. event :event-data :windows)]
             (when (and target windows)
-              (send-cmd target :refresh-windows {:windows windows}))))}))
+              (send-cmd target :refresh-windows
+                        {:windows windows
+                         :observed-spaces (or event.event-data.observed-spaces [])}))))}))
 
 {: initialize-layout-behavior
  : reconcile-membership-behavior

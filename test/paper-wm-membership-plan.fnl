@@ -53,12 +53,16 @@
   (assert (contains? plan.touched-spaces 8)))
 
 ;; Snapshot plans remove unseen members only when asked.
-(let [single (plan-membership tracked [(fact 1 7)] live-all)
-      snapshot (plan-membership tracked [(fact 1 7)]
-                                {:live? #true :remove-unseen? true})]
+(let [off-space (layout.add-window tracked 9 8 1)
+      single (plan-membership off-space [(fact 1 7)] live-all)
+      snapshot (plan-membership off-space [(fact 1 7)]
+                                {:live? #true :observed-spaces [7]})]
   (assert (= 2 (. single.state.index 2 :col)) "single fact removed an unseen member")
-  (assert (= nil (. snapshot.state.index 2)))
+  (assert (= nil (. snapshot.state.index 2)) "unseen member of an observed Space kept")
   (assert (contains? snapshot.report.removed 2))
+  (assert (= 8 (. snapshot.state.index 9 :space))
+          "snapshot removed a member of a Space it cannot observe")
+  (assert (not (contains? snapshot.report.removed 9)))
   (assert (layout.valid? snapshot.state)))
 
 (print "PaperWM membership plan passed")

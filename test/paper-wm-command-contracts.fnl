@@ -23,7 +23,7 @@
 (local number-value? #(= :number (type $1)))
 
 (local expected
-  {:initialize-layout-command {:windows table-value?}
+  {:initialize-layout-command {:windows table-value? :observed-spaces table-value?}
    :reconcile-window-command {:window table-value?}
    :record-focus-command {:window-id number-value? :space-id number-value?
                           :frame table-value?}
@@ -42,7 +42,7 @@
    :barf-window-command {}
    :switch-to-space-command {:index #(and (= :number (type $1)) (<= 1 $1 9))}
    :increment-space-command {:direction #(member? {:left true :right true} $1)}
-   :refresh-windows-command {:windows table-value?}})
+   :refresh-windows-command {:windows table-value? :observed-spaces table-value?}})
 
 (fn assert-schema [command expected-schema]
   (each [key expected-predicate (pairs expected-schema)]

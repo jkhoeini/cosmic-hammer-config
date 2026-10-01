@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [40/165]
+* Projects [41/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1816,7 +1816,7 @@ cutovers in one commit.
     - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
       REPL/visualization inspection without exposing handles.
 
-*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [8/11] :refactor:
+*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [9/11] :refactor:
     - [X] Extend shared window payloads with guarded role/subrole, titlebar,
       visibility, fullscreen, tab count, Space ID, frame, and app facts. Torn-down
       handles are skipped rather than escaping the watcher callback.
@@ -1826,12 +1826,11 @@ cutovers in one commit.
       initial snapshot, independent of sibling subscription order.
     - [X] Replace private-filter refresh with explicit window snapshots on screen
       change and WMBB placement occurrences.
-    - [ ] Rewire screen-change and WMBB placement through the same initialize/
+    - [X] Rewire screen-change and WMBB placement through the same initialize/
       reconcile interpreter; unchanged membership remains idempotent.
-      REVIEW (2026-10-01): not idempotent across Spaces. =snapshot-windows= uses
-      =hs.window.allWindows= (current Space only), so every refresh removes
-      off-Space members. The private filter it replaced saw all Spaces, so this
-      is a parity regression.
+      REVIEW (2026-10-01): was not idempotent across Spaces (=allWindows= only
+      reports the active Spaces, so every refresh removed off-Space members).
+      Fixed: snapshots carry =:observed-spaces= and removal is scoped to them.
     - [X] Route visible, deminimized, and unfullscreened facts through eligibility;
       not-visible, minimized, destroyed, and fullscreened facts remove membership.
     - [ ] Cover duplicate, stale-epoch, and reordered membership delivery in the
@@ -1952,7 +1951,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [10/24]
+** PROJ PaperWM Review Fixes [11/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -1997,7 +1996,7 @@ close when their matching fix here lands with a live receipt. Should land before
     - Copy the frame before clamping
     - Done: =resolve-anchor= copies the frame with =hs.geometry.rect=
 
-*** LATER [#A] Preserve off-Space members on snapshot reconcile :feature:
+*** DONE [#A] Preserve off-Space members on snapshot reconcile :feature:
     - =snapshot-windows= uses =hs.window.allWindows=, which only returns windows
       in the current Space
     - =reconcile-layout!= removes every unseen member, so screen-change and
@@ -2005,6 +2004,14 @@ close when their matching fix here lands with a live receipt. Should land before
       startup never discovers off-Space windows either
     - Scope removal to Spaces the snapshot can observe, or snapshot via
       =hs.window.filter= across Spaces
+    - Done: =lib/window-facts= =snapshot-observed-windows= pairs the snapshot
+      with the active Space IDs it covers (=[]= when unknown or when the Spaces
+      changed mid-snapshot); every =:windows= producer emits it and
+      =plan-membership= only removes unseen members of observed Spaces
+    - Startup discovery is not a parity regression: the legacy private filter
+      also enumerated via =app:allWindows()= and could not see other-Space
+      windows until visited (=window_filter.lua:1206,1524-1531= in CosmicHammer).
+      Discovery on visit is the next item (reconcile the focused fact)
 
 *** LATER [#A] Reconcile membership when windows change Space :feature:
     - Membership only reacts to visible/not-visible/fullscreen/destroyed/

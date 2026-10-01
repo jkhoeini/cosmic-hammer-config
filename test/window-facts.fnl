@@ -41,4 +41,21 @@
 (assert (= 1 (length all)))
 (assert (= 42 (. all 1 :window-id)))
 
+(tset hs.spaces :activeSpaces #{:screen-a 7 :screen-b 3})
+(local observed (facts.snapshot-observed-windows))
+(assert (= 42 (. observed.windows 1 :window-id)))
+(assert (and (= 3 (. observed.observed-spaces 1)) (= 7 (. observed.observed-spaces 2))
+             (= 2 (length observed.observed-spaces))))
+
+(tset hs.spaces :activeSpaces #(error "spaces unavailable"))
+(assert (= 0 (length (. (facts.snapshot-observed-windows) :observed-spaces)))
+        "unknown active Spaces must observe nothing")
+
+(var reads 0)
+(tset hs.spaces :activeSpaces (fn []
+                                (set reads (+ 1 reads))
+                                (if (= 1 reads) {:screen-a 7} {:screen-a 8})))
+(assert (= 0 (length (. (facts.snapshot-observed-windows) :observed-spaces)))
+        "a Space switch during the snapshot must observe nothing")
+
 (print "Window facts passed")
