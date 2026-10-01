@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [35/141]
+* Projects [35/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1920,6 +1920,165 @@ Migration-enabled follow-ups, deliberately deferred:
       layout history/undo, persisted restart restoration, width policy, viewport
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
+
+** PROJ PaperWM Review Fixes [0/24]
+Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
+implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
+=commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
+=event_sources/paper-wm-frame-watcher.fnl=, =lib/window-facts.fnl=).
+Keeps the =PaperWM Migration= state model and constraints: commands are the only
+logical mutation edge, callbacks publish occurrences, logical state stores IDs.
+Depends on: completed PaperWM Migration. Should land before
+=PROJ Sheaf Tiling Engine= replaces the layout policy behind the same seam.
+
+*** LATER [#A] Bind schema predicates in PaperWM commands and frame source :refactor:
+    - =table?= / =number?= are unbound in =commands/paper-wm.fnl= and
+      =event_sources/paper-wm-frame-watcher.fnl:36=; =init.lua= compiles them to
+      =__fnl_global__table_3f= (nil), silently erasing every schema entry
+    - Harnesses pass only under =fennel --globals "*"=, which hides the unbound
+      names. Strict =fennel= rejects these files (=unknown identifier: table?=).
+      =test/paper-wm-command-contracts.fnl= expects =refresh-windows-command= to
+      have an empty schema, so the test passes because of the bug; fix the test
+      along with the code
+    - Define them locally like =commands/mouse-window-management.fnl:11-12=
+
+*** LATER [#A] Bind the anchor frame to the anchor window in tile-space! :feature:
+    - =tile-space!= picks its anchor from live =Window.focusedWindow= but applies
+      =?anchor-frame= from the event (=record-focus!=, =retile-observed-frame!=)
+    - When the observed/focused window differs from the live focused window at
+      queue-drain time, window B receives window A's frame
+    - Pass the anchor window ID with the frame; ignore the override otherwise
+
+*** LATER [#A] Stop tile-space! from mutating event-shared frames :feature:
+    - =tile-space!= writes =x/w/h/y= into =?anchor-frame= (=paper-wm.fnl:204-213=)
+    - For record-focus that object is the =window/focused= event's =:frame=, also
+      delivered to window-border, window-state, and mouse-management behaviors
+    - Copy the frame before clamping
+
+*** LATER [#A] Preserve off-Space members on snapshot reconcile :feature:
+    - =snapshot-windows= uses =hs.window.allWindows=, which only returns windows
+      in the current Space
+    - =reconcile-layout!= removes every unseen member, so screen-change and
+      window-placed refreshes wipe the column layout of every other Space;
+      startup never discovers off-Space windows either
+    - Scope removal to Spaces the snapshot can observe, or snapshot via
+      =hs.window.filter= across Spaces
+
+*** LATER [#A] Reconcile membership when windows change Space :feature:
+    - Membership only reacts to visible/not-visible/fullscreen/destroyed/
+      minimized/deminimized; moving a window to another Space emits none
+    - =record-focus!= then tiles the fact's =space-id= using the index column of
+      the old Space, mixing topologies
+    - Reconcile the focused fact (and/or =window/moved= facts) before focusing;
+      prefer the index Space consistently with =retile-observed-frame!=
+
+*** LATER [#A] Remove destroyed windows without a full fact snapshot :feature:
+    - =snapshot-window= returns nil when =:frame= fails, so the watcher emits no
+      event for torn-down windows (=lib/window-facts.fnl:16=,
+      =event_sources/window-watcher.fnl:29=) [inference: verify live]
+    - The member and its dead handle stay in =resources.windows=; =tile-column!=
+      calls =:id= / =:frame= on it and can abort tiling for the whole Space
+    - Emit an ID-only removal fact for destroyed windows; tolerate dead handles
+      at the effect edge
+
+*** LATER [#B] Consume frame observations by exact sequence :feature:
+    - =retile-observed-frame!= accepts an observation when =latest= is nil
+      (already consumed or cleared), letting stale deliveries retile
+    - =paper-wm.observations/consume-latest= already implements the exact
+      generation+sequence check but is unused in production; use it
+
+*** LATER [#B] Fall back to a visible anchor when focus is untracked :feature:
+    - If the focused window is on the Space but not indexed (dialog, panel),
+      =tile-space!= returns early instead of using =get-first-visible-window=
+    - Closing a member while a panel is focused leaves an untiled gap
+
+*** LATER [#B] Make Space-focus retries safe :feature:
+    - With no target window, =attempt-space-focus!= left-clicks at
+      =frame.y - 4=, i.e. inside the menu bar, and repeats on every retry
+    - Retries re-click/re-focus even after the Space is focused, until three
+      stable observations
+    - =animationDuration= 0 turns retries into a 4s zero-delay click loop
+    - Only act while unstable; enforce a minimum retry delay; avoid menu bar clicks
+
+*** LATER [#B] Tile each affected Space once per reconcile :perf:
+    - =reconcile-window-fact!= retiles on every eligible fact, including already
+      tracked same-Space windows
+    - =reconcile-layout!= therefore runs ~N =tile-space!= passes per snapshot
+    - Apply membership first, then tile each touched Space once
+
+*** LATER [#B] Report ineligible removals as removed :feature:
+    - =reconcile-layout!= lists tracked-then-ineligible windows under =:rejected=
+      even though they are removed from the layout (=paper-wm.fnl:315=)
+
+*** LATER [#B] Re-emit Space-focus retries through a component-owned source :architecture:
+    - =commands/paper-wm.fnl= requires the live =event-registry= and calls
+      =dispatch-event!= from a timer with the component name as event source
+    - Violates pure-data leaf files and P4 (async outcomes re-enter through owned
+      sources); the retry subscription only works because source-tag and
+      target-tag are both =:tag/paper-wm=
+    - Follow the frame-watcher pattern: a component-owned retry source
+
+*** LATER [#B] Decouple the frame-watcher source from runtime internals :architecture:
+    - The source writes itself into =resources.frame-source= and the domain
+      module requires the source module to call =observe!=
+    - AX watchers are created by the runtime; the source is only an emit proxy
+    - Observation timers have two owners (source stop-fn and =stop-runtime!=)
+
+*** LATER [#B] Derive focus from facts instead of live queries :architecture:
+    - Commands read =Window.focusedWindow= directly while
+      =tiling-state.focused-window-id= is stored, validated, and never read
+    - Pick one source of truth; consider window-state as a shaped input (P3)
+
+*** LATER [#B] Compute and validate next state before effects :refactor:
+    - =reconcile-window-fact!= runs =detach-window!= before =commit-state!=; a
+      failed commit leaves a member without resources (=paper-wm.fnl:295-297=)
+    - Commands return the in-place-mutated runtime, so dispatcher state capture
+      is a no-op; the migration contract requires validate-then-effect
+
+*** LATER [#B] Guard nil Space lookups at the effect edge :feature:
+    - =(. (Spaces.windowSpaces w) 1)= throws when =windowSpaces= returns nil
+      (=paper-wm.fnl:191,376,386,418=)
+
+*** LATER [#C] Fix PaperWM event-kind placement :refactor:
+    - =paper-wm.events/frame-observed= derives from =:event.kind.window/moved=
+      but lacks the window-fact payload other =window/moved= events carry
+    - =paper-wm.events/space-focus-retry= hangs directly off =:event.kind/any=
+
+*** LATER [#C] Align requires-traits across PaperWM commands :refactor:
+    - Membership commands require =has-tiling-state=; focus/swap/center/size/
+      slurp/barf read =tiling-state= but only require =has-paper-wm-runtime=
+
+*** LATER [#C] Move hotkey chords out of the component type :architecture:
+    - All 27 chords are hard-coded in =components/paper-wm.fnl=; P1 puts choices
+      in instance config or wiring. Blocked on P5 per the migration constraints
+
+*** LATER [#C] Guard column planning against non-positive heights :feature:
+    - =plan-column= yields =h <= 0= when earlier windows already fill the column
+      (=paper-wm/frames.fnl:26=)
+
+*** LATER [#C] Insert new windows next to the focused column :feature:
+    - =add-window= appends at =length + 1=; upstream PaperWM inserts after the
+      focused column [inference: verify against PaperWM.spoon]
+
+*** LATER [#C] Make Space index order explicit :feature:
+    - Indices follow =Screen.allScreens= order, and =increment-space= wraps across
+      all displays instead of staying on the focused screen
+
+*** LATER [#C] Remove dead PaperWM code and duplicates :refactor:
+    - Nonexistent =initialize-layout!= import (=commands/paper-wm.fnl:7=)
+    - Identical =initialize-layout= / =refresh-windows= commands; identical
+      screen-change / window-placed refresh behaviors; =switch-to-space=
+      duplicates =make-hotkey-behavior=
+    - Epoch guard is dead: no behavior sets =:runtime-epoch=
+    - Leftover =:trait/has-layout= and =window-list= / =index-table= names in
+      =diagnostic-snapshot=
+    - Stale "legacy runtime… during the migration" comments
+
+*** LATER [#C] Make PaperWM harnesses runnable :tooling:
+    - =test/= has no runner and contradicts AGENTS.md ("No test framework")
+    - Current invocation: =fennel --globals "*" --add-fennel-path
+      "./?.fnl;./?/init.fnl" test/<file>.fnl=; =--globals "*"= hides unbound
+      identifiers, so a runner should use =--globals hs= instead
 
 * Chores [0/3]
 *** LATER [#C] cliInstall doesn't work due to privileges :tooling:
