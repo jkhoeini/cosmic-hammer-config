@@ -25,8 +25,7 @@
 (local expected
   {:initialize-layout-command {:windows table-value? :observed-spaces table-value?}
    :reconcile-window-command {:window table-value?}
-   :record-focus-command {:window-id number-value? :space-id number-value?
-                          :frame table-value?}
+   :record-focus-command {:window table-value?}
    :retile-observed-frame-command {:window-id number-value? :frame table-value?
                                    :generation number-value?
                                    :sequence number-value?}

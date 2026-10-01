@@ -13,6 +13,7 @@
 (local screen {:frame #(rect 0 0 1000 800) :getUUID #"screen-1"})
 (var focused nil)
 (var space-type-calls 0)
+(local live-windows {})
 
 (set _G.hs
      {:geometry {:rect rect}
@@ -23,7 +24,9 @@
       :uielement {:watcher {:windowMoved :moved :windowResized :resized}}
       :window {:animationDuration 0
                :focusedWindow #focused
-               :get #nil}})
+               :get #(. live-windows $1)}})
+
+(fn make-watcher [] {:stop #nil :start #nil})
 
 (fn make-window [id frame]
   (let [window {:current frame :applied nil}]
@@ -33,9 +36,14 @@
     (tset window :setFrame (fn [self next-frame]
                              (set self.applied next-frame)
                              (set self.current next-frame)))
+    (tset window :newWatcher make-watcher)
+    (tset live-windows id window)
     window))
 
-(fn make-watcher [] {:stop #nil :start #nil})
+(fn focus-fact [window-id space-id frame]
+  {:window-id window-id :space-id space-id :frame frame
+   :subrole "AXStandardWindow" :has-titlebar true :visible true
+   :fullscreen false :tab-count 0})
 
 (local paper-wm (require :paper-wm))
 (local layout (require :paper-wm.layout))
@@ -56,12 +64,40 @@
 (let [(runtime first second) (make-two-column-runtime)
       event-frame (rect 100 0 300 500)]
   (set focused second)
-  (paper-wm.record-focus! runtime 1 7 event-frame)
+  (paper-wm.record-focus! runtime (focus-fact 1 7 event-frame))
   (assert first.applied "event window was not tiled")
   (assert (= 100 first.applied.x) "event frame was not applied to its own window")
   (assert (= 435 second.applied.x) "neighbor was not laid out right of the anchor")
   (assert (and (= 500 event-frame.h) (= 0 event-frame.y))
           "tile-space! mutated the caller's frame"))
+
+;; A focused window that moved to another Space follows it in the layout.
+(let [(runtime first second) (make-two-column-runtime)]
+  (set focused first)
+  (paper-wm.record-focus! runtime (focus-fact 1 9 (rect 40 35 300 700)))
+  (assert (= 9 (. runtime.tiling-state.index 1 :space))
+          "focused window kept its stale Space")
+  (assert (= 1 runtime.tiling-state.focused-window-id))
+  (assert (= 1 (. runtime.tiling-state.index 2 :col))
+          "old Space columns were not compacted")
+  (assert second.applied "old Space was not retiled after the move"))
+
+;; Focusing an untracked eligible window (e.g. first visit to its Space) joins it.
+(let [(runtime) (make-two-column-runtime)
+      third (make-window 3 (rect 0 35 300 700))]
+  (set focused third)
+  (paper-wm.record-focus! runtime (focus-fact 3 11 (rect 0 35 300 700)))
+  (assert (= 11 (. runtime.tiling-state.index 3 :space)) "focused window did not join")
+  (assert (= 3 runtime.tiling-state.focused-window-id))
+  (assert (. runtime.resources.ui-watchers 3) "joined window has no frame watcher"))
+
+;; A focus fact whose Space lookup failed keeps membership and still records focus.
+(let [(runtime first) (make-two-column-runtime)]
+  (set focused first)
+  (paper-wm.record-focus! runtime (focus-fact 1 nil (rect 40 35 300 700)))
+  (assert (= 7 (. runtime.tiling-state.index 1 :space))
+          "transient missing Space ID evicted a member")
+  (assert (= 1 runtime.tiling-state.focused-window-id)))
 
 ;; Removing a member while an untracked panel has focus still retiles.
 (let [(runtime first) (make-two-column-runtime)]

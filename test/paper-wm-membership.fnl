@@ -38,9 +38,9 @@
                                                 fact.space-id 1)))))
         runtime))
 (tset package.loaded.paper-wm :record-focus!
-      (fn [runtime window-id space-id frame]
-        (table.insert membership-calls [:focus window-id space-id frame])
-        (tset runtime.tiling-state :focused-window-id window-id)
+      (fn [runtime fact]
+        (table.insert membership-calls [:focus fact.window-id])
+        (tset runtime.tiling-state :focused-window-id fact.window-id)
         runtime))
 (tset package.loaded.paper-wm :retile-observed-frame!
       (fn [runtime params]
@@ -78,8 +78,7 @@
 (assert (= :reconcile (. membership-calls 2 1))
         "reconcile command must delegate effects to PaperWM interpreter")
 (local focused
-  (commands.record-focus-command.fn {:state duplicate}
-                                    {:window-id 1 :space-id 3 :frame facts.frame}))
+  (commands.record-focus-command.fn {:state duplicate} {:window facts}))
 (assert (= 1 focused.tiling-state.focused-window-id))
 (assert (= :focus (. membership-calls 3 1)))
 

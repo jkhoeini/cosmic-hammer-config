@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [41/165]
+* Projects [42/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1856,16 +1856,19 @@ cutovers in one commit.
       marked DONE anyway. The new membership command schemas are also nil (see
       Review Fixes: bind schema predicates).
 
-*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [6/10] :refactor:
-    - [ ] Route shared focused occurrences to a command that records focused ID
+*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [9/10] :refactor:
+    - [X] Route shared focused occurrences to a command that records focused ID
       only after membership exists, then retiles using the event frame anchor.
-      REVIEW (2026-10-01): =tile-space!= applies the event frame to the live
-      focused window, which may be a different window, and also mutates the
-      shared event frame. =space-id= comes from the fact rather than the index.
-      Anchor binding and frame copy fixed; the fact-vs-index Space remains (see
-      Review Fixes: reconcile membership when windows change Space).
-    - [X] Ignore focus-before-add; the later visible/initial membership occurrence
-      converges without timing inference or hidden retries.
+      REVIEW (2026-10-01): =tile-space!= applied the event frame to the live
+      focused window and mutated the shared frame; =space-id= came from the fact
+      rather than the index. Fixed: the focus command reconciles the fact first,
+      then tiles the index Space anchored on the focused window's own frame copy.
+    - [X] Focus reconciles the focused fact through the same eligibility as the
+      visible/initial paths, so a focused untracked eligible window joins and a
+      member that changed Space moves. This supersedes the earlier "ignore
+      focus-before-add" choice (2026-10-01), which left Space moves undetected
+      and off-Space windows undiscoverable. Facts without a Space ID skip
+      reconciliation (transient =windowSpaces= failure, not ineligibility).
     - [X] Keep one AX watcher per tracked live window under component resources;
       watcher creation/removal is coupled to membership and component stop.
     - [X] Define frame observations with window ID, live frame, string event kind,
@@ -1874,16 +1877,17 @@ cutovers in one commit.
       not invoke tiling transitions or behaviors directly.
     - [X] Bound drag/resize delivery to one pending timer and latest observation
       per window at approximately 60 Hz; queue contribution is O(tracked windows).
-    - [ ] Retile through behavior -> command using the observed frame as anchor.
-      REVIEW (2026-10-01): the observed window's frame is applied to whichever
-      window is focused, not to the observed window. Fixed; live receipt pending.
+    - [X] Retile through behavior -> command using the observed frame as anchor.
+      REVIEW (2026-10-01): the observed window's frame was applied to whichever
+      window was focused; fixed with explicit ={:window-id :frame}= anchors.
     - [X] Preserve watcher stop/restart suppression around programmatic moves and
       gate restarts/observations by active runtime and watcher generation.
-    - [ ] Shared focus now owns the transition; no private WindowFilter focus
-      subscription remains. Space-change wiring was not added because no missing
-      transition was demonstrated.
-      REVIEW (2026-10-01): a missing transition is now demonstrated. Moving a
-      window to another Space emits no membership fact, so the index desyncs.
+    - [X] Shared focus now owns the transition; no private WindowFilter focus
+      subscription remains.
+      REVIEW (2026-10-01): Space moves emitted no membership fact, so the index
+      desynced. Fixed by reconciling on focus. =window/moved= is not wired:
+      hs.window.filter's windowMoved is frame-driven (0.5 s debounce), misses
+      same-frame Space moves, and would fire on every PaperWM =setFrame=.
     - [ ] Deterministic harnesses cover coalescing, sequence/generation rejection,
       source ownership/config injection, membership coupling, and stop cleanup.
       Compile passes. Interactive drag/rapid-hotkey receipts remain unavailable
@@ -1951,7 +1955,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [11/24]
+** PROJ PaperWM Review Fixes [12/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2013,13 +2017,16 @@ close when their matching fix here lands with a live receipt. Should land before
       windows until visited (=window_filter.lua:1206,1524-1531= in CosmicHammer).
       Discovery on visit is the next item (reconcile the focused fact)
 
-*** LATER [#A] Reconcile membership when windows change Space :feature:
+*** DONE [#A] Reconcile membership when windows change Space :feature:
     - Membership only reacts to visible/not-visible/fullscreen/destroyed/
       minimized/deminimized; moving a window to another Space emits none
     - =record-focus!= then tiles the fact's =space-id= using the index column of
       the old Space, mixing topologies
     - Reconcile the focused fact (and/or =window/moved= facts) before focusing;
       prefer the index Space consistently with =retile-observed-frame!=
+    - Done: =record-focus!= reconciles the focused fact before recording focus
+      and tiles the index Space; move/join/missing-Space cases in
+      =test/paper-wm-tile-anchor.fnl=
 
 *** LATER [#A] Remove destroyed windows without a full fact snapshot :feature:
     - =snapshot-window= returns nil when =:frame= fails, so the watcher emits no

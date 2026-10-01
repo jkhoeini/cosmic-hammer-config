@@ -135,17 +135,14 @@
 (local record-focus-behavior
   (make-behavior
    {:name :paper-wm.behaviors/record-focus
-    :description "Record coherent shared PaperWM focus"
+    :description "Reconcile the focused window's fact and record PaperWM focus"
     :respond-to [:event.kind.window/focused]
     :commands {:record-focus :paper-wm.commands/record-focus}
     :fn (fn [event candidates send-cmd]
           (let [target (. candidates.record-focus 1)
                 fact event.event-data]
-            (when (and target fact.window-id fact.space-id fact.frame)
-              (send-cmd target :record-focus
-                        {:window-id fact.window-id
-                         :space-id fact.space-id
-                         :frame fact.frame}))))}))
+            (when (and target fact fact.window-id)
+              (send-cmd target :record-focus {:window fact}))))}))
 
 (local retile-observed-frame-behavior
   (make-behavior

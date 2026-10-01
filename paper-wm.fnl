@@ -192,7 +192,7 @@
   "Return the anchor window and a private copy of the frame to tile around.
    An explicit {:window-id :frame} anchor wins only when that window is tracked
    on this Space; otherwise the tracked focused window, then the first visible."
-  (let [explicit (and ?anchor
+  (let [explicit (and ?anchor ?anchor.frame
                       (tracked-window-on-space runtime ?anchor.window-id space))]
     (if explicit
         (values explicit (copy-frame ?anchor.frame))
@@ -278,37 +278,49 @@
     (tset runtime.resources.frame-observations.sequences window-id nil)
     (tset runtime.resources.windows window-id nil)))
 
-(fn apply-membership! [runtime facts ?observed-spaces]
+(fn apply-membership! [runtime facts opts]
   "Plan and validate membership, then attach/detach handles and tile each
-   touched Space once. ?observed-spaces makes facts a snapshot of those Spaces."
+   touched Space once. opts.observed-spaces makes facts a snapshot of those
+   Spaces; opts.anchor ({:window-id :frame}) anchors tiling where it applies.
+   Returns the plan."
   (let [plan (plan-membership runtime.tiling-state facts
                               {:live? #(not= nil (resolve-window $1))
-                               :observed-spaces ?observed-spaces})]
+                               :observed-spaces opts.observed-spaces})]
     (commit-state! runtime plan.state)
     (each [_ window-id (ipairs plan.detach)] (detach-window! runtime window-id))
     (each [_ window-id (ipairs plan.attach)] (attach-window! runtime window-id))
     (each [_ space (ipairs plan.touched-spaces)]
-      (when (. runtime.tiling-state.spaces space) (tile-space! runtime space)))
-    plan.report))
+      (when (. runtime.tiling-state.spaces space)
+        (tile-space! runtime space opts.anchor)))
+    plan))
 
 (fn reconcile-window-fact! [runtime fact opts]
   "Reconcile one shared fact; stale runtime epochs are inert."
   (when (or (= nil opts.runtime-epoch) (= opts.runtime-epoch runtime.epoch))
-    (apply-membership! runtime [fact]))
+    (apply-membership! runtime [fact] {}))
   runtime)
 
 (fn reconcile-layout! [runtime window-facts observed-spaces]
   "Reconcile a snapshot of the observed Spaces and retain an inspectable report."
-  (let [report (apply-membership! runtime window-facts (or observed-spaces []))]
-    (tset runtime :last-reconcile-report report)
-    (values runtime report)))
+  (let [plan (apply-membership! runtime window-facts
+                                {:observed-spaces (or observed-spaces [])})]
+    (tset runtime :last-reconcile-report plan.report)
+    (values runtime plan.report)))
 
-(fn record-focus! [runtime window-id space-id frame]
-  (when (. runtime.tiling-state.index window-id)
-    (commit-state! runtime
-                   (set-focused-window runtime.tiling-state window-id))
-    (when (. runtime.resources.windows window-id)
-      (tile-space! runtime space-id {:window-id window-id :frame frame})))
+(fn record-focus! [runtime fact]
+  "Reconcile the focused window's fact (joins, Space moves), then record focus
+   and tile its Space around the focused frame. A fact without a Space ID is a
+   transient lookup failure, not ineligibility, so it skips reconciliation."
+  (let [anchor {:window-id fact.window-id :frame fact.frame}
+        plan (if fact.space-id
+                 (apply-membership! runtime [fact] {: anchor})
+                 {:touched-spaces []})
+        entry (. runtime.tiling-state.index fact.window-id)]
+    (when entry
+      (commit-state! runtime
+                     (set-focused-window runtime.tiling-state fact.window-id))
+      (when (not (some #(= $ entry.space) plan.touched-spaces))
+        (tile-space! runtime entry.space anchor))))
   runtime)
 
 (fn retile-observed-frame! [runtime params]

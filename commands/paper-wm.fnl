@@ -46,12 +46,11 @@
 (local record-focus-command
   (make-command
    :paper-wm.commands/record-focus
-   "Record shared focus after membership is coherent"
+   "Reconcile the focused window's fact, then record focus and retile"
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:window-id number? :space-id number? :frame table?}
+    :schema {:window table?}
     :fn (fn [component params]
-          (record-focus! component.state params.window-id
-                         params.space-id params.frame))}))
+          (record-focus! component.state params.window))}))
 
 (local retile-observed-frame-command
   (make-command
