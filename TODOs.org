@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [48/165]
+* Projects [49/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1955,7 +1955,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [18/24]
+** PROJ PaperWM Review Fixes [19/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2153,9 +2153,12 @@ close when their matching fix here lands with a live receipt. Should land before
       moved events carry the same ={:window-id :frame}= shape); the retry is a
       new =:event.kind.space/focus-retry= under =space/any=
 
-*** LATER [#C] Align requires-traits across PaperWM commands :refactor:
+*** DONE [#C] Align requires-traits across PaperWM commands :refactor:
     - Membership commands require =has-tiling-state=; focus/swap/center/size/
       slurp/barf read =tiling-state= but only require =has-paper-wm-runtime=
+    - Done: every command that reads =tiling-state= (all but the Space-focus
+      retry, which only advances resources) requires both traits; the contract
+      harness checks each command's declaration
 
 *** LATER [#C] Move hotkey chords out of the component type :architecture:
     - All 27 chords are hard-coded in =components/paper-wm.fnl=; P1 puts choices

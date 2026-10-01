@@ -4441,7 +4441,7 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local function _603_(component, params)
     return focus_window_21(component.state, params.direction)
   end
-  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _602_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _603_})
+  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _602_}, ["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _603_})
   local swap_command
   local function _604_(_241)
     return ((_241 == "left") or (_241 == "right") or (_241 == "up") or (_241 == "down"))
@@ -4449,17 +4449,17 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local function _605_(component, params)
     return swap_windows_21(component.state, params.direction)
   end
-  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _604_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _605_})
+  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _604_}, ["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _605_})
   local center_window_command
   local function _606_(component, params)
     return center_window_21(component.state)
   end
-  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _606_})
+  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _606_})
   local set_full_width_command
   local function _607_(component, params)
     return set_window_full_width_21(component.state)
   end
-  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _607_})
+  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _607_})
   local cycle_window_size_command
   local function _608_(_241)
     return ((_241 == "width") or (_241 == "height"))
@@ -4470,17 +4470,17 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local function _610_(component, params)
     return cycle_window_size_21(component.state, params.direction, params["cycle-direction"])
   end
-  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _608_, ["cycle-direction"] = _609_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _610_})
+  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _608_, ["cycle-direction"] = _609_}, ["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _610_})
   local slurp_window_command
   local function _611_(component, params)
     return slurp_window_21(component.state)
   end
-  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _611_})
+  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _611_})
   local barf_window_command
   local function _612_(component, params)
     return barf_window_21(component.state)
   end
-  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _612_})
+  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _612_})
   local switch_to_space_command
   local function _613_(_241)
     return (("number" == type(_241)) and ((1 <= _241) and (_241 <= 9)))
@@ -4488,7 +4488,7 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
   local function _614_(component, params)
     return start_space_focus_21(component.state, params.index)
   end
-  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Start a Space focus conversation for an absolute index", {schema = {index = _613_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _614_})
+  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Start a Space focus conversation for an absolute index", {schema = {index = _613_}, ["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _614_})
   local increment_space_command
   local function _615_(_241)
     return ((_241 == "left") or (_241 == "right"))
@@ -4501,7 +4501,7 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
       return component.state
     end
   end
-  increment_space_command = make_command("paper-wm.commands/increment-space", "Start a Space focus conversation for a relative direction", {schema = {direction = _615_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _616_})
+  increment_space_command = make_command("paper-wm.commands/increment-space", "Start a Space focus conversation for a relative direction", {schema = {direction = _615_}, ["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, fn = _616_})
   local retry_space_focus_command
   local function _618_(component, params)
     return retry_space_focus_21(component.state, params.generation)

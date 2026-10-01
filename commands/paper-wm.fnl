@@ -70,7 +70,7 @@
    "Focus the window in a direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right)
                             (= $1 :up) (= $1 :down))}
-    :requires-traits [:trait/has-paper-wm-runtime]
+    :requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (focus-window! component.state params.direction))}))
 
@@ -84,7 +84,7 @@
    "Swap the focused window in a direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right)
                             (= $1 :up) (= $1 :down))}
-    :requires-traits [:trait/has-paper-wm-runtime]
+    :requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (swap-windows! component.state params.direction))}))
 
@@ -96,7 +96,7 @@
   (make-command
    :paper-wm.commands/center-window
    "Center the focused window on screen"
-   {:requires-traits [:trait/has-paper-wm-runtime]
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (center-window! component.state))}))
 
@@ -104,7 +104,7 @@
   (make-command
    :paper-wm.commands/set-full-width
    "Set the focused window to full screen width"
-   {:requires-traits [:trait/has-paper-wm-runtime]
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (set-window-full-width! component.state))}))
 
@@ -114,7 +114,7 @@
    "Cycle the focused window size"
    {:schema {:direction #(or (= $1 :width) (= $1 :height))
              :cycle-direction #(or (= $1 :ascending) (= $1 :descending))}
-    :requires-traits [:trait/has-paper-wm-runtime]
+    :requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (cycle-window-size! component.state params.direction
                               params.cycle-direction))}))
@@ -127,7 +127,7 @@
   (make-command
    :paper-wm.commands/slurp-window
    "Slurp a window into the current column"
-   {:requires-traits [:trait/has-paper-wm-runtime]
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (slurp-window! component.state))}))
 
@@ -135,7 +135,7 @@
   (make-command
    :paper-wm.commands/barf-window
    "Barf a window out of the current column"
-   {:requires-traits [:trait/has-paper-wm-runtime]
+   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (barf-window! component.state))}))
 
@@ -148,7 +148,7 @@
    :paper-wm.commands/switch-to-space
    "Start a Space focus conversation for an absolute index"
    {:schema {:index #(and (= :number (type $1)) (<= 1 $1 9))}
-    :requires-traits [:trait/has-paper-wm-runtime]
+    :requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (start-space-focus! component.state params.index))}))
 
@@ -157,7 +157,7 @@
    :paper-wm.commands/increment-space
    "Start a Space focus conversation for a relative direction"
    {:schema {:direction #(or (= $1 :left) (= $1 :right))}
-    :requires-traits [:trait/has-paper-wm-runtime]
+    :requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :fn (fn [component params]
           (let [index (space-index-after-direction params.direction)]
             (if index

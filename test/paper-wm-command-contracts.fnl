@@ -69,10 +69,16 @@
 (assert (= nil commands.clear-pending-window-command)
         "obsolete clear-pending-window command remains exported")
 
+;; Every command reads tiling-state except the Space-focus retry, which only
+;; advances runtime resources.
 (each [export-name _ (pairs expected)]
-  (let [command (. commands export-name)]
+  (let [command (. commands export-name)
+        needs-tiling-state? (not= export-name :retry-space-focus-command)]
     (assert (= :trait/has-paper-wm-runtime (. command.requires-traits 1))
-            (.. "missing PaperWM runtime trait on " (tostring command.name)))))
+            (.. "missing PaperWM runtime trait on " (tostring command.name)))
+    (assert (= needs-tiling-state?
+               (= :trait/has-tiling-state (. command.requires-traits 2)))
+            (.. "tiling-state trait mismatch on " (tostring command.name)))))
 
 (local runtime {:active? true})
 (local component {:state runtime})

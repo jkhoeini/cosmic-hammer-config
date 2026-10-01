@@ -1,8 +1,9 @@
 ;; components/paper-wm.fnl
 ;; Component type: PaperWM tiling window manager
 ;;
-;; Owns the legacy PaperWM runtime and 27 hotkey source instances during the
-;; migration. Commands target it through :trait/has-paper-wm-runtime.
+;; Owns the PaperWM runtime, its hotkey sources, and the outbox source for
+;; asynchronous outcomes. Commands target it through :trait/has-paper-wm-runtime
+;; and :trait/has-tiling-state.
 
 (local {: make-runtime : stop-runtime!} (require :paper-wm))
 (local {: make-component-type} (require :sheaf.component-registry))
