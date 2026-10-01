@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [32/165]
+* Projects [36/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1863,6 +1863,8 @@ cutovers in one commit.
       REVIEW (2026-10-01): =tile-space!= applies the event frame to the live
       focused window, which may be a different window, and also mutates the
       shared event frame. =space-id= comes from the fact rather than the index.
+      Anchor binding and frame copy fixed; the fact-vs-index Space remains (see
+      Review Fixes: reconcile membership when windows change Space).
     - [X] Ignore focus-before-add; the later visible/initial membership occurrence
       converges without timing inference or hidden retries.
     - [X] Keep one AX watcher per tracked live window under component resources;
@@ -1875,7 +1877,7 @@ cutovers in one commit.
       per window at approximately 60 Hz; queue contribution is O(tracked windows).
     - [ ] Retile through behavior -> command using the observed frame as anchor.
       REVIEW (2026-10-01): the observed window's frame is applied to whichever
-      window is focused, not to the observed window.
+      window is focused, not to the observed window. Fixed; live receipt pending.
     - [X] Preserve watcher stop/restart suppression around programmatic moves and
       gate restarts/observations by active runtime and watcher generation.
     - [ ] Shared focus now owns the transition; no private WindowFilter focus
@@ -1949,7 +1951,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [2/24]
+** PROJ PaperWM Review Fixes [6/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -1977,18 +1979,22 @@ close when their matching fix here lands with a live receipt. Should land before
       harnesses pass under =--globals hs=; the contract test covers every
       PaperWM command schema
 
-*** LATER [#A] Bind the anchor frame to the anchor window in tile-space! :feature:
+*** DONE [#A] Bind the anchor frame to the anchor window in tile-space! :feature:
     - =tile-space!= picks its anchor from live =Window.focusedWindow= but applies
       =?anchor-frame= from the event (=record-focus!=, =retile-observed-frame!=)
     - When the observed/focused window differs from the live focused window at
       queue-drain time, window B receives window A's frame
     - Pass the anchor window ID with the frame; ignore the override otherwise
+    - Done: callers pass ={:window-id :frame}=; =resolve-anchor= honours it only
+      when that window is tracked on the tiled Space. Covered by
+      =test/paper-wm-tile-anchor.fnl=
 
-*** LATER [#A] Stop tile-space! from mutating event-shared frames :feature:
+*** DONE [#A] Stop tile-space! from mutating event-shared frames :feature:
     - =tile-space!= writes =x/w/h/y= into =?anchor-frame= (=paper-wm.fnl:204-213=)
     - For record-focus that object is the =window/focused= event's =:frame=, also
       delivered to window-border, window-state, and mouse-management behaviors
     - Copy the frame before clamping
+    - Done: =resolve-anchor= copies the frame with =hs.geometry.rect=
 
 *** LATER [#A] Preserve off-Space members on snapshot reconcile :feature:
     - =snapshot-windows= uses =hs.window.allWindows=, which only returns windows
@@ -2022,10 +2028,12 @@ close when their matching fix here lands with a live receipt. Should land before
     - =paper-wm.observations/consume-latest= already implements the exact
       generation+sequence check but is unused in production; use it
 
-*** LATER [#B] Fall back to a visible anchor when focus is untracked :feature:
+*** DONE [#B] Fall back to a visible anchor when focus is untracked :feature:
     - If the focused window is on the Space but not indexed (dialog, panel),
       =tile-space!= returns early instead of using =get-first-visible-window=
     - Closing a member while a panel is focused leaves an untiled gap
+    - Done: an untracked or off-Space focused window falls back to
+      =get-first-visible-window=
 
 *** LATER [#B] Make Space-focus retries safe :feature:
     - With no target window, =attempt-space-focus!= left-clicks at
@@ -2070,9 +2078,11 @@ close when their matching fix here lands with a live receipt. Should land before
     - Commands return the in-place-mutated runtime, so dispatcher state capture
       is a no-op; the migration contract requires validate-then-effect
 
-*** LATER [#B] Guard nil Space lookups at the effect edge :feature:
+*** DONE [#B] Guard nil Space lookups at the effect edge :feature:
     - =(. (Spaces.windowSpaces w) 1)= throws when =windowSpaces= returns nil
       (=paper-wm.fnl:191,376,386,418=)
+    - Done: no =windowSpaces= call remains in =paper-wm.fnl=; focus actions use
+      the index entry's Space and anchors use =tracked-window-on-space=
 
 *** LATER [#C] Fix PaperWM event-kind placement :refactor:
     - =paper-wm.events/frame-observed= derives from =:event.kind.window/moved=

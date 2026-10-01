@@ -182,58 +182,75 @@
         (when window (move-window! runtime window intent.frame))))
     column-width))
 
-(fn tile-space! [runtime space ?anchor-frame]
-  "Interpret current layout into window frame effects."
+(fn tracked-window-on-space [runtime window-id space]
+  (let [entry (and window-id (. runtime.tiling-state.index window-id))]
+    (when (and entry (= entry.space space))
+      (. runtime.resources.windows window-id))))
+
+(fn copy-frame [frame]
+  (Rect frame.x frame.y frame.w frame.h))
+
+(fn resolve-anchor [runtime space screen ?anchor]
+  "Return the anchor window and a private copy of the frame to tile around.
+   An explicit {:window-id :frame} anchor wins only when that window is tracked
+   on this Space; otherwise the tracked focused window, then the first visible."
+  (let [explicit (and ?anchor
+                      (tracked-window-on-space runtime ?anchor.window-id space))]
+    (if explicit
+        (values explicit (copy-frame ?anchor.frame))
+        (let [focused (Window.focusedWindow)
+              window (or (and focused
+                              (tracked-window-on-space runtime (focused:id) space))
+                         (get-first-visible-window
+                          runtime (. runtime.tiling-state.spaces space) screen))]
+          (when window
+            (values window (copy-frame (window:frame))))))))
+
+(fn tile-space! [runtime space ?anchor]
+  "Interpret current layout into window frame effects around one anchor."
   (when (or (= nil space) (not= (Spaces.spaceType space) :user)) (lua "return"))
   (let [screen (Screen (Spaces.spaceDisplay space))]
     (when (= nil screen) (lua "return"))
-    (let [focused (Window.focusedWindow)
-          anchor (if (and focused (= (. (Spaces.windowSpaces focused) 1) space))
-                     focused
-                     (get-first-visible-window runtime
-                                               (. runtime.tiling-state.spaces space)
-                                               screen))]
+    (let [(anchor frame) (resolve-anchor runtime space screen ?anchor)]
       (when (= nil anchor) (lua "return"))
-      (let [anchor-index (. runtime.tiling-state.index (anchor:id))]
-        (when (= nil anchor-index) (lua "return"))
-        (let [screen-frame (screen:frame)
-              left-margin (+ screen-frame.x runtime.config.screen-margin)
-              right-margin (- screen-frame.x2 runtime.config.screen-margin)
-              canvas (get-canvas runtime screen)
-              frame (or ?anchor-frame (anchor:frame))]
-          (set frame.x (math.max frame.x canvas.x))
-          (set frame.w (math.min frame.w canvas.w))
-          (set frame.h (math.min frame.h canvas.h))
-          (when (> frame.x2 canvas.x2) (set frame.x (- canvas.x2 frame.w)))
-          (let [column (get-column runtime space anchor-index.col)]
-            (when (= 0 (length column)) (lua "return"))
-            (if (= 1 (length column))
-                (do
-                  (set frame.y canvas.y)
-                  (set frame.h canvas.h)
-                  (move-window! runtime anchor frame))
-                (let [remaining (- (length column) 1)
-                      height (math.floor
-                              (/ (math.max 0 (- canvas.h frame.h
-                                                (* remaining runtime.config.window-gap)))
-                                 remaining))]
-                  (tile-column! runtime column
-                                {:x frame.x :x2 nil :y canvas.y :y2 canvas.y2}
-                                height frame.w (anchor:id) frame.h)))
-            (var x (math.min (+ frame.x2 runtime.config.window-gap) right-margin))
-            (for [column-index (+ anchor-index.col 1)
-                               (length (. runtime.tiling-state.spaces space))]
-              (let [width (tile-column! runtime
-                                        (get-column runtime space column-index)
-                                        {:x x :x2 nil :y canvas.y :y2 canvas.y2})]
-                (set x (math.min (+ x width runtime.config.window-gap) right-margin))))
-            (var x2 (math.max (- frame.x runtime.config.window-gap) left-margin))
-            (for [column-index (- anchor-index.col 1) 1 -1]
-              (let [width (tile-column! runtime
-                                        (get-column runtime space column-index)
-                                        {:x nil :x2 x2 :y canvas.y :y2 canvas.y2})]
-                (set x2 (math.max (- x2 width runtime.config.window-gap)
-                                  left-margin))))))))))
+      (let [anchor-index (. runtime.tiling-state.index (anchor:id))
+            screen-frame (screen:frame)
+            left-margin (+ screen-frame.x runtime.config.screen-margin)
+            right-margin (- screen-frame.x2 runtime.config.screen-margin)
+            canvas (get-canvas runtime screen)]
+        (set frame.x (math.max frame.x canvas.x))
+        (set frame.w (math.min frame.w canvas.w))
+        (set frame.h (math.min frame.h canvas.h))
+        (when (> frame.x2 canvas.x2) (set frame.x (- canvas.x2 frame.w)))
+        (let [column (get-column runtime space anchor-index.col)]
+          (when (= 0 (length column)) (lua "return"))
+          (if (= 1 (length column))
+              (do
+                (set frame.y canvas.y)
+                (set frame.h canvas.h)
+                (move-window! runtime anchor frame))
+              (let [remaining (- (length column) 1)
+                    height (math.floor
+                            (/ (math.max 0 (- canvas.h frame.h
+                                              (* remaining runtime.config.window-gap)))
+                               remaining))]
+                (tile-column! runtime column
+                              {:x frame.x :x2 nil :y canvas.y :y2 canvas.y2}
+                              height frame.w (anchor:id) frame.h)))
+          (var x (math.min (+ frame.x2 runtime.config.window-gap) right-margin))
+          (for [column-index (+ anchor-index.col 1)
+                             (length (. runtime.tiling-state.spaces space))]
+            (let [width (tile-column! runtime
+                                      (get-column runtime space column-index)
+                                      {:x x :x2 nil :y canvas.y :y2 canvas.y2})]
+              (set x (math.min (+ x width runtime.config.window-gap) right-margin))))
+          (var x2 (math.max (- frame.x runtime.config.window-gap) left-margin))
+          (for [column-index (- anchor-index.col 1) 1 -1]
+            (let [width (tile-column! runtime
+                                      (get-column runtime space column-index)
+                                      {:x nil :x2 x2 :y canvas.y :y2 canvas.y2})]
+              (set x2 (math.max (- x2 width runtime.config.window-gap)
+                                left-margin)))))))))
 
 (fn attach-window! [runtime window-id]
   (let [window (resolve-window window-id)]
@@ -331,7 +348,7 @@
     (commit-state! runtime
                    (set-focused-window runtime.tiling-state window-id))
     (when (. runtime.resources.windows window-id)
-      (tile-space! runtime space-id frame)))
+      (tile-space! runtime space-id {:window-id window-id :frame frame})))
   runtime)
 
 (fn retile-observed-frame! [runtime params]
@@ -341,12 +358,18 @@
     (when (and entry (= generation params.generation)
                (or (= nil latest) (<= latest.sequence params.sequence)))
       (tset runtime.resources.frame-observations.latest params.window-id nil)
-      (tile-space! runtime entry.space params.frame)))
+      (tile-space! runtime entry.space
+                   {:window-id params.window-id :frame params.frame})))
   runtime)
 
 (fn focused-window [runtime]
-  (let [focused (Window.focusedWindow)]
-    (and focused (. runtime.tiling-state.index (focused:id)) focused)))
+  "Return the live focused window and its index entry when PaperWM tracks it."
+  (let [focused (Window.focusedWindow)
+        entry (and focused (. runtime.tiling-state.index (focused:id)))]
+    (when entry (values focused entry))))
+
+(fn retile-around! [runtime focused entry frame]
+  (tile-space! runtime entry.space {:window-id (focused:id) :frame frame}))
 
 (fn focus-window! [runtime direction]
   (let [focused (focused-window runtime)]
@@ -357,33 +380,32 @@
     runtime))
 
 (fn swap-windows! [runtime direction]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
-    (let [entry (. runtime.tiling-state.index (focused:id))
-          next-state (layout-swap-window runtime.tiling-state (focused:id) direction)]
+    (let [next-state (layout-swap-window runtime.tiling-state (focused:id) direction)]
       (when (not= next-state runtime.tiling-state)
         (commit-state! runtime next-state)
-        (tile-space! runtime entry.space (focused:frame))))
+        (retile-around! runtime focused entry (focused:frame))))
     runtime))
 
 (fn center-window! [runtime]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
     (let [frame (focused:frame)
           screen-frame (: (focused:screen) :frame)]
       (set frame.x (- (+ screen-frame.x (math.floor (/ screen-frame.w 2)))
                       (math.floor (/ frame.w 2))))
-      (tile-space! runtime (. (Spaces.windowSpaces focused) 1) frame))
+      (retile-around! runtime focused entry frame))
     runtime))
 
 (fn set-window-full-width! [runtime]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
     (let [canvas (get-canvas runtime (focused:screen))
           frame (focused:frame)]
       (set frame.x canvas.x)
       (set frame.w canvas.w)
-      (tile-space! runtime (. (Spaces.windowSpaces focused) 1) frame))
+      (retile-around! runtime focused entry frame))
     runtime))
 
 (fn cycle-value [candidates current direction]
@@ -398,7 +420,7 @@
         result)))
 
 (fn cycle-window-size! [runtime dimension direction]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
     (let [canvas (get-canvas runtime (focused:screen))
           frame (focused:frame)
@@ -415,27 +437,25 @@
                                    (+ frame.y (math.floor (/ (- frame.h size) 2)))))
             (set frame.h size)
             (set frame.y (- frame.y (math.max 0 (- frame.y2 canvas.y2))))))
-      (tile-space! runtime (. (Spaces.windowSpaces focused) 1) frame))
+      (retile-around! runtime focused entry frame))
     runtime))
 
 (fn slurp-window! [runtime]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
-    (let [entry (. runtime.tiling-state.index (focused:id))
-          next-state (layout-slurp-window runtime.tiling-state (focused:id))]
+    (let [next-state (layout-slurp-window runtime.tiling-state (focused:id))]
       (when (not= next-state runtime.tiling-state)
         (commit-state! runtime next-state)
-        (tile-space! runtime entry.space (focused:frame))))
+        (retile-around! runtime focused entry (focused:frame))))
     runtime))
 
 (fn barf-window! [runtime]
-  (let [focused (focused-window runtime)]
+  (let [(focused entry) (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
-    (let [entry (. runtime.tiling-state.index (focused:id))
-          next-state (layout-barf-window runtime.tiling-state (focused:id))]
+    (let [next-state (layout-barf-window runtime.tiling-state (focused:id))]
       (when (not= next-state runtime.tiling-state)
         (commit-state! runtime next-state)
-        (tile-space! runtime entry.space (focused:frame))))
+        (retile-around! runtime focused entry (focused:frame))))
     runtime))
 
 (fn schedule-space-retry! [runtime generation emit-retry]
