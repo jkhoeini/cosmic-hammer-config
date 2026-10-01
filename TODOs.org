@@ -1646,7 +1646,17 @@ for their interactive live receipts, which the parity contract requires.
 Live receipts so far (2026-10-01 17:29, after relaunching Cosmic Hammer): clean
 boot with no console errors or warnings, all PaperWM sources including the
 outbox started, the event loop ran, and IPC answered. The screen was locked,
-so nothing interactive was exercised. Still needed, on a live session:
+so nothing interactive was exercised.
+
+Live run 2026-10-01 19:06 (in-process script on a temporary Space, Finder
+windows as subjects): PASS minimize removes a member; close removes a member;
+the Space-focus conversation ends with no timer; removing the test Space leaves
+no stray members; explicit =stop-fn= deactivates the runtime and releases every
+watcher and timer (0/0/0, no retry timer). The remaining checks were invalid
+runs, not PaperWM verdicts: Mission Control invalidated the CLI's IPC session,
+and from then on every =print= in the app (including lazy "Loading extension"
+lines inside event handlers) raised "ipc port is no longer valid", so window
+events were dropped (see Chores). Still needed, on a live session:
     - hide, minimize, fullscreen, and close a member; it leaves the layout and
       its column closes (Phase 8)
     - focus a window on a not-yet-visited Space; it joins. Move a member to
@@ -2235,7 +2245,22 @@ close when their matching fix here lands with a live receipt. Should land before
     - Done: =test/run.sh= runs every harness with =--globals hs= and fails on
       mangled unbound identifiers in =init.lua=; AGENTS.md documents it
 
-* Chores [0/4]
+* Chores [0/6]
+*** LATER [#A] Mission Control operations kill Cosmic Hammer's IPC port :tooling:
+    - After =hs.spaces.gotoSpace= / =addSpaceToScreen= / =removeSpace=, the =hs=
+      CLI reports "can't access Cosmic Hammer message port"; only a relaunch
+      (sometimes two) restores it. Seen repeatedly 2026-10-01. Fix belongs in
+      =~/src/cosmichammer= (=Sources/HSSwiftExtensions/IPC.swift=)
+
+*** LATER [#A] A dead IPC print mirror makes every print raise :tooling:
+    - When a CLI session's port is invalidated mid-request, its print mirror
+      stays registered: each later =print= fails with "ipc port is no longer
+      valid (early)" and floods "already recursing, refusing request". Event
+      handlers that print (e.g. lazy =-- Loading extension= lines) then fail and
+      their events are dropped (=event-loop: handler 'dispatcher/behavior-router'
+      failed on event 'window-watcher.events/focused'=). Fix in
+      =~/src/cosmichammer= (IPC print redirection cleanup)
+
 *** LATER [#B] Fix transitive ancestors in lib/hierarchy :feature:
     - =ancestors= returns direct parents as keys but wraps transitive ones as
       tables, so a subscription selector on a grandparent kind (e.g.
