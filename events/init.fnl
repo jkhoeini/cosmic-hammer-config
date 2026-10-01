@@ -61,7 +61,8 @@
 ;; ├── :event.kind.space/any               ;; Spaces/desktop events
 ;; │   ├── :event.kind.space/changed
 ;; │   ├── :event.kind.space/created
-;; │   └── :event.kind.space/destroyed
+;; │   ├── :event.kind.space/destroyed
+;; │   └── :event.kind.space/focus-retry   ;; Space focus conversation step
 ;; │
 ;; ├── :event.kind.system/any              ;; System events
 ;; │   ├── :event.kind.system/wake
@@ -134,6 +135,7 @@
 (derive! event-hierarchy :event.kind.space/changed :event.kind.space/any)
 (derive! event-hierarchy :event.kind.space/created :event.kind.space/any)
 (derive! event-hierarchy :event.kind.space/destroyed :event.kind.space/any)
+(derive! event-hierarchy :event.kind.space/focus-retry :event.kind.space/any)
 
 ;; --- System ---
 (derive! event-hierarchy :event.kind.system/any :event.kind/any)
@@ -315,15 +317,17 @@
 ;; --- PaperWM Events ---
 (define-event! event-registry
                :paper-wm.events/frame-observed
-               "Latest coalesced frame observation for a PaperWM window"
+               "Latest coalesced AX move/resize observation for a PaperWM window"
                {:window-id number? :event-kind string? :frame table?
                 :generation number? :sequence number?})
+;; A coalesced observation is a move, a resize, or both; :event-kind says which.
 (derive! event-hierarchy :paper-wm.events/frame-observed :event.kind.window/moved)
+(derive! event-hierarchy :paper-wm.events/frame-observed :event.kind.window/resized)
 (define-event! event-registry
                :paper-wm.events/space-focus-retry
                "Retry one generation-scoped PaperWM Space focus operation"
                {:generation number?})
-(derive! event-hierarchy :paper-wm.events/space-focus-retry :event.kind/any)
+(derive! event-hierarchy :paper-wm.events/space-focus-retry :event.kind.space/focus-retry)
 
 ;; --- Window Element Watcher Events ---
 (define-event! event-registry
