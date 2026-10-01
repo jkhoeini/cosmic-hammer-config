@@ -19,8 +19,19 @@
 (local member? (fn [members value]
                  (not= nil (. members value))))
 
+(local table-value? #(= :table (type $1)))
+(local number-value? #(= :number (type $1)))
+
 (local expected
-  {:focus-command {:direction #(member? {:left true :right true :up true :down true} $1)}
+  {:initialize-layout-command {:windows table-value?}
+   :reconcile-window-command {:window table-value?}
+   :record-focus-command {:window-id number-value? :space-id number-value?
+                          :frame table-value?}
+   :retile-observed-frame-command {:window-id number-value? :frame table-value?
+                                   :generation number-value?
+                                   :sequence number-value?}
+   :retry-space-focus-command {:generation number-value?}
+   :focus-command {:direction #(member? {:left true :right true :up true :down true} $1)}
    :swap-command {:direction #(member? {:left true :right true :up true :down true} $1)}
    :center-window-command {}
    :set-full-width-command {}
@@ -31,7 +42,7 @@
    :barf-window-command {}
    :switch-to-space-command {:index #(and (= :number (type $1)) (<= 1 $1 9))}
    :increment-space-command {:direction #(member? {:left true :right true} $1)}
-   :refresh-windows-command {}})
+   :refresh-windows-command {:windows table-value?}})
 
 (fn assert-schema [command expected-schema]
   (each [key expected-predicate (pairs expected-schema)]
@@ -40,7 +51,7 @@
               (.. "missing schema entry " (tostring key) " for "
                   (tostring command.name)))
       (each [_ value (ipairs [:left :right :up :down :width :height
-                              :ascending :descending 0 1 9 10 "1" nil])]
+                              :ascending :descending 0 1 9 10 "1" {}])]
         (assert (= (not (not (expected-predicate value)))
                    (not (not (actual-predicate value))))
                 (.. "unexpected validation for " (tostring key) "="

@@ -11,6 +11,7 @@
 
 (local number? (fn [x] (= (type x) :number)))
 (local table? (fn [x] (= (type x) :table)))
+(local boolean? (fn [x] (= (type x) :boolean)))
 (local nil-or-string? (fn [x] (or (= x nil) (string? x))))
 (local nil-or-number? (fn [x] (or (= x nil) (number? x))))
 

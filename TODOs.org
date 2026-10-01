@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [30/165]
+* Projects [31/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1949,7 +1949,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [0/24]
+** PROJ PaperWM Review Fixes [1/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -1960,7 +1960,7 @@ Depends on: PaperWM Migration code cutover (Phases 1-11). Unchecked migration it
 close when their matching fix here lands with a live receipt. Should land before
 =PROJ Sheaf Tiling Engine= replaces the layout policy behind the same seam.
 
-*** LATER [#A] Bind schema predicates in PaperWM commands and frame source :refactor:
+*** DONE [#A] Bind schema predicates in PaperWM commands and frame source :refactor:
     - =table?= / =number?= are unbound in =commands/paper-wm.fnl= and
       =event_sources/paper-wm-frame-watcher.fnl:36=; =init.lua= compiles them to
       =__fnl_global__table_3f= (nil), silently erasing every schema entry
@@ -1970,6 +1970,12 @@ close when their matching fix here lands with a live receipt. Should land before
       have an empty schema, so the test passes because of the bug; fix the test
       along with the code
     - Define them locally like =commands/mouse-window-management.fnl:11-12=
+    - Done: bound locally in every file that used them, including the same bug
+      in =events/init.fnl= (window-fact =boolean?=), =traits/init.fnl= (PaperWM
+      trait attrs, now enforced), =event_sources/hotkey.fnl=, and the
+      space-indicator/url commands. =init.lua= has no =__fnl_global__= left; all
+      harnesses pass under =--globals hs=; the contract test covers every
+      PaperWM command schema
 
 *** LATER [#A] Bind the anchor frame to the anchor window in tile-space! :feature:
     - =tile-space!= picks its anchor from live =Window.focusedWindow= but applies

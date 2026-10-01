@@ -20,6 +20,9 @@
         : slurp-window!
         : barf-window!} (require :paper-wm))
 
+(local number? #(= (type $) :number))
+(local table? #(= (type $) :table))
+
 (local initialize-layout-command
   (make-command
    :paper-wm.commands/initialize-layout

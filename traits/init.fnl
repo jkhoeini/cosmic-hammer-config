@@ -8,6 +8,10 @@
 (local {: make-hierarchy : derive!} (require :lib.hierarchy))
 (local {: make-trait-registry : make-trait : add-trait!} (require :sheaf.trait-registry))
 
+(local boolean? #(= (type $) :boolean))
+(local number? #(= (type $) :number))
+(local table? #(= (type $) :table))
+
 
 (fn non-nil? [v] (not= nil v))
 

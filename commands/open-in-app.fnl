@@ -2,6 +2,7 @@
 ;; Command: open a URL in a specific app by bundle ID
 
 (local {: make-command} (require :sheaf.command-registry))
+(local {: string?} (require :lib.cljlib-shim))
 
 (local open-in-app-command
   (make-command

@@ -1,6 +1,8 @@
 (local {: make-source-type} (require :sheaf.source-registry))
 (local {: next-observation} (require :paper-wm.observations))
 
+(local table? #(= (type $) :table))
+
 (fn start-frame-watcher [self emit]
   "Create a component-owned emitter for bounded PaperWM frame observations."
   (let [state {:emit emit

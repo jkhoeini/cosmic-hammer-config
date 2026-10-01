@@ -2,6 +2,8 @@
 ;; Command: record a URL visit into history
 
 (local {: make-command} (require :sheaf.command-registry))
+(local {: string?} (require :lib.cljlib-shim))
+(local number? #(= (type $) :number))
 
 (local record-url-command
   (make-command

@@ -4,6 +4,8 @@
 
 (local {: make-command} (require :sheaf.command-registry))
 
+(local table? #(= (type $) :table))
+
 
 (local update-menubar-command
   (make-command

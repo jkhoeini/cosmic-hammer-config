@@ -5,6 +5,8 @@
 (local {: string?} (require :lib.cljlib-shim))
 (local {: make-source-type} (require :sheaf.source-registry))
 
+(local table? #(= (type $) :table))
+
 
 (fn start-hotkey [self emit]
   "Start listening for a hotkey press.

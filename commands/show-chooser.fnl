@@ -2,6 +2,8 @@
 ;; Command: show an async browser picker for a URL
 
 (local {: make-command} (require :sheaf.command-registry))
+(local {: string?} (require :lib.cljlib-shim))
+(local table? #(= (type $) :table))
 
 ;; Must persist across calls to prevent GC from collecting the active chooser
 (var active-chooser nil)
