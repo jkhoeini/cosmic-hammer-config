@@ -26,6 +26,10 @@
                        :screen-margin 16
                        :window-ratios [0.421875 0.843750]})
 
+;; Retries poll at the window animation cadence; with animations disabled
+;; (animationDuration 0) this floor keeps them from becoming a busy loop.
+(local space-retry-min-delay 0.05)
+
 
 (fn runtime-epoch [config]
   (or config.epoch
@@ -458,21 +462,24 @@
   (when runtime.resources.space-focus-timer
     (runtime.resources.space-focus-timer:stop))
   (tset runtime.resources :space-focus-timer
-        (Timer.doAfter Window.animationDuration
+        (Timer.doAfter (math.max Window.animationDuration space-retry-min-delay)
                        (fn []
                          (tset runtime.resources :space-focus-timer nil)
                          (when runtime.active? (emit-retry generation))))))
 
 (fn attempt-space-focus! [runtime operation]
-  (let [target (. runtime.resources.windows operation.target-window-id)
-        screen (Screen (Spaces.spaceDisplay operation.target-space))]
-    (if target
-        (target:focus)
-        screen
-        (let [point (screen:frame)]
-          (set point.x (+ point.x (math.floor (/ point.w 2))))
-          (set point.y (- point.y 4))
-          (hs.eventtap.leftClick point)))))
+  "Focus the target window, or for an empty-Space operation click the target
+   screen's menu bar (upstream PaperWM's way to move focus onto that display).
+   A window-targeted operation whose window vanished never clicks."
+  (if operation.target-window-id
+      (let [target (. runtime.resources.windows operation.target-window-id)]
+        (when target (target:focus)))
+      (let [screen (Screen (Spaces.spaceDisplay operation.target-space))]
+        (when screen
+          (let [point (screen:frame)]
+            (set point.x (+ point.x (math.floor (/ point.w 2))))
+            (set point.y (- point.y 4))
+            (hs.eventtap.leftClick point))))))
 
 (fn start-space-focus! [runtime index emit-retry]
   (let [space (get-space index)]
@@ -500,9 +507,11 @@
                   (= (Spaces.focusedSpace) operation.target-space)
                   (or (= nil operation.target-window-id)
                       (= (Window.focusedWindow) target)))]
+      ;; Re-act only on an unstable observation; a stable one is just counted.
       (if (= result.outcome :retry)
           (do
-            (attempt-space-focus! runtime result.operation)
+            (when (= 0 result.operation.stable-count)
+              (attempt-space-focus! runtime result.operation))
             (schedule-space-retry! runtime generation emit-retry))
           (= result.outcome :complete)
           (let [screen (Screen (Spaces.spaceDisplay result.operation.target-space))]
