@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [58/164]
+* Projects [35/141]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1998,7 +1998,99 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [23/23]
+* Chores [0/6]
+*** LATER [#A] Mission Control operations kill Cosmic Hammer's IPC port :tooling:
+    - After =hs.spaces.gotoSpace= / =addSpaceToScreen= / =removeSpace=, the =hs=
+      CLI reports "can't access Cosmic Hammer message port"; only a relaunch
+      (sometimes two) restores it. Seen repeatedly 2026-10-01. Fix belongs in
+      =~/src/cosmichammer= (=Sources/HSSwiftExtensions/IPC.swift=)
+
+*** LATER [#A] A dead IPC print mirror makes every print raise :tooling:
+    - When a CLI session's port is invalidated mid-request, its print mirror
+      stays registered: each later =print= fails with "ipc port is no longer
+      valid (early)" and floods "already recursing, refusing request". Event
+      handlers that print (e.g. lazy =-- Loading extension= lines) then fail and
+      their events are dropped (=event-loop: handler 'dispatcher/behavior-router'
+      failed on event 'window-watcher.events/focused'=). Fix in
+      =~/src/cosmichammer= (IPC print redirection cleanup)
+
+*** LATER [#B] Fix transitive ancestors in lib/hierarchy :feature:
+    - =ancestors= returns direct parents as keys but wraps transitive ones as
+      tables, so a subscription selector on a grandparent kind (e.g.
+      =:event.kind.window/any= for =window-watcher.events/focused=) never
+      matches in =sheaf/subscription-registry.fnl:184=; =isa?= is unaffected
+    - No current subscription uses a transitive selector, so nothing is broken
+      today, but AGENTS.md documents the hierarchical selector as working
+
+*** LATER [#C] cliInstall doesn't work due to privileges :tooling:
+    - For now linked manually
+    - Need to investigate proper permission handling for hs.ipc.cliInstall
+
+*** LATER [#C] Make thumbnail height advisable when #102 lands        :feature:
+    - Related to GitHub issue #102
+    - Thumbnail height calculation should be configurable/advisable
+
+*** LATER [#C] Review archived Spoons online before discarding         :tooling:
+    Local copies lived in Spoons/ (untracked, gitignored) and were removed
+    2026-06-09 during the move off the Hammerspoon app. Look each up at
+    https://www.hammerspoon.org/Spoons/ (or its source repo) and decide whether
+    any are worth reimplementing as a Sheaf component. PaperWM and
+    ReloadConfiguration are already covered natively
+    (paper-wm.fnl; reload-hammerspoon + config-watcher).
+    - Calendar — a calendar inset into the desktop
+    - CircleClock — a clock inset into the desktop
+    - ClipboardTool — clipboard history for text, managed via a context menu
+    - Emojis — choose emojis by name/keyword
+    - HSKeybindings — display keybindings registered with bindHotkeys() and Spoons
+    - KSheet — keybindings cheatsheet for the current application
+    - PaperWM — tile windows horizontally (already ported → paper-wm.fnl)
+    - ReloadConfiguration — reload hotkey + pathwatcher auto-reload (already covered)
+
+* DONE Archived [40/40]
+
+** DONE Milestone 1: Multiple Instances of the Same Source Type :feature:
+    User can create multiple instances of the same event-source type.
+
+*** DONE Separate event-source class/instance concepts               :refactor:
+
+*** DONE Event-sources can specify what they can emit :feature:
+
+** DONE Milestone 2: Serializable Config                               :architecture:
+    Entire automation config as a single data structure.
+
+*** DONE Migrate registry/global APIs to datastructure/local APIs :architecture:
+
+*** DONE Remove external requires from lib/ modules :architecture:
+
+*** DONE Expand subscription data model :architecture:
+
+** DONE Create Hotkey event source :feature:
+    - Emit events on hotkey press
+    - Blocking dependency for migrating: config, windows, slack, chrome, multimedia, emacs, app-switcher
+
+** DONE Proper shortcut and configs for expose :feature:
+    - Migrated to event architecture: hotkey event source + toggle-expose behavior + subscription
+** DONE derive should check for cycles                                :feature:
+    - Prevent A derives B derives A situations
+    - Uses isa? to detect if parent already derives from child
+
+** DONE Make hierarchies non-global                                   :architecture:
+    - Create make-hierarchy function
+    - Allow multiple independent hierarchies
+
+** DONE Define all events in one file with proper domain-based event-kinds :refactor:
+
+** DONE Separate subscription into its own module                     :refactor:
+
+** DONE Rename functions to define-event/behavior/etc                 :refactor:
+
+** DONE Rename registry maps to *-register                            :refactor:
+
+** DONE Validate dependencies when defining things                    :feature:
+    - When behavior definition mentions event-names, validate they exist
+    - Warns (not errors) if dependencies are missing (due to load order)
+
+** DONE PaperWM Review Fixes [23/23]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2254,95 +2346,3 @@ close when their matching fix here lands with a live receipt. Should land before
       identifiers, so a runner should use =--globals hs= instead
     - Done: =test/run.sh= runs every harness with =--globals hs= and fails on
       mangled unbound identifiers in =init.lua=; AGENTS.md documents it
-
-* Chores [0/6]
-*** LATER [#A] Mission Control operations kill Cosmic Hammer's IPC port :tooling:
-    - After =hs.spaces.gotoSpace= / =addSpaceToScreen= / =removeSpace=, the =hs=
-      CLI reports "can't access Cosmic Hammer message port"; only a relaunch
-      (sometimes two) restores it. Seen repeatedly 2026-10-01. Fix belongs in
-      =~/src/cosmichammer= (=Sources/HSSwiftExtensions/IPC.swift=)
-
-*** LATER [#A] A dead IPC print mirror makes every print raise :tooling:
-    - When a CLI session's port is invalidated mid-request, its print mirror
-      stays registered: each later =print= fails with "ipc port is no longer
-      valid (early)" and floods "already recursing, refusing request". Event
-      handlers that print (e.g. lazy =-- Loading extension= lines) then fail and
-      their events are dropped (=event-loop: handler 'dispatcher/behavior-router'
-      failed on event 'window-watcher.events/focused'=). Fix in
-      =~/src/cosmichammer= (IPC print redirection cleanup)
-
-*** LATER [#B] Fix transitive ancestors in lib/hierarchy :feature:
-    - =ancestors= returns direct parents as keys but wraps transitive ones as
-      tables, so a subscription selector on a grandparent kind (e.g.
-      =:event.kind.window/any= for =window-watcher.events/focused=) never
-      matches in =sheaf/subscription-registry.fnl:184=; =isa?= is unaffected
-    - No current subscription uses a transitive selector, so nothing is broken
-      today, but AGENTS.md documents the hierarchical selector as working
-
-*** LATER [#C] cliInstall doesn't work due to privileges :tooling:
-    - For now linked manually
-    - Need to investigate proper permission handling for hs.ipc.cliInstall
-
-*** LATER [#C] Make thumbnail height advisable when #102 lands        :feature:
-    - Related to GitHub issue #102
-    - Thumbnail height calculation should be configurable/advisable
-
-*** LATER [#C] Review archived Spoons online before discarding         :tooling:
-    Local copies lived in Spoons/ (untracked, gitignored) and were removed
-    2026-06-09 during the move off the Hammerspoon app. Look each up at
-    https://www.hammerspoon.org/Spoons/ (or its source repo) and decide whether
-    any are worth reimplementing as a Sheaf component. PaperWM and
-    ReloadConfiguration are already covered natively
-    (paper-wm.fnl; reload-hammerspoon + config-watcher).
-    - Calendar — a calendar inset into the desktop
-    - CircleClock — a clock inset into the desktop
-    - ClipboardTool — clipboard history for text, managed via a context menu
-    - Emojis — choose emojis by name/keyword
-    - HSKeybindings — display keybindings registered with bindHotkeys() and Spoons
-    - KSheet — keybindings cheatsheet for the current application
-    - PaperWM — tile windows horizontally (already ported → paper-wm.fnl)
-    - ReloadConfiguration — reload hotkey + pathwatcher auto-reload (already covered)
-
-* DONE Archived [16/16]
-
-** DONE Milestone 1: Multiple Instances of the Same Source Type :feature:
-    User can create multiple instances of the same event-source type.
-
-*** DONE Separate event-source class/instance concepts               :refactor:
-
-*** DONE Event-sources can specify what they can emit :feature:
-
-** DONE Milestone 2: Serializable Config                               :architecture:
-    Entire automation config as a single data structure.
-
-*** DONE Migrate registry/global APIs to datastructure/local APIs :architecture:
-
-*** DONE Remove external requires from lib/ modules :architecture:
-
-*** DONE Expand subscription data model :architecture:
-
-** DONE Create Hotkey event source :feature:
-    - Emit events on hotkey press
-    - Blocking dependency for migrating: config, windows, slack, chrome, multimedia, emacs, app-switcher
-
-** DONE Proper shortcut and configs for expose :feature:
-    - Migrated to event architecture: hotkey event source + toggle-expose behavior + subscription
-** DONE derive should check for cycles                                :feature:
-    - Prevent A derives B derives A situations
-    - Uses isa? to detect if parent already derives from child
-
-** DONE Make hierarchies non-global                                   :architecture:
-    - Create make-hierarchy function
-    - Allow multiple independent hierarchies
-
-** DONE Define all events in one file with proper domain-based event-kinds :refactor:
-
-** DONE Separate subscription into its own module                     :refactor:
-
-** DONE Rename functions to define-event/behavior/etc                 :refactor:
-
-** DONE Rename registry maps to *-register                            :refactor:
-
-** DONE Validate dependencies when defining things                    :feature:
-    - When behavior definition mentions event-names, validate they exist
-    - Warns (not errors) if dependencies are missing (due to load order)
