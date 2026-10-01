@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [49/165]
+* Projects [50/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1955,7 +1955,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [19/24]
+** PROJ PaperWM Review Fixes [20/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2164,9 +2164,14 @@ close when their matching fix here lands with a live receipt. Should land before
     - All 27 chords are hard-coded in =components/paper-wm.fnl=; P1 puts choices
       in instance config or wiring. Blocked on P5 per the migration constraints
 
-*** LATER [#C] Guard column planning against non-positive heights :feature:
+*** DONE [#C] Guard column planning against non-positive heights :feature:
     - =plan-column= yields =h <= 0= when earlier windows already fill the column
       (=paper-wm/frames.fnl:26=)
+    - Done: each window gets at least =:min-window-height= (new component
+      config choice, default 80), reserving room for the windows below; an
+      overfull column shares the height equally instead of overflowing. Goes
+      beyond parity: upstream =tileColumn= has the same 0-height edge. Cases in
+      =test/paper-wm-frames.fnl=
 
 *** LATER [#C] Insert new windows next to the focused column :feature:
     - =add-window= appends at =length + 1=; upstream PaperWM inserts after the

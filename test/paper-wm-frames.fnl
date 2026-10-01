@@ -30,4 +30,30 @@
 (assert (= 500 (. right-plan 1 :frame :x)))
 (assert (= 300 (. right-plan 1 :frame :h)))
 
+;; An anchor taller than the column leaves later windows their minimum height.
+(local (squeezed)
+  (frames.plan-column
+   [{:window-id 1 :frame {:x 0 :y 0 :w 300 :h 500}}
+    {:window-id 2 :frame {:x 0 :y 0 :w 300 :h 500}}
+    {:window-id 3 :frame {:x 0 :y 0 :w 300 :h 500}}]
+   {:x 0 :y 0 :y2 600}
+   {:gap 10 :height 0 :min-height 80 :anchor-window-id 1 :anchor-height 600}))
+(each [_ intent (ipairs squeezed)]
+  (assert (<= 80 intent.frame.h)
+          (.. "window " intent.window-id " squeezed to height " intent.frame.h)))
+(assert (= 600 (. squeezed 3 :frame :y2)) "column does not reach the bottom")
+(assert (<= (+ (. squeezed 1 :frame :y2) 10) (. squeezed 2 :frame :y))
+        "windows overlap")
+
+;; A column too short for every window at min-height shares it without overlap.
+(local (crowded)
+  (frames.plan-column
+   (fcollect [id 1 8] {:window-id id :frame {:x 0 :y 0 :w 300 :h 300}})
+   {:x 0 :y 0 :y2 600}
+   {:gap 10 :min-height 80}))
+(for [index 2 8]
+  (assert (<= (+ (. crowded (- index 1) :frame :y2) 10) (. crowded index :frame :y))
+          (.. "window " index " overlaps the one above")))
+(assert (= 600 (. crowded 8 :frame :y2)) "crowded column overflows its bounds")
+
 (print "PaperWM frame planning passed")

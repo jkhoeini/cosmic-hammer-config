@@ -23,7 +23,8 @@
 
 (local default-config {:window-gap 35
                        :screen-margin 16
-                       :window-ratios [0.421875 0.843750]})
+                       :window-ratios [0.421875 0.843750]
+                       :min-window-height 80})
 
 ;; Retries poll at the window animation cadence; with animations disabled
 ;; (animationDuration 0) this floor keeps them from becoming a busy loop.
@@ -42,7 +43,9 @@
      :epoch (runtime-epoch config)
      :config {:window-gap (or config.window-gap default-config.window-gap)
               :screen-margin (or config.screen-margin default-config.screen-margin)
-              :window-ratios (or config.window-ratios default-config.window-ratios)}
+              :window-ratios (or config.window-ratios default-config.window-ratios)
+              :min-window-height (or config.min-window-height
+                                     default-config.min-window-height)}
      :tiling-state (empty-state)
      :resources {:windows {}
                  :ui-watchers {}
@@ -188,6 +191,7 @@
         (plan column-width)
         (plan-column entries bounds
                      {:gap runtime.config.window-gap
+                      :min-height runtime.config.min-window-height
                       :height height
                       :width width
                       :anchor-window-id anchor-id

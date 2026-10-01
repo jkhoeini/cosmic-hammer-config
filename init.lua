@@ -2524,14 +2524,14 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   local Timer = hs.timer
   local Watcher = hs.uielement.watcher
   local Rect = hs.geometry.rect
-  local default_config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.421875, 0.84375}}
+  local default_config = {["window-gap"] = 35, ["screen-margin"] = 16, ["window-ratios"] = {0.421875, 0.84375}, ["min-window-height"] = 80}
   local space_retry_min_delay = 0.05
   local function runtime_epoch(config)
     return (config.epoch or (Timer.absoluteTime and Timer.absoluteTime()) or (1000000 * Timer.secondsSinceEpoch()))
   end
   local function make_runtime(config)
     local config0 = (config or {})
-    return {["active?"] = true, epoch = runtime_epoch(config0), config = {["window-gap"] = (config0["window-gap"] or default_config["window-gap"]), ["screen-margin"] = (config0["screen-margin"] or default_config["screen-margin"]), ["window-ratios"] = (config0["window-ratios"] or default_config["window-ratios"])}, ["tiling-state"] = empty_state(), resources = {windows = {}, ["ui-watchers"] = {}, ["watcher-generations"] = {}, ["watcher-restart-timers"] = {}, ["frame-observations"] = {sequences = {}, latest = {}, timers = {}}, outbox = nil, ["space-focus"] = {["next-generation"] = 0, active = nil}, ["space-focus-timer"] = nil}, ["last-reconcile-report"] = nil}
+    return {["active?"] = true, epoch = runtime_epoch(config0), config = {["window-gap"] = (config0["window-gap"] or default_config["window-gap"]), ["screen-margin"] = (config0["screen-margin"] or default_config["screen-margin"]), ["window-ratios"] = (config0["window-ratios"] or default_config["window-ratios"]), ["min-window-height"] = (config0["min-window-height"] or default_config["min-window-height"])}, ["tiling-state"] = empty_state(), resources = {windows = {}, ["ui-watchers"] = {}, ["watcher-generations"] = {}, ["watcher-restart-timers"] = {}, ["frame-observations"] = {sequences = {}, latest = {}, timers = {}}, outbox = nil, ["space-focus"] = {["next-generation"] = 0, active = nil}, ["space-focus-timer"] = nil}, ["last-reconcile-report"] = nil}
   end
   local function copy_table(source)
     local result = {}
@@ -2732,7 +2732,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
       end
       entries = tbl_26_
     end
-    local plan, column_width = plan_column(entries, bounds, {gap = runtime.config["window-gap"], height = height, width = width, ["anchor-window-id"] = anchor_id, ["anchor-height"] = anchor_height})
+    local plan, column_width = plan_column(entries, bounds, {gap = runtime.config["window-gap"], ["min-height"] = runtime.config["min-window-height"], height = height, width = width, ["anchor-window-id"] = anchor_id, ["anchor-height"] = anchor_height})
     for _, intent in ipairs(plan) do
       local member = members[intent["window-id"]]
       move_window_21(runtime, member.window, intent.frame, member.frame)
@@ -3635,10 +3635,13 @@ package.preload["paper-wm.frames"] = package.preload["paper-wm.frames"] or funct
   local function plan_column(entries, bounds, opts)
     local plan = {}
     local gap = (opts.gap or 0)
+    local count = #entries
+    local fair_share = math.floor(((bounds.y2 - bounds.y - ((count - 1) * gap)) / math.max(1, count)))
+    local min_height = math.max(1, math.min((opts["min-height"] or 1), fair_share))
     local first_entry = entries[1]
     local column_width = (opts.width or (first_entry and first_entry.frame.w))
     local y_start = bounds.y
-    for _, entry in ipairs(entries) do
+    for index, entry in ipairs(entries) do
       local frame = copy_frame(entry.frame)
       local height
       if (opts["anchor-window-id"] and opts["anchor-height"] and (entry["window-id"] == opts["anchor-window-id"])) then
@@ -3646,6 +3649,8 @@ package.preload["paper-wm.frames"] = package.preload["paper-wm.frames"] or funct
       else
         height = (opts.height or frame.h)
       end
+      local below = (#entries - index)
+      local room = (bounds.y2 - y_start - (below * (min_height + gap)))
       if bounds.x then
         frame.x = bounds.x
       else
@@ -3653,14 +3658,14 @@ package.preload["paper-wm.frames"] = package.preload["paper-wm.frames"] or funct
       end
       frame.y = y_start
       frame.w = column_width
-      frame.h = math.min(height, (bounds.y2 - y_start))
+      frame.h = math.max(min_height, math.min(height, room))
       update_edges_21(frame)
       table.insert(plan, {["window-id"] = entry["window-id"], frame = frame})
       y_start = math.min((frame.y2 + gap), bounds.y2)
     end
     do
       local last_intent = plan[#plan]
-      if (last_intent and (last_intent.frame.y2 ~= bounds.y2)) then
+      if (last_intent and (last_intent.frame.y2 < bounds.y2)) then
         last_intent.frame.h = (bounds.y2 - last_intent.frame.y)
         update_edges_21(last_intent.frame)
       else
