@@ -1850,8 +1850,8 @@ package.preload["components"] = package.preload["components"] or function(...)
   local url_history_type = _local_335_["url-history-type"]
   local _local_338_ = require("components.window-state")
   local window_state_type = _local_338_["window-state-type"]
-  local _local_478_ = require("components.paper-wm")
-  local paper_wm_type = _local_478_["paper-wm-type"]
+  local _local_481_ = require("components.paper-wm")
+  local paper_wm_type = _local_481_["paper-wm-type"]
   local component_hierarchy = make_hierarchy()
   derive_21(component_hierarchy, "component.kind/space-indicator", "component.kind/any")
   derive_21(component_hierarchy, "component.kind/desktop-layout", "component.kind/any")
@@ -2456,11 +2456,11 @@ package.preload["components.window-state"] = package.preload["components.window-
   return {["window-state-type"] = window_state_type}
 end
 package.preload["components.paper-wm"] = package.preload["components.paper-wm"] or function(...)
-  local _local_474_ = require("paper-wm")
-  local make_runtime = _local_474_["make-runtime"]
-  local stop_runtime_21 = _local_474_["stop-runtime!"]
-  local _local_475_ = require("sheaf.component-registry")
-  local make_component_type = _local_475_["make-component-type"]
+  local _local_477_ = require("paper-wm")
+  local make_runtime = _local_477_["make-runtime"]
+  local stop_runtime_21 = _local_477_["stop-runtime!"]
+  local _local_478_ = require("sheaf.component-registry")
+  local make_component_type = _local_478_["make-component-type"]
   local sources = {}
   table.insert(sources, {type = "event-source.type/hotkey", config = {mods = {"alt", "cmd"}, key = "left"}, ["instance-name"] = "focus-left", tags = {"tag/paper-wm-focus-left"}})
   table.insert(sources, {type = "event-source.type/hotkey", config = {mods = {"alt", "cmd"}, key = "right"}, ["instance-name"] = "focus-right", tags = {"tag/paper-wm-focus-right"}})
@@ -2484,15 +2484,15 @@ package.preload["components.paper-wm"] = package.preload["components.paper-wm"] 
     table.insert(sources, {type = "event-source.type/hotkey", config = {mods = {"alt", "cmd"}, key = tostring(i)}, ["instance-name"] = ("switch-to-space-" .. tostring(i)), tags = {("tag/paper-wm-switch-to-space-" .. tostring(i))}})
   end
   local paper_wm_type
-  local _476_
+  local _479_
   do
-    local function _477_(state, config, instance_name)
+    local function _480_(state, config, instance_name)
       return {runtime = state}
     end
-    table.insert(sources, {type = "event-source.type/paper-wm-outbox", ["instance-name"] = "outbox", tags = {"tag/paper-wm-outbox"}, ["config-fn"] = _477_})
-    _476_ = sources
+    table.insert(sources, {type = "event-source.type/paper-wm-outbox", ["instance-name"] = "outbox", tags = {"tag/paper-wm-outbox"}, ["config-fn"] = _480_})
+    _479_ = sources
   end
-  paper_wm_type = make_component_type("component.type/paper-wm", "PaperWM tiling window manager", {traits = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, sources = _476_, ["start-fn"] = make_runtime, ["stop-fn"] = stop_runtime_21})
+  paper_wm_type = make_component_type("component.type/paper-wm", "PaperWM tiling window manager", {traits = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, sources = _479_, ["start-fn"] = make_runtime, ["stop-fn"] = stop_runtime_21})
   return {["paper-wm-type"] = paper_wm_type}
 end
 package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
@@ -2759,10 +2759,17 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   end
   local function resolve_anchor(runtime, space, screen, _3fanchor)
     local explicit = (_3fanchor and _3fanchor.frame and live_tracked_window(runtime, _3fanchor["window-id"], space))
-    local focused = Window.focusedWindow()
+    local recorded_id = runtime["tiling-state"]["focused-window-id"]
+    local live_focused
+    if (not explicit and (nil == recorded_id)) then
+      live_focused = Window.focusedWindow()
+    else
+      live_focused = nil
+    end
+    local focused_id = (recorded_id or (live_focused and live_focused:id()))
     local focused_window, focused_frame
-    if (not explicit and focused) then
-      focused_window, focused_frame = live_tracked_window(runtime, focused:id(), space)
+    if not explicit then
+      focused_window, focused_frame = live_tracked_window(runtime, focused_id, space)
     else
       focused_window, focused_frame = nil
     end
@@ -2850,7 +2857,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
     local observations = runtime.resources["frame-observations"]
     next_observation(observations, window_id, event_kind, frame, generation)
     if (nil == observations.timers[window_id]) then
-      local function _428_()
+      local function _429_()
         observations.timers[window_id] = nil
         local latest = observations.latest[window_id]
         if latest then
@@ -2859,7 +2866,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
           return nil
         end
       end
-      observations.timers[window_id] = Timer.doAfter((1 / 60), _428_)
+      observations.timers[window_id] = Timer.doAfter((1 / 60), _429_)
       return nil
     else
       return nil
@@ -2872,19 +2879,19 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
       if (nil == runtime.resources["ui-watchers"][window_id]) then
         local generation = (1 + (runtime.resources["watcher-generations"][window_id] or 0))
         local watcher
-        local function _431_(observed_window, event_kind)
+        local function _432_(observed_window, event_kind)
           local ok, frame
-          local function _432_()
+          local function _433_()
             return observed_window:frame()
           end
-          ok, frame = pcall(_432_)
+          ok, frame = pcall(_433_)
           if (runtime["active?"] and ok) then
             return observe_frame_21(runtime, window_id, tostring(event_kind), frame, generation)
           else
             return nil
           end
         end
-        watcher = window:newWatcher(_431_)
+        watcher = window:newWatcher(_432_)
         runtime.resources["watcher-generations"][window_id] = generation
         watcher:start({Watcher.windowMoved, Watcher.windowResized})
         runtime.resources["ui-watchers"][window_id] = watcher
@@ -2918,10 +2925,10 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   end
   local function apply_membership_21(runtime, facts, opts)
     local plan
-    local function _437_(_241)
+    local function _438_(_241)
       return (nil ~= resolve_window(_241))
     end
-    plan = plan_membership(runtime["tiling-state"], facts, {["live?"] = _437_, ["observed-spaces"] = opts["observed-spaces"]})
+    plan = plan_membership(runtime["tiling-state"], facts, {["live?"] = _438_, ["observed-spaces"] = opts["observed-spaces"]})
     commit_state_21(runtime, plan.state)
     for _, window_id in ipairs(plan.detach) do
       detach_window_21(runtime, window_id)
@@ -2959,15 +2966,25 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
         plan = {["touched-spaces"] = {}}
       end
       local entry = runtime["tiling-state"].index[fact["window-id"]]
+      local focused_id
       if entry then
-        commit_state_21(runtime, set_focused_window(runtime["tiling-state"], fact["window-id"]))
-        local function _441_(_241)
+        focused_id = fact["window-id"]
+      else
+        focused_id = nil
+      end
+      if (focused_id ~= runtime["tiling-state"]["focused-window-id"]) then
+        commit_state_21(runtime, set_focused_window(runtime["tiling-state"], focused_id))
+      else
+      end
+      local and_444_ = entry
+      if and_444_ then
+        local function _445_(_241)
           return (_241 == entry.space)
         end
-        if not some(_441_, plan["touched-spaces"]) then
-          tile_space_21(runtime, entry.space, anchor)
-        else
-        end
+        and_444_ = not some(_445_, plan["touched-spaces"])
+      end
+      if and_444_ then
+        tile_space_21(runtime, entry.space, anchor)
       else
       end
     end
@@ -2985,10 +3002,11 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
     return runtime
   end
   local function focused_window(runtime)
-    local focused = Window.focusedWindow()
-    local entry = (focused and runtime["tiling-state"].index[focused:id()])
-    if entry then
-      return focused, entry
+    local window_id = runtime["tiling-state"]["focused-window-id"]
+    local window = (window_id and runtime.resources.windows[window_id])
+    local entry = (window_id and runtime["tiling-state"].index[window_id])
+    if (window and entry and live_frame(window)) then
+      return window, entry
     else
       return nil
     end
@@ -3007,6 +3025,7 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
       local target = runtime.resources.windows[target_id]
       if target then
         target:focus()
+        commit_state_21(runtime, set_focused_window(runtime["tiling-state"], target_id))
       else
       end
     end
@@ -3059,10 +3078,10 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   end
   local function cycle_value(candidates, current, direction)
     if (direction == "ascending") then
-      local function _452_(_241)
+      local function _455_(_241)
         return ((_241 > (current + 10)) and _241)
       end
-      return (some(_452_, candidates) or candidates[1])
+      return (some(_455_, candidates) or candidates[1])
     else
       local result = candidates[#candidates]
       for index = #candidates, 1, -1 do
@@ -3090,13 +3109,13 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
         local i_27_ = 0
         for _, ratio in ipairs(runtime.config["window-ratios"]) do
           local val_28_
-          local _456_
+          local _459_
           if (dimension == "width") then
-            _456_ = canvas.w
+            _459_ = canvas.w
           else
-            _456_ = canvas.h
+            _459_ = canvas.h
           end
-          val_28_ = ((ratio * (_456_ + runtime.config["window-gap"])) - runtime.config["window-gap"])
+          val_28_ = ((ratio * (_459_ + runtime.config["window-gap"])) - runtime.config["window-gap"])
           if (nil ~= val_28_) then
             i_27_ = (i_27_ + 1)
             tbl_26_[i_27_] = val_28_
@@ -3153,11 +3172,11 @@ package.preload["paper-wm"] = package.preload["paper-wm"] or function(...)
   end
   local function schedule_space_retry_21(runtime, generation)
     stop_handle_21(runtime.resources["space-focus-timer"])
-    local function _464_()
+    local function _467_()
       runtime.resources["space-focus-timer"] = nil
       return emit_21(runtime, "paper-wm.events/space-focus-retry", {generation = generation})
     end
-    runtime.resources["space-focus-timer"] = Timer.doAfter(math.max(Window.animationDuration, space_retry_min_delay), _464_)
+    runtime.resources["space-focus-timer"] = Timer.doAfter(math.max(Window.animationDuration, space_retry_min_delay), _467_)
     return nil
   end
   local function attempt_space_focus_21(runtime, operation)
@@ -3702,66 +3721,66 @@ package.preload["paper-wm.space-conversation"] = package.preload["paper-wm.space
   end
   return {start = start, advance = advance}
 end
-local _local_479_ = require("components")
-local component_registry = _local_479_["component-registry"]
+local _local_482_ = require("components")
+local component_registry = _local_482_["component-registry"]
 package.preload["commands"] = package.preload["commands"] or function(...)
-  local _local_486_ = require("sheaf.command-registry")
-  local make_command_registry = _local_486_["make-command-registry"]
-  local add_command_21 = _local_486_["add-command!"]
-  local _local_487_ = require("traits")
-  local trait_registry = _local_487_["trait-registry"]
-  local _local_490_ = require("commands.toggle-expose")
-  local toggle_expose_command = _local_490_["toggle-expose-command"]
-  local _local_497_ = require("commands.space-indicator")
-  local update_menubar_command = _local_497_["update-menubar-command"]
-  local _local_502_ = require("commands.desktop-layout")
-  local reconcile_spaces_command = _local_502_["reconcile-spaces-command"]
-  local _local_531_ = require("commands.mouse-window-management")
-  local focus_hovered_window_command = _local_531_["focus-hovered-window-command"]
-  local consume_hover_focus_command = _local_531_["consume-hover-focus-command"]
-  local center_cursor_command = _local_531_["center-cursor-command"]
-  local note_space_change_command = _local_531_["note-space-change-command"]
-  local schedule_placement_command = _local_531_["schedule-placement-command"]
-  local place_window_command = _local_531_["place-window-command"]
-  local _local_534_ = require("commands.compile-fennel")
-  local compile_command = _local_534_["compile-command"]
-  local _local_538_ = require("commands.reload-hammerspoon")
-  local reload_hammerspoon_command = _local_538_["reload-hammerspoon-command"]
-  local _local_543_ = require("commands.open-in-app")
-  local open_in_app_command = _local_543_["open-in-app-command"]
-  local _local_551_ = require("commands.show-chooser")
-  local show_chooser_command = _local_551_["show-chooser-command"]
-  local _local_560_ = require("commands.open-emacs")
-  local open_emacs_command = _local_560_["open-emacs-command"]
-  local _local_571_ = require("commands.window-border")
-  local show_active_border_command = _local_571_["show-active-border-command"]
-  local show_inactive_border_command = _local_571_["show-inactive-border-command"]
-  local hide_borders_command = _local_571_["hide-borders-command"]
-  local _local_576_ = require("commands.record-url")
-  local record_url_command = _local_576_["record-url-command"]
-  local _local_582_ = require("commands.show-history")
-  local show_history_command = _local_582_["show-history-command"]
-  local _local_590_ = require("commands.window-state")
-  local initialize_windows_command = _local_590_["initialize-windows-command"]
-  local upsert_window_command = _local_590_["upsert-window-command"]
-  local remove_window_command = _local_590_["remove-window-command"]
-  local set_focused_window_command = _local_590_["set-focused-window-command"]
-  local _local_617_ = require("commands.paper-wm")
-  local initialize_layout_command = _local_617_["initialize-layout-command"]
-  local reconcile_window_command = _local_617_["reconcile-window-command"]
-  local record_focus_command = _local_617_["record-focus-command"]
-  local retile_observed_frame_command = _local_617_["retile-observed-frame-command"]
-  local retry_space_focus_command = _local_617_["retry-space-focus-command"]
-  local focus_command = _local_617_["focus-command"]
-  local swap_command = _local_617_["swap-command"]
-  local center_window_command = _local_617_["center-window-command"]
-  local set_full_width_command = _local_617_["set-full-width-command"]
-  local cycle_window_size_command = _local_617_["cycle-window-size-command"]
-  local slurp_window_command = _local_617_["slurp-window-command"]
-  local barf_window_command = _local_617_["barf-window-command"]
-  local switch_to_space_command = _local_617_["switch-to-space-command"]
-  local increment_space_command = _local_617_["increment-space-command"]
-  local refresh_windows_command = _local_617_["refresh-windows-command"]
+  local _local_489_ = require("sheaf.command-registry")
+  local make_command_registry = _local_489_["make-command-registry"]
+  local add_command_21 = _local_489_["add-command!"]
+  local _local_490_ = require("traits")
+  local trait_registry = _local_490_["trait-registry"]
+  local _local_493_ = require("commands.toggle-expose")
+  local toggle_expose_command = _local_493_["toggle-expose-command"]
+  local _local_500_ = require("commands.space-indicator")
+  local update_menubar_command = _local_500_["update-menubar-command"]
+  local _local_505_ = require("commands.desktop-layout")
+  local reconcile_spaces_command = _local_505_["reconcile-spaces-command"]
+  local _local_534_ = require("commands.mouse-window-management")
+  local focus_hovered_window_command = _local_534_["focus-hovered-window-command"]
+  local consume_hover_focus_command = _local_534_["consume-hover-focus-command"]
+  local center_cursor_command = _local_534_["center-cursor-command"]
+  local note_space_change_command = _local_534_["note-space-change-command"]
+  local schedule_placement_command = _local_534_["schedule-placement-command"]
+  local place_window_command = _local_534_["place-window-command"]
+  local _local_537_ = require("commands.compile-fennel")
+  local compile_command = _local_537_["compile-command"]
+  local _local_541_ = require("commands.reload-hammerspoon")
+  local reload_hammerspoon_command = _local_541_["reload-hammerspoon-command"]
+  local _local_546_ = require("commands.open-in-app")
+  local open_in_app_command = _local_546_["open-in-app-command"]
+  local _local_554_ = require("commands.show-chooser")
+  local show_chooser_command = _local_554_["show-chooser-command"]
+  local _local_563_ = require("commands.open-emacs")
+  local open_emacs_command = _local_563_["open-emacs-command"]
+  local _local_574_ = require("commands.window-border")
+  local show_active_border_command = _local_574_["show-active-border-command"]
+  local show_inactive_border_command = _local_574_["show-inactive-border-command"]
+  local hide_borders_command = _local_574_["hide-borders-command"]
+  local _local_579_ = require("commands.record-url")
+  local record_url_command = _local_579_["record-url-command"]
+  local _local_585_ = require("commands.show-history")
+  local show_history_command = _local_585_["show-history-command"]
+  local _local_593_ = require("commands.window-state")
+  local initialize_windows_command = _local_593_["initialize-windows-command"]
+  local upsert_window_command = _local_593_["upsert-window-command"]
+  local remove_window_command = _local_593_["remove-window-command"]
+  local set_focused_window_command = _local_593_["set-focused-window-command"]
+  local _local_620_ = require("commands.paper-wm")
+  local initialize_layout_command = _local_620_["initialize-layout-command"]
+  local reconcile_window_command = _local_620_["reconcile-window-command"]
+  local record_focus_command = _local_620_["record-focus-command"]
+  local retile_observed_frame_command = _local_620_["retile-observed-frame-command"]
+  local retry_space_focus_command = _local_620_["retry-space-focus-command"]
+  local focus_command = _local_620_["focus-command"]
+  local swap_command = _local_620_["swap-command"]
+  local center_window_command = _local_620_["center-window-command"]
+  local set_full_width_command = _local_620_["set-full-width-command"]
+  local cycle_window_size_command = _local_620_["cycle-window-size-command"]
+  local slurp_window_command = _local_620_["slurp-window-command"]
+  local barf_window_command = _local_620_["barf-window-command"]
+  local switch_to_space_command = _local_620_["switch-to-space-command"]
+  local increment_space_command = _local_620_["increment-space-command"]
+  local refresh_windows_command = _local_620_["refresh-windows-command"]
   local command_registry = make_command_registry({["trait-registry"] = trait_registry})
   add_command_21(command_registry, toggle_expose_command)
   add_command_21(command_registry, update_menubar_command)
@@ -3804,8 +3823,8 @@ package.preload["commands"] = package.preload["commands"] or function(...)
   return {["command-registry"] = command_registry}
 end
 package.preload["sheaf.command-registry"] = package.preload["sheaf.command-registry"] or function(...)
-  local _local_480_ = require("sheaf.trait-registry")
-  local trait_defined_3f = _local_480_["trait-defined?"]
+  local _local_483_ = require("sheaf.trait-registry")
+  local trait_defined_3f = _local_483_["trait-defined?"]
   local function make_command_registry(opts)
     if (nil == opts["trait-registry"]) then
       error("make-command-registry: :trait-registry is required")
@@ -3855,28 +3874,28 @@ package.preload["sheaf.command-registry"] = package.preload["sheaf.command-regis
   return {["make-command-registry"] = make_command_registry, ["make-command"] = make_command, ["add-command!"] = add_command_21, ["command-defined?"] = command_defined_3f, ["get-command"] = get_command, ["list-commands"] = list_commands}
 end
 package.preload["commands.toggle-expose"] = package.preload["commands.toggle-expose"] or function(...)
-  local _local_488_ = require("sheaf.command-registry")
-  local make_command = _local_488_["make-command"]
+  local _local_491_ = require("sheaf.command-registry")
+  local make_command = _local_491_["make-command"]
   local toggle_expose_command
-  local function _489_(component, params)
+  local function _492_(component, params)
     component.state.expose:toggleShow()
     return nil
   end
-  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {["requires-traits"] = {"trait/has-expose"}, fn = _489_})
+  toggle_expose_command = make_command("expose.commands/toggle-show", "Toggle the Hammerspoon Expose window picker", {["requires-traits"] = {"trait/has-expose"}, fn = _492_})
   return {["toggle-expose-command"] = toggle_expose_command}
 end
 package.preload["commands.space-indicator"] = package.preload["commands.space-indicator"] or function(...)
-  local _local_491_ = require("sheaf.command-registry")
-  local make_command = _local_491_["make-command"]
+  local _local_494_ = require("sheaf.command-registry")
+  local make_command = _local_494_["make-command"]
   local table_3f
-  local function _492_(_241)
+  local function _495_(_241)
     return (type(_241) == "table")
   end
-  table_3f = _492_
+  table_3f = _495_
   local update_menubar_command
-  local function _493_(component, params)
+  local function _496_(component, params)
     if component.state.menubar then
-      local _494_
+      local _497_
       do
         local tbl_26_ = {}
         local i_27_ = 0
@@ -3888,23 +3907,23 @@ package.preload["commands.space-indicator"] = package.preload["commands.space-in
           else
           end
         end
-        _494_ = tbl_26_
+        _497_ = tbl_26_
       end
-      component.state.menubar:setTitle(table.concat(_494_, "|"))
+      component.state.menubar:setTitle(table.concat(_497_, "|"))
     else
     end
     return nil
   end
-  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {["requires-traits"] = {"trait/has-menubar"}, schema = {["active-spaces"] = table_3f}, fn = _493_})
+  update_menubar_command = make_command("space-indicator.commands/update-menubar", "Update the space indicator menubar with active space indices", {["requires-traits"] = {"trait/has-menubar"}, schema = {["active-spaces"] = table_3f}, fn = _496_})
   return {["update-menubar-command"] = update_menubar_command}
 end
 package.preload["commands.desktop-layout"] = package.preload["commands.desktop-layout"] or function(...)
-  local _local_498_ = require("sheaf.command-registry")
-  local make_command = _local_498_["make-command"]
-  local _local_499_ = require("sheaf.event-registry")
-  local dispatch_event_21 = _local_499_["dispatch-event!"]
-  local _local_500_ = require("events")
-  local event_registry = _local_500_["event-registry"]
+  local _local_501_ = require("sheaf.command-registry")
+  local make_command = _local_501_["make-command"]
+  local _local_502_ = require("sheaf.event-registry")
+  local dispatch_event_21 = _local_502_["dispatch-event!"]
+  local _local_503_ = require("events")
+  local event_registry = _local_503_["event-registry"]
   local function dispatch_spaces_21(event_name, component, entries, all_spaces, active_spaces)
     for _, entry in ipairs((entries or {})) do
       dispatch_event_21(event_registry, event_name, component.name, {["space-id"] = entry["space-id"], ["screen-uuid"] = entry["screen-uuid"], ["all-spaces"] = all_spaces, ["active-spaces"] = active_spaces})
@@ -3912,42 +3931,42 @@ package.preload["commands.desktop-layout"] = package.preload["commands.desktop-l
     return nil
   end
   local reconcile_spaces_command
-  local function _501_(component, params)
+  local function _504_(component, params)
     dispatch_spaces_21("desktop-layout.events/space-destroyed", component, params.destroyed, params["all-spaces"], params["active-spaces"])
     dispatch_spaces_21("desktop-layout.events/space-created", component, params.created, params["all-spaces"], params["active-spaces"])
     return {["all-spaces"] = params["all-spaces"]}
   end
-  reconcile_spaces_command = make_command("desktop-layout.commands/reconcile-spaces", "Capture a desktop snapshot and emit derived space lifecycle events", {["requires-traits"] = {"trait/has-desktop-layout"}, fn = _501_})
+  reconcile_spaces_command = make_command("desktop-layout.commands/reconcile-spaces", "Capture a desktop snapshot and emit derived space lifecycle events", {["requires-traits"] = {"trait/has-desktop-layout"}, fn = _504_})
   return {["reconcile-spaces-command"] = reconcile_spaces_command}
 end
 package.preload["commands.mouse-window-management"] = package.preload["commands.mouse-window-management"] or function(...)
-  local _local_503_ = require("sheaf.command-registry")
-  local make_command = _local_503_["make-command"]
-  local _local_504_ = require("sheaf.event-registry")
-  local dispatch_event_21 = _local_504_["dispatch-event!"]
-  local _local_505_ = require("events")
-  local event_registry = _local_505_["event-registry"]
-  local _local_506_ = require("event_sources.mouse-window-watcher")
-  local window_at_point = _local_506_["window-at-point"]
-  local _local_507_ = require("lib.window-facts")
-  local snapshot_observed_windows = _local_507_["snapshot-observed-windows"]
+  local _local_506_ = require("sheaf.command-registry")
+  local make_command = _local_506_["make-command"]
+  local _local_507_ = require("sheaf.event-registry")
+  local dispatch_event_21 = _local_507_["dispatch-event!"]
+  local _local_508_ = require("events")
+  local event_registry = _local_508_["event-registry"]
+  local _local_509_ = require("event_sources.mouse-window-watcher")
+  local window_at_point = _local_509_["window-at-point"]
+  local _local_510_ = require("lib.window-facts")
+  local snapshot_observed_windows = _local_510_["snapshot-observed-windows"]
   local number_3f
-  local function _508_(_241)
+  local function _511_(_241)
     return (type(_241) == "number")
   end
-  number_3f = _508_
+  number_3f = _511_
   local table_3f
-  local function _509_(_241)
+  local function _512_(_241)
     return (type(_241) == "table")
   end
-  table_3f = _509_
+  table_3f = _512_
   local string_3f
-  local function _510_(_241)
+  local function _513_(_241)
     return (type(_241) == "string")
   end
-  string_3f = _510_
+  string_3f = _513_
   local focus_hovered_window_command
-  local function _511_(component, params)
+  local function _514_(component, params)
     local point = hs.mouse.absolutePosition()
     local ok, window = pcall(window_at_point, point)
     local matching_3f = (ok and window and (window:id() == params["window-id"]))
@@ -3956,10 +3975,10 @@ package.preload["commands.mouse-window-management"] = package.preload["commands.
     local hover_focus_window_ids = component.state["hover-focus-window-ids"]
     if (matching_3f and not already_focused_3f) then
       local focused_ok
-      local function _512_()
+      local function _515_()
         return window:focus()
       end
-      focused_ok = pcall(_512_)
+      focused_ok = pcall(_515_)
       if focused_ok then
         hover_focus_window_ids[params["window-id"]] = true
       else
@@ -3968,24 +3987,24 @@ package.preload["commands.mouse-window-management"] = package.preload["commands.
     end
     return {["last-space-change-at"] = component.state["last-space-change-at"], ["pending-placement-timers"] = component.state["pending-placement-timers"], ["hover-focus-window-ids"] = hover_focus_window_ids}
   end
-  focus_hovered_window_command = make_command("mouse-window-management.commands/focus-hovered-window", "Focus the window still under the cursor", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f}, fn = _511_})
+  focus_hovered_window_command = make_command("mouse-window-management.commands/focus-hovered-window", "Focus the window still under the cursor", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f}, fn = _514_})
   local consume_hover_focus_command
-  local function _515_(component, params)
+  local function _518_(component, params)
     local hover_focus_window_ids = component.state["hover-focus-window-ids"]
     hover_focus_window_ids[params["window-id"]] = nil
     return {["last-space-change-at"] = component.state["last-space-change-at"], ["pending-placement-timers"] = component.state["pending-placement-timers"], ["hover-focus-window-ids"] = hover_focus_window_ids}
   end
-  consume_hover_focus_command = make_command("mouse-window-management.commands/consume-hover-focus", "Clear a consumed mouse-originated focus marker", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f}, fn = _515_})
+  consume_hover_focus_command = make_command("mouse-window-management.commands/consume-hover-focus", "Clear a consumed mouse-originated focus marker", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f}, fn = _518_})
   local center_cursor_command
-  local function _516_(component, params)
+  local function _519_(component, params)
     do
       local window_ok, window = pcall(hs.window.get, params["window-id"])
       local frame_ok, live_frame
       if (window_ok and window) then
-        local function _517_()
+        local function _520_()
           return window:frame()
         end
-        frame_ok, live_frame = pcall(_517_)
+        frame_ok, live_frame = pcall(_520_)
       else
         frame_ok, live_frame = false, nil
       end
@@ -4003,14 +4022,14 @@ package.preload["commands.mouse-window-management"] = package.preload["commands.
     end
     return nil
   end
-  center_cursor_command = make_command("mouse-window-management.commands/center-cursor", "Center the cursor when it is outside the focused window", {schema = {["window-id"] = number_3f, frame = table_3f}, fn = _516_})
+  center_cursor_command = make_command("mouse-window-management.commands/center-cursor", "Center the cursor when it is outside the focused window", {schema = {["window-id"] = number_3f, frame = table_3f}, fn = _519_})
   local note_space_change_command
-  local function _521_(component, params)
+  local function _524_(component, params)
     return {["last-space-change-at"] = params.timestamp, ["pending-placement-timers"] = component.state["pending-placement-timers"], ["hover-focus-window-ids"] = component.state["hover-focus-window-ids"]}
   end
-  note_space_change_command = make_command("mouse-window-management.commands/note-space-change", "Record the latest active Space change", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {timestamp = number_3f}, fn = _521_})
+  note_space_change_command = make_command("mouse-window-management.commands/note-space-change", "Record the latest active Space change", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {timestamp = number_3f}, fn = _524_})
   local schedule_placement_command
-  local function _522_(component, params)
+  local function _525_(component, params)
     local pending = component.state["pending-placement-timers"]
     local existing = pending[params["window-id"]]
     local cursor_screen = hs.mouse.getCurrentScreen()
@@ -4019,62 +4038,62 @@ package.preload["commands.mouse-window-management"] = package.preload["commands.
       existing:stop()
     else
     end
-    local function _524_()
+    local function _527_()
       pending[params["window-id"]] = nil
       return dispatch_event_21(event_registry, "mouse-window-management.events/window-placement-ready", component.name, {["window-id"] = params["window-id"], ["created-at"] = params["created-at"], ["cursor-screen-uuid"] = cursor_screen_uuid})
     end
-    pending[params["window-id"]] = hs.timer.doAfter(0.25, _524_)
+    pending[params["window-id"]] = hs.timer.doAfter(0.25, _527_)
     return {["last-space-change-at"] = component.state["last-space-change-at"], ["pending-placement-timers"] = pending, ["hover-focus-window-ids"] = component.state["hover-focus-window-ids"]}
   end
-  schedule_placement_command = make_command("mouse-window-management.commands/schedule-window-placement", "Delay likely-new window placement until Space discovery settles", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f, ["created-at"] = number_3f}, fn = _522_})
+  schedule_placement_command = make_command("mouse-window-management.commands/schedule-window-placement", "Delay likely-new window placement until Space discovery settles", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f, ["created-at"] = number_3f}, fn = _525_})
   local place_window_command
-  local function _525_(component, params)
+  local function _528_(component, params)
     local window_ok, window = pcall(hs.window.get, params["window-id"])
     local cursor_screen = (params["cursor-screen-uuid"] and hs.screen.find(params["cursor-screen-uuid"]))
     local pending = component.state["pending-placement-timers"]
     if (window_ok and window and cursor_screen and window:isStandard() and not window:isFullScreen() and (window:screen() ~= cursor_screen)) then
       local moved_ok
-      local function _526_()
+      local function _529_()
         return window:moveToScreen(cursor_screen, true, true, 0)
       end
-      moved_ok = pcall(_526_)
+      moved_ok = pcall(_529_)
       if moved_ok then
-        local function _527_()
+        local function _530_()
           pending[params["window-id"]] = nil
-          local function _528_()
+          local function _531_()
             local tmp_9_ = snapshot_observed_windows()
             tmp_9_["window-id"] = params["window-id"]
             return tmp_9_
           end
-          return dispatch_event_21(event_registry, "mouse-window-management.events/window-placed", component.name, _528_())
+          return dispatch_event_21(event_registry, "mouse-window-management.events/window-placed", component.name, _531_())
         end
-        pending[params["window-id"]] = hs.timer.doAfter(0.25, _527_)
+        pending[params["window-id"]] = hs.timer.doAfter(0.25, _530_)
       else
       end
     else
     end
     return {["last-space-change-at"] = component.state["last-space-change-at"], ["pending-placement-timers"] = pending, ["hover-focus-window-ids"] = component.state["hover-focus-window-ids"]}
   end
-  place_window_command = make_command("mouse-window-management.commands/place-window-on-cursor-screen", "Move a new standard window to the cursor's screen", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f, ["cursor-screen-uuid"] = string_3f}, fn = _525_})
+  place_window_command = make_command("mouse-window-management.commands/place-window-on-cursor-screen", "Move a new standard window to the cursor's screen", {["requires-traits"] = {"trait/has-mouse-window-management-state"}, schema = {["window-id"] = number_3f, ["cursor-screen-uuid"] = string_3f}, fn = _528_})
   return {["focus-hovered-window-command"] = focus_hovered_window_command, ["consume-hover-focus-command"] = consume_hover_focus_command, ["center-cursor-command"] = center_cursor_command, ["note-space-change-command"] = note_space_change_command, ["schedule-placement-command"] = schedule_placement_command, ["place-window-command"] = place_window_command}
 end
 package.preload["commands.compile-fennel"] = package.preload["commands.compile-fennel"] or function(...)
-  local _local_532_ = require("sheaf.command-registry")
-  local make_command = _local_532_["make-command"]
+  local _local_535_ = require("sheaf.command-registry")
+  local make_command = _local_535_["make-command"]
   local compile_command
-  local function _533_(component, params)
+  local function _536_(component, params)
     print(hs.execute("./compile.sh", true))
     return nil
   end
-  compile_command = make_command("compile-fennel.commands/compile", "Compile Fennel source files", {fn = _533_})
+  compile_command = make_command("compile-fennel.commands/compile", "Compile Fennel source files", {fn = _536_})
   return {["compile-command"] = compile_command}
 end
 package.preload["commands.reload-hammerspoon"] = package.preload["commands.reload-hammerspoon"] or function(...)
-  local _local_535_ = require("sheaf.command-registry")
-  local make_command = _local_535_["make-command"]
+  local _local_538_ = require("sheaf.command-registry")
+  local make_command = _local_538_["make-command"]
   local notify = require("notify")
   local reload_hammerspoon_command
-  local function _536_(component, params)
+  local function _539_(component, params)
     if not component.state["reloading?"] then
       notify.warn("Reloading...")
       component.state.timer:start()
@@ -4083,16 +4102,16 @@ package.preload["commands.reload-hammerspoon"] = package.preload["commands.reloa
       return nil
     end
   end
-  reload_hammerspoon_command = make_command("reload-hammerspoon.commands/reload", "Reload Hammerspoon config with debounce", {["requires-traits"] = {"trait/has-delayed-timer"}, fn = _536_})
+  reload_hammerspoon_command = make_command("reload-hammerspoon.commands/reload", "Reload Hammerspoon config with debounce", {["requires-traits"] = {"trait/has-delayed-timer"}, fn = _539_})
   return {["reload-hammerspoon-command"] = reload_hammerspoon_command}
 end
 package.preload["commands.open-in-app"] = package.preload["commands.open-in-app"] or function(...)
-  local _local_539_ = require("sheaf.command-registry")
-  local make_command = _local_539_["make-command"]
-  local _local_540_ = require("lib.cljlib-shim")
-  local string_3f = _local_540_["string?"]
+  local _local_542_ = require("sheaf.command-registry")
+  local make_command = _local_542_["make-command"]
+  local _local_543_ = require("lib.cljlib-shim")
+  local string_3f = _local_543_["string?"]
   local open_in_app_command
-  local function _541_(component, params)
+  local function _544_(component, params)
     print(("[DEBUG] open-in-app: url=" .. tostring(params.url) .. " bundle-id=" .. tostring(params["bundle-id"])))
     local ok = hs.urlevent.openURLWithBundle(params.url, params["bundle-id"])
     if not ok then
@@ -4101,22 +4120,22 @@ package.preload["commands.open-in-app"] = package.preload["commands.open-in-app"
     end
     return nil
   end
-  open_in_app_command = make_command("url-dispatch.commands/open-in-app", "Open a URL in a specific app by bundle ID", {schema = {url = string_3f, ["bundle-id"] = string_3f}, fn = _541_})
+  open_in_app_command = make_command("url-dispatch.commands/open-in-app", "Open a URL in a specific app by bundle ID", {schema = {url = string_3f, ["bundle-id"] = string_3f}, fn = _544_})
   return {["open-in-app-command"] = open_in_app_command}
 end
 package.preload["commands.show-chooser"] = package.preload["commands.show-chooser"] or function(...)
-  local _local_544_ = require("sheaf.command-registry")
-  local make_command = _local_544_["make-command"]
-  local _local_545_ = require("lib.cljlib-shim")
-  local string_3f = _local_545_["string?"]
+  local _local_547_ = require("sheaf.command-registry")
+  local make_command = _local_547_["make-command"]
+  local _local_548_ = require("lib.cljlib-shim")
+  local string_3f = _local_548_["string?"]
   local table_3f
-  local function _546_(_241)
+  local function _549_(_241)
     return (type(_241) == "table")
   end
-  table_3f = _546_
+  table_3f = _549_
   local active_chooser = nil
   local show_chooser_command
-  local function _547_(component, params)
+  local function _550_(component, params)
     print(("[DEBUG] show-chooser: url=" .. tostring(params.url) .. " choices=" .. tostring(#(params.choices or {}))))
     if ((nil == params.choices) or (0 == #params.choices)) then
       print("[WARN] show-chooser: no choices provided, skipping")
@@ -4126,7 +4145,7 @@ package.preload["commands.show-chooser"] = package.preload["commands.show-choose
     do
       local url = params.url
       local chooser
-      local function _549_(choice)
+      local function _552_(choice)
         if choice then
           print(("[DEBUG] show-chooser: user chose " .. tostring(choice.text) .. " (" .. tostring(choice["bundle-id"]) .. ")"))
           return hs.urlevent.openURLWithBundle(url, choice["bundle-id"])
@@ -4134,19 +4153,19 @@ package.preload["commands.show-chooser"] = package.preload["commands.show-choose
           return print("[DEBUG] show-chooser: user dismissed chooser")
         end
       end
-      chooser = hs.chooser.new(_549_)
+      chooser = hs.chooser.new(_552_)
       chooser:choices(params.choices)
       chooser:show()
       active_chooser = chooser
     end
     return nil
   end
-  show_chooser_command = make_command("url-dispatch.commands/show-chooser", "Show an async browser picker dialog for a URL", {schema = {url = string_3f, choices = table_3f}, fn = _547_})
+  show_chooser_command = make_command("url-dispatch.commands/show-chooser", "Show an async browser picker dialog for a URL", {schema = {url = string_3f, choices = table_3f}, fn = _550_})
   return {["show-chooser-command"] = show_chooser_command}
 end
 package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] or function(...)
-  local _local_552_ = require("sheaf.command-registry")
-  local make_command = _local_552_["make-command"]
+  local _local_555_ = require("sheaf.command-registry")
+  local make_command = _local_555_["make-command"]
   local emacsclient_path
   do
     local app = hs.application.find("Emacs")
@@ -4178,9 +4197,9 @@ package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] 
   end
   local server_socket = resolve_server_socket()
   local open_emacs_command
-  local function _557_(component, params)
+  local function _560_(component, params)
     io.popen(("'" .. emacsclient_path .. "' --socket-name '" .. server_socket .. "' -n -c &"))
-    local function _558_()
+    local function _561_()
       local app = hs.application.find("Emacs")
       if app then
         return app:activate()
@@ -4188,15 +4207,15 @@ package.preload["commands.open-emacs"] = package.preload["commands.open-emacs"] 
         return nil
       end
     end
-    hs.timer.doAfter(0.3, _558_)
+    hs.timer.doAfter(0.3, _561_)
     return nil
   end
-  open_emacs_command = make_command("emacs.commands/open-emacs", "Open a new emacsclient frame", {fn = _557_})
+  open_emacs_command = make_command("emacs.commands/open-emacs", "Open a new emacsclient frame", {fn = _560_})
   return {["open-emacs-command"] = open_emacs_command}
 end
 package.preload["commands.window-border"] = package.preload["commands.window-border"] or function(...)
-  local _local_561_ = require("sheaf.command-registry")
-  local make_command = _local_561_["make-command"]
+  local _local_564_ = require("sheaf.command-registry")
+  local make_command = _local_564_["make-command"]
   local function resolve_corner_radius(window_id, default_radius)
     local has_api = (hs.window and hs.window.cornerRadiusForID)
     if has_api then
@@ -4219,7 +4238,7 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     return canvas:show()
   end
   local show_active_border_command
-  local function _564_(component, params)
+  local function _567_(component, params)
     if (params["only-if-active"] and (params["window-id"] ~= component.state["active-window-id"])) then
       return nil
     else
@@ -4231,9 +4250,9 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return {["active-canvas"] = component.state["active-canvas"], ["inactive-canvas"] = component.state["inactive-canvas"], ["active-window-id"] = params["window-id"], ["border-width"] = component.state["border-width"], ["default-corner-radius"] = component.state["default-corner-radius"]}
   end
-  show_active_border_command = make_command("window-border.commands/show-active-border", "Position and show the active window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _564_})
+  show_active_border_command = make_command("window-border.commands/show-active-border", "Position and show the active window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _567_})
   local show_inactive_border_command
-  local function _566_(component, params)
+  local function _569_(component, params)
     do
       local bw = component.state["border-width"]
       local cr = resolve_corner_radius(params["window-id"], component.state["default-corner-radius"])
@@ -4241,9 +4260,9 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return nil
   end
-  show_inactive_border_command = make_command("window-border.commands/show-inactive-border", "Position and show the inactive window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _566_})
+  show_inactive_border_command = make_command("window-border.commands/show-inactive-border", "Position and show the inactive window border around a window frame", {["requires-traits"] = {"trait/has-canvas"}, fn = _569_})
   local hide_borders_command
-  local function _567_(component, params)
+  local function _570_(component, params)
     if (params["only-if-active"] and (params["window-id"] ~= component.state["active-window-id"])) then
       return nil
     else
@@ -4258,21 +4277,21 @@ package.preload["commands.window-border"] = package.preload["commands.window-bor
     end
     return {["active-canvas"] = component.state["active-canvas"], ["inactive-canvas"] = component.state["inactive-canvas"], ["active-window-id"] = nil, ["border-width"] = component.state["border-width"], ["default-corner-radius"] = component.state["default-corner-radius"]}
   end
-  hide_borders_command = make_command("window-border.commands/hide-borders", "Hide both active and inactive window border overlays", {["requires-traits"] = {"trait/has-canvas"}, fn = _567_})
+  hide_borders_command = make_command("window-border.commands/hide-borders", "Hide both active and inactive window border overlays", {["requires-traits"] = {"trait/has-canvas"}, fn = _570_})
   return {["show-active-border-command"] = show_active_border_command, ["show-inactive-border-command"] = show_inactive_border_command, ["hide-borders-command"] = hide_borders_command}
 end
 package.preload["commands.record-url"] = package.preload["commands.record-url"] or function(...)
-  local _local_572_ = require("sheaf.command-registry")
-  local make_command = _local_572_["make-command"]
-  local _local_573_ = require("lib.cljlib-shim")
-  local string_3f = _local_573_["string?"]
+  local _local_575_ = require("sheaf.command-registry")
+  local make_command = _local_575_["make-command"]
+  local _local_576_ = require("lib.cljlib-shim")
+  local string_3f = _local_576_["string?"]
   local number_3f
-  local function _574_(_241)
+  local function _577_(_241)
     return (type(_241) == "number")
   end
-  number_3f = _574_
+  number_3f = _577_
   local record_url_command
-  local function _575_(component, params)
+  local function _578_(component, params)
     local entry = {url = params.url, ["sender-bundle-id"] = params["sender-bundle-id"], timestamp = params.timestamp}
     local old_history = (component.state.history or {})
     local history = {}
@@ -4282,15 +4301,15 @@ package.preload["commands.record-url"] = package.preload["commands.record-url"] 
     table.insert(history, entry)
     return {history = history}
   end
-  record_url_command = make_command("url-history.commands/record-url", "Record a URL visit into the history log", {schema = {url = string_3f, ["sender-bundle-id"] = string_3f, timestamp = number_3f}, ["requires-traits"] = {"trait/has-url-history"}, fn = _575_})
+  record_url_command = make_command("url-history.commands/record-url", "Record a URL visit into the history log", {schema = {url = string_3f, ["sender-bundle-id"] = string_3f, timestamp = number_3f}, ["requires-traits"] = {"trait/has-url-history"}, fn = _578_})
   return {["record-url-command"] = record_url_command}
 end
 package.preload["commands.show-history"] = package.preload["commands.show-history"] or function(...)
-  local _local_577_ = require("sheaf.command-registry")
-  local make_command = _local_577_["make-command"]
+  local _local_580_ = require("sheaf.command-registry")
+  local make_command = _local_580_["make-command"]
   local active_history_chooser = nil
   local show_history_command
-  local function _578_(component, params)
+  local function _581_(component, params)
     do
       local history = (component.state.history or {})
       local choices = {}
@@ -4304,7 +4323,7 @@ package.preload["commands.show-history"] = package.preload["commands.show-histor
         table.insert(choices, {text = entry.url, subText = ((entry["sender-bundle-id"] or "unknown") .. " \226\128\148 " .. os.date("%Y-%m-%d %H:%M", math.floor(entry.timestamp)))})
       end
       local chooser
-      local function _580_(choice)
+      local function _583_(choice)
         if choice then
           hs.pasteboard.setContents(choice.text)
           return hs.alert("URL copied to clipboard")
@@ -4312,167 +4331,167 @@ package.preload["commands.show-history"] = package.preload["commands.show-histor
           return nil
         end
       end
-      chooser = hs.chooser.new(_580_)
+      chooser = hs.chooser.new(_583_)
       chooser:choices(choices)
       chooser:show()
       active_history_chooser = chooser
     end
     return nil
   end
-  show_history_command = make_command("url-history.commands/show-history", "Show URL history as a searchable chooser list", {["requires-traits"] = {"trait/has-url-history"}, fn = _578_})
+  show_history_command = make_command("url-history.commands/show-history", "Show URL history as a searchable chooser list", {["requires-traits"] = {"trait/has-url-history"}, fn = _581_})
   return {["show-history-command"] = show_history_command}
 end
 package.preload["commands.window-state"] = package.preload["commands.window-state"] or function(...)
-  local _local_583_ = require("sheaf.command-registry")
-  local make_command = _local_583_["make-command"]
+  local _local_586_ = require("sheaf.command-registry")
+  local make_command = _local_586_["make-command"]
   local initialize_windows_command
-  local function _584_(component, params)
+  local function _587_(component, params)
     local windows = {}
     for _, entry in ipairs(params.windows) do
       windows[entry["window-id"]] = {["window-id"] = entry["window-id"], ["app-name"] = entry["app-name"], ["bundle-id"] = entry["bundle-id"], ["window-title"] = entry["window-title"], frame = entry.frame, fullscreen = (entry.fullscreen or false)}
     end
     return {windows = windows, ["focused-window-id"] = nil}
   end
-  initialize_windows_command = make_command("window-state.commands/initialize-windows", "Populate window state from initial snapshot", {["requires-traits"] = {"trait/has-window-state"}, fn = _584_})
+  initialize_windows_command = make_command("window-state.commands/initialize-windows", "Populate window state from initial snapshot", {["requires-traits"] = {"trait/has-window-state"}, fn = _587_})
   local upsert_window_command
-  local function _585_(component, params)
+  local function _588_(component, params)
     local windows = component.state.windows
     local wid = params["window-id"]
     local existing = (windows[wid] or {})
-    local _586_
+    local _589_
     if (nil ~= params.fullscreen) then
-      _586_ = params.fullscreen
+      _589_ = params.fullscreen
     else
-      _586_ = existing.fullscreen
+      _589_ = existing.fullscreen
     end
-    windows[wid] = {["window-id"] = wid, ["app-name"] = (params["app-name"] or existing["app-name"]), ["bundle-id"] = (params["bundle-id"] or existing["bundle-id"]), ["window-title"] = (params["window-title"] or existing["window-title"]), frame = (params.frame or existing.frame), fullscreen = _586_}
+    windows[wid] = {["window-id"] = wid, ["app-name"] = (params["app-name"] or existing["app-name"]), ["bundle-id"] = (params["bundle-id"] or existing["bundle-id"]), ["window-title"] = (params["window-title"] or existing["window-title"]), frame = (params.frame or existing.frame), fullscreen = _589_}
     return {windows = windows, ["focused-window-id"] = component.state["focused-window-id"]}
   end
-  upsert_window_command = make_command("window-state.commands/upsert-window", "Add or update a tracked window", {["requires-traits"] = {"trait/has-window-state"}, fn = _585_})
+  upsert_window_command = make_command("window-state.commands/upsert-window", "Add or update a tracked window", {["requires-traits"] = {"trait/has-window-state"}, fn = _588_})
   local remove_window_command
-  local function _588_(component, params)
+  local function _591_(component, params)
     local windows = component.state.windows
     windows[params["window-id"]] = nil
     return {windows = windows, ["focused-window-id"] = component.state["focused-window-id"]}
   end
-  remove_window_command = make_command("window-state.commands/remove-window", "Remove a window from tracking", {["requires-traits"] = {"trait/has-window-state"}, fn = _588_})
+  remove_window_command = make_command("window-state.commands/remove-window", "Remove a window from tracking", {["requires-traits"] = {"trait/has-window-state"}, fn = _591_})
   local set_focused_window_command
-  local function _589_(component, params)
+  local function _592_(component, params)
     return {windows = component.state.windows, ["focused-window-id"] = params["window-id"]}
   end
-  set_focused_window_command = make_command("window-state.commands/set-focused-window", "Set the currently focused window ID", {["requires-traits"] = {"trait/has-window-state"}, fn = _589_})
+  set_focused_window_command = make_command("window-state.commands/set-focused-window", "Set the currently focused window ID", {["requires-traits"] = {"trait/has-window-state"}, fn = _592_})
   return {["initialize-windows-command"] = initialize_windows_command, ["upsert-window-command"] = upsert_window_command, ["remove-window-command"] = remove_window_command, ["set-focused-window-command"] = set_focused_window_command}
 end
 package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or function(...)
-  local _local_591_ = require("sheaf.command-registry")
-  local make_command = _local_591_["make-command"]
-  local _local_592_ = require("paper-wm")
-  local initialize_layout_21 = _local_592_["initialize-layout!"]
-  local reconcile_layout_21 = _local_592_["reconcile-layout!"]
-  local reconcile_window_fact_21 = _local_592_["reconcile-window-fact!"]
-  local record_focus_21 = _local_592_["record-focus!"]
-  local retile_observed_frame_21 = _local_592_["retile-observed-frame!"]
-  local start_space_focus_21 = _local_592_["start-space-focus!"]
-  local retry_space_focus_21 = _local_592_["retry-space-focus!"]
-  local space_index_after_direction = _local_592_["space-index-after-direction"]
-  local focus_window_21 = _local_592_["focus-window!"]
-  local swap_windows_21 = _local_592_["swap-windows!"]
-  local center_window_21 = _local_592_["center-window!"]
-  local set_window_full_width_21 = _local_592_["set-window-full-width!"]
-  local cycle_window_size_21 = _local_592_["cycle-window-size!"]
-  local slurp_window_21 = _local_592_["slurp-window!"]
-  local barf_window_21 = _local_592_["barf-window!"]
+  local _local_594_ = require("sheaf.command-registry")
+  local make_command = _local_594_["make-command"]
+  local _local_595_ = require("paper-wm")
+  local initialize_layout_21 = _local_595_["initialize-layout!"]
+  local reconcile_layout_21 = _local_595_["reconcile-layout!"]
+  local reconcile_window_fact_21 = _local_595_["reconcile-window-fact!"]
+  local record_focus_21 = _local_595_["record-focus!"]
+  local retile_observed_frame_21 = _local_595_["retile-observed-frame!"]
+  local start_space_focus_21 = _local_595_["start-space-focus!"]
+  local retry_space_focus_21 = _local_595_["retry-space-focus!"]
+  local space_index_after_direction = _local_595_["space-index-after-direction"]
+  local focus_window_21 = _local_595_["focus-window!"]
+  local swap_windows_21 = _local_595_["swap-windows!"]
+  local center_window_21 = _local_595_["center-window!"]
+  local set_window_full_width_21 = _local_595_["set-window-full-width!"]
+  local cycle_window_size_21 = _local_595_["cycle-window-size!"]
+  local slurp_window_21 = _local_595_["slurp-window!"]
+  local barf_window_21 = _local_595_["barf-window!"]
   local number_3f
-  local function _593_(_241)
+  local function _596_(_241)
     return (type(_241) == "number")
   end
-  number_3f = _593_
+  number_3f = _596_
   local table_3f
-  local function _594_(_241)
+  local function _597_(_241)
     return (type(_241) == "table")
   end
-  table_3f = _594_
+  table_3f = _597_
   local initialize_layout_command
-  local function _595_(component, params)
+  local function _598_(component, params)
     reconcile_layout_21(component.state, params.windows, params["observed-spaces"])
     return component.state
   end
-  initialize_layout_command = make_command("paper-wm.commands/initialize-layout", "Initialize PaperWM membership from a shared window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = table_3f, ["observed-spaces"] = table_3f}, fn = _595_})
+  initialize_layout_command = make_command("paper-wm.commands/initialize-layout", "Initialize PaperWM membership from a shared window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = table_3f, ["observed-spaces"] = table_3f}, fn = _598_})
   local reconcile_window_command
-  local function _596_(component, params)
+  local function _599_(component, params)
     return reconcile_window_fact_21(component.state, params.window, {["runtime-epoch"] = params["runtime-epoch"]})
   end
-  reconcile_window_command = make_command("paper-wm.commands/reconcile-window", "Reconcile one shared window fact into PaperWM membership", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {window = table_3f}, fn = _596_})
+  reconcile_window_command = make_command("paper-wm.commands/reconcile-window", "Reconcile one shared window fact into PaperWM membership", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {window = table_3f}, fn = _599_})
   local record_focus_command
-  local function _597_(component, params)
+  local function _600_(component, params)
     return record_focus_21(component.state, params.window)
   end
-  record_focus_command = make_command("paper-wm.commands/record-focus", "Reconcile the focused window's fact, then record focus and retile", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {window = table_3f}, fn = _597_})
+  record_focus_command = make_command("paper-wm.commands/record-focus", "Reconcile the focused window's fact, then record focus and retile", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {window = table_3f}, fn = _600_})
   local retile_observed_frame_command
-  local function _598_(component, params)
+  local function _601_(component, params)
     return retile_observed_frame_21(component.state, params)
   end
-  retile_observed_frame_command = make_command("paper-wm.commands/retile-observed-frame", "Retile from the latest coalesced manual frame", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {["window-id"] = number_3f, frame = table_3f, generation = number_3f, sequence = number_3f}, fn = _598_})
+  retile_observed_frame_command = make_command("paper-wm.commands/retile-observed-frame", "Retile from the latest coalesced manual frame", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {["window-id"] = number_3f, frame = table_3f, generation = number_3f, sequence = number_3f}, fn = _601_})
   local focus_command
-  local function _599_(_241)
+  local function _602_(_241)
     return ((_241 == "left") or (_241 == "right") or (_241 == "up") or (_241 == "down"))
   end
-  local function _600_(component, params)
+  local function _603_(component, params)
     return focus_window_21(component.state, params.direction)
   end
-  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _599_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _600_})
+  focus_command = make_command("paper-wm.commands/focus", "Focus the window in a direction", {schema = {direction = _602_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _603_})
   local swap_command
-  local function _601_(_241)
+  local function _604_(_241)
     return ((_241 == "left") or (_241 == "right") or (_241 == "up") or (_241 == "down"))
   end
-  local function _602_(component, params)
+  local function _605_(component, params)
     return swap_windows_21(component.state, params.direction)
   end
-  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _601_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _602_})
+  swap_command = make_command("paper-wm.commands/swap", "Swap the focused window in a direction", {schema = {direction = _604_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _605_})
   local center_window_command
-  local function _603_(component, params)
+  local function _606_(component, params)
     return center_window_21(component.state)
   end
-  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _603_})
+  center_window_command = make_command("paper-wm.commands/center-window", "Center the focused window on screen", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _606_})
   local set_full_width_command
-  local function _604_(component, params)
+  local function _607_(component, params)
     return set_window_full_width_21(component.state)
   end
-  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _604_})
+  set_full_width_command = make_command("paper-wm.commands/set-full-width", "Set the focused window to full screen width", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _607_})
   local cycle_window_size_command
-  local function _605_(_241)
+  local function _608_(_241)
     return ((_241 == "width") or (_241 == "height"))
   end
-  local function _606_(_241)
+  local function _609_(_241)
     return ((_241 == "ascending") or (_241 == "descending"))
   end
-  local function _607_(component, params)
+  local function _610_(component, params)
     return cycle_window_size_21(component.state, params.direction, params["cycle-direction"])
   end
-  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _605_, ["cycle-direction"] = _606_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _607_})
+  cycle_window_size_command = make_command("paper-wm.commands/cycle-window-size", "Cycle the focused window size", {schema = {direction = _608_, ["cycle-direction"] = _609_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _610_})
   local slurp_window_command
-  local function _608_(component, params)
+  local function _611_(component, params)
     return slurp_window_21(component.state)
   end
-  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _608_})
+  slurp_window_command = make_command("paper-wm.commands/slurp-window", "Slurp a window into the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _611_})
   local barf_window_command
-  local function _609_(component, params)
+  local function _612_(component, params)
     return barf_window_21(component.state)
   end
-  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _609_})
+  barf_window_command = make_command("paper-wm.commands/barf-window", "Barf a window out of the current column", {["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _612_})
   local switch_to_space_command
-  local function _610_(_241)
+  local function _613_(_241)
     return (("number" == type(_241)) and ((1 <= _241) and (_241 <= 9)))
   end
-  local function _611_(component, params)
+  local function _614_(component, params)
     return start_space_focus_21(component.state, params.index)
   end
-  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Start a Space focus conversation for an absolute index", {schema = {index = _610_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _611_})
+  switch_to_space_command = make_command("paper-wm.commands/switch-to-space", "Start a Space focus conversation for an absolute index", {schema = {index = _613_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _614_})
   local increment_space_command
-  local function _612_(_241)
+  local function _615_(_241)
     return ((_241 == "left") or (_241 == "right"))
   end
-  local function _613_(component, params)
+  local function _616_(component, params)
     local index = space_index_after_direction(params.direction)
     if index then
       return start_space_focus_21(component.state, index)
@@ -4480,82 +4499,82 @@ package.preload["commands.paper-wm"] = package.preload["commands.paper-wm"] or f
       return component.state
     end
   end
-  increment_space_command = make_command("paper-wm.commands/increment-space", "Start a Space focus conversation for a relative direction", {schema = {direction = _612_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _613_})
+  increment_space_command = make_command("paper-wm.commands/increment-space", "Start a Space focus conversation for a relative direction", {schema = {direction = _615_}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _616_})
   local retry_space_focus_command
-  local function _615_(component, params)
+  local function _618_(component, params)
     return retry_space_focus_21(component.state, params.generation)
   end
-  retry_space_focus_command = make_command("paper-wm.commands/retry-space-focus", "Advance a generation-scoped Space focus conversation", {schema = {generation = number_3f}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _615_})
+  retry_space_focus_command = make_command("paper-wm.commands/retry-space-focus", "Advance a generation-scoped Space focus conversation", {schema = {generation = number_3f}, ["requires-traits"] = {"trait/has-paper-wm-runtime"}, fn = _618_})
   local refresh_windows_command
-  local function _616_(component, params)
+  local function _619_(component, params)
     reconcile_layout_21(component.state, params.windows, params["observed-spaces"])
     return component.state
   end
-  refresh_windows_command = make_command("paper-wm.commands/refresh-windows", "Reconcile PaperWM from an explicit window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = table_3f, ["observed-spaces"] = table_3f}, fn = _616_})
+  refresh_windows_command = make_command("paper-wm.commands/refresh-windows", "Reconcile PaperWM from an explicit window snapshot", {["requires-traits"] = {"trait/has-paper-wm-runtime", "trait/has-tiling-state"}, schema = {windows = table_3f, ["observed-spaces"] = table_3f}, fn = _619_})
   return {["initialize-layout-command"] = initialize_layout_command, ["reconcile-window-command"] = reconcile_window_command, ["record-focus-command"] = record_focus_command, ["retile-observed-frame-command"] = retile_observed_frame_command, ["retry-space-focus-command"] = retry_space_focus_command, ["focus-command"] = focus_command, ["swap-command"] = swap_command, ["center-window-command"] = center_window_command, ["set-full-width-command"] = set_full_width_command, ["cycle-window-size-command"] = cycle_window_size_command, ["slurp-window-command"] = slurp_window_command, ["barf-window-command"] = barf_window_command, ["switch-to-space-command"] = switch_to_space_command, ["increment-space-command"] = increment_space_command, ["refresh-windows-command"] = refresh_windows_command}
 end
 require("commands")
 package.preload["behaviors"] = package.preload["behaviors"] or function(...)
-  local _local_638_ = require("sheaf.behavior-registry")
-  local make_behavior_registry = _local_638_["make-behavior-registry"]
-  local add_behavior_21 = _local_638_["add-behavior!"]
-  local _local_639_ = require("events")
-  local event_registry = _local_639_["event-registry"]
-  local _local_640_ = require("commands")
-  local command_registry = _local_640_["command-registry"]
-  local _local_641_ = require("shapes")
-  local shape_registry = _local_641_["shape-registry"]
-  local _local_648_ = require("behaviors.compile-fennel")
-  local compile_fennel_behavior = _local_648_["compile-fennel-behavior"]
-  local _local_655_ = require("behaviors.reload-hammerspoon")
-  local reload_hammerspoon_behavior = _local_655_["reload-hammerspoon-behavior"]
-  local _local_659_ = require("behaviors.toggle-expose")
-  local toggle_expose_behavior = _local_659_["toggle-expose-behavior"]
-  local _local_664_ = require("behaviors.update-space-indicator")
-  local update_space_indicator_behavior = _local_664_["update-space-indicator-behavior"]
-  local _local_678_ = require("behaviors.desktop-layout")
-  local reconcile_spaces_behavior = _local_678_["reconcile-spaces-behavior"]
-  local _local_731_ = require("behaviors.mouse-window-management")
-  local focus_hovered_window_behavior = _local_731_["focus-hovered-window-behavior"]
-  local center_cursor_on_focus_behavior = _local_731_["center-cursor-on-focus-behavior"]
-  local schedule_created_window_behavior = _local_731_["schedule-created-window-behavior"]
-  local note_space_change_behavior = _local_731_["note-space-change-behavior"]
-  local place_created_window_behavior = _local_731_["place-created-window-behavior"]
-  local _local_735_ = require("behaviors.open-emacs")
-  local open_emacs_behavior = _local_735_["open-emacs-behavior"]
-  local _local_743_ = require("behaviors.window-border")
-  local update_on_focus_behavior = _local_743_["update-on-focus-behavior"]
-  local update_on_move_behavior = _local_743_["update-on-move-behavior"]
-  local hide_on_disappear_behavior = _local_743_["hide-on-disappear-behavior"]
-  local _local_823_ = require("behaviors.url-routing")
-  local route_url_behavior = _local_823_["route-url-behavior"]
-  local _local_834_ = require("behaviors.record-url")
-  local record_url_behavior = _local_834_["record-url-behavior"]
-  local _local_838_ = require("behaviors.show-history")
-  local show_history_behavior = _local_838_["show-history-behavior"]
-  local _local_863_ = require("behaviors.window-state")
-  local initialize_behavior = _local_863_["initialize-behavior"]
-  local track_on_change_behavior = _local_863_["track-on-change-behavior"]
-  local track_on_move_behavior = _local_863_["track-on-move-behavior"]
-  local untrack_on_disappear_behavior = _local_863_["untrack-on-disappear-behavior"]
-  local track_focus_behavior = _local_863_["track-focus-behavior"]
-  local _local_895_ = require("behaviors.paper-wm")
-  local initialize_layout_behavior = _local_895_["initialize-layout-behavior"]
-  local reconcile_membership_behavior = _local_895_["reconcile-membership-behavior"]
-  local record_focus_behavior = _local_895_["record-focus-behavior"]
-  local retile_observed_frame_behavior = _local_895_["retile-observed-frame-behavior"]
-  local retry_space_focus_behavior = _local_895_["retry-space-focus-behavior"]
-  local focus_behavior = _local_895_["focus-behavior"]
-  local swap_behavior = _local_895_["swap-behavior"]
-  local center_window_behavior = _local_895_["center-window-behavior"]
-  local set_full_width_behavior = _local_895_["set-full-width-behavior"]
-  local cycle_window_size_behavior = _local_895_["cycle-window-size-behavior"]
-  local slurp_window_behavior = _local_895_["slurp-window-behavior"]
-  local barf_window_behavior = _local_895_["barf-window-behavior"]
-  local increment_space_behavior = _local_895_["increment-space-behavior"]
-  local switch_to_space_behavior = _local_895_["switch-to-space-behavior"]
-  local refresh_on_screen_change_behavior = _local_895_["refresh-on-screen-change-behavior"]
-  local refresh_on_window_placed_behavior = _local_895_["refresh-on-window-placed-behavior"]
+  local _local_641_ = require("sheaf.behavior-registry")
+  local make_behavior_registry = _local_641_["make-behavior-registry"]
+  local add_behavior_21 = _local_641_["add-behavior!"]
+  local _local_642_ = require("events")
+  local event_registry = _local_642_["event-registry"]
+  local _local_643_ = require("commands")
+  local command_registry = _local_643_["command-registry"]
+  local _local_644_ = require("shapes")
+  local shape_registry = _local_644_["shape-registry"]
+  local _local_651_ = require("behaviors.compile-fennel")
+  local compile_fennel_behavior = _local_651_["compile-fennel-behavior"]
+  local _local_658_ = require("behaviors.reload-hammerspoon")
+  local reload_hammerspoon_behavior = _local_658_["reload-hammerspoon-behavior"]
+  local _local_662_ = require("behaviors.toggle-expose")
+  local toggle_expose_behavior = _local_662_["toggle-expose-behavior"]
+  local _local_667_ = require("behaviors.update-space-indicator")
+  local update_space_indicator_behavior = _local_667_["update-space-indicator-behavior"]
+  local _local_681_ = require("behaviors.desktop-layout")
+  local reconcile_spaces_behavior = _local_681_["reconcile-spaces-behavior"]
+  local _local_734_ = require("behaviors.mouse-window-management")
+  local focus_hovered_window_behavior = _local_734_["focus-hovered-window-behavior"]
+  local center_cursor_on_focus_behavior = _local_734_["center-cursor-on-focus-behavior"]
+  local schedule_created_window_behavior = _local_734_["schedule-created-window-behavior"]
+  local note_space_change_behavior = _local_734_["note-space-change-behavior"]
+  local place_created_window_behavior = _local_734_["place-created-window-behavior"]
+  local _local_738_ = require("behaviors.open-emacs")
+  local open_emacs_behavior = _local_738_["open-emacs-behavior"]
+  local _local_746_ = require("behaviors.window-border")
+  local update_on_focus_behavior = _local_746_["update-on-focus-behavior"]
+  local update_on_move_behavior = _local_746_["update-on-move-behavior"]
+  local hide_on_disappear_behavior = _local_746_["hide-on-disappear-behavior"]
+  local _local_826_ = require("behaviors.url-routing")
+  local route_url_behavior = _local_826_["route-url-behavior"]
+  local _local_837_ = require("behaviors.record-url")
+  local record_url_behavior = _local_837_["record-url-behavior"]
+  local _local_841_ = require("behaviors.show-history")
+  local show_history_behavior = _local_841_["show-history-behavior"]
+  local _local_866_ = require("behaviors.window-state")
+  local initialize_behavior = _local_866_["initialize-behavior"]
+  local track_on_change_behavior = _local_866_["track-on-change-behavior"]
+  local track_on_move_behavior = _local_866_["track-on-move-behavior"]
+  local untrack_on_disappear_behavior = _local_866_["untrack-on-disappear-behavior"]
+  local track_focus_behavior = _local_866_["track-focus-behavior"]
+  local _local_898_ = require("behaviors.paper-wm")
+  local initialize_layout_behavior = _local_898_["initialize-layout-behavior"]
+  local reconcile_membership_behavior = _local_898_["reconcile-membership-behavior"]
+  local record_focus_behavior = _local_898_["record-focus-behavior"]
+  local retile_observed_frame_behavior = _local_898_["retile-observed-frame-behavior"]
+  local retry_space_focus_behavior = _local_898_["retry-space-focus-behavior"]
+  local focus_behavior = _local_898_["focus-behavior"]
+  local swap_behavior = _local_898_["swap-behavior"]
+  local center_window_behavior = _local_898_["center-window-behavior"]
+  local set_full_width_behavior = _local_898_["set-full-width-behavior"]
+  local cycle_window_size_behavior = _local_898_["cycle-window-size-behavior"]
+  local slurp_window_behavior = _local_898_["slurp-window-behavior"]
+  local barf_window_behavior = _local_898_["barf-window-behavior"]
+  local increment_space_behavior = _local_898_["increment-space-behavior"]
+  local switch_to_space_behavior = _local_898_["switch-to-space-behavior"]
+  local refresh_on_screen_change_behavior = _local_898_["refresh-on-screen-change-behavior"]
+  local refresh_on_window_placed_behavior = _local_898_["refresh-on-window-placed-behavior"]
   local behavior_registry = make_behavior_registry({["event-registry"] = event_registry, ["command-registry"] = command_registry, ["shape-registry"] = shape_registry})
   add_behavior_21(behavior_registry, compile_fennel_behavior)
   add_behavior_21(behavior_registry, reload_hammerspoon_behavior)
@@ -4598,16 +4617,16 @@ package.preload["behaviors"] = package.preload["behaviors"] or function(...)
   return {["behavior-registry"] = behavior_registry}
 end
 package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-registry"] or function(...)
-  local _local_618_ = require("lib.cljlib-shim")
-  local some = _local_618_.some
-  local _local_619_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_619_["valid-event-selector?"]
-  local _local_620_ = require("sheaf.command-registry")
-  local command_defined_3f = _local_620_["command-defined?"]
-  local _local_621_ = require("sheaf.shape-registry")
-  local shape_defined_3f = _local_621_["shape-defined?"]
-  local _local_622_ = require("lib.hierarchy")
-  local isa_3f = _local_622_["isa?"]
+  local _local_621_ = require("lib.cljlib-shim")
+  local some = _local_621_.some
+  local _local_622_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_622_["valid-event-selector?"]
+  local _local_623_ = require("sheaf.command-registry")
+  local command_defined_3f = _local_623_["command-defined?"]
+  local _local_624_ = require("sheaf.shape-registry")
+  local shape_defined_3f = _local_624_["shape-defined?"]
+  local _local_625_ = require("lib.hierarchy")
+  local isa_3f = _local_625_["isa?"]
   local function make_behavior_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-behavior-registry: :event-registry is required")
@@ -4695,31 +4714,31 @@ package.preload["sheaf.behavior-registry"] = package.preload["sheaf.behavior-reg
     if (nil == behavior) then
       return false
     else
-      local function _636_(_241)
+      local function _639_(_241)
         return isa_3f(registry["event-registry"].hierarchy, event_name, _241)
       end
-      return some(_636_, behavior["respond-to"])
+      return some(_639_, behavior["respond-to"])
     end
   end
   return {["make-behavior-registry"] = make_behavior_registry, ["make-behavior"] = make_behavior, ["add-behavior!"] = add_behavior_21, ["behavior-defined?"] = behavior_defined_3f, ["get-behavior"] = get_behavior, ["list-behaviors"] = list_behaviors, ["behavior-responds-to?"] = behavior_responds_to_3f}
 end
 package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile-fennel"] or function(...)
-  local _local_642_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_642_["make-behavior"]
+  local _local_645_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_645_["make-behavior"]
   local compile_fennel_behavior
-  local function _643_(file_change_event, candidates, send_cmd)
+  local function _646_(file_change_event, candidates, send_cmd)
     local path
     do
-      local t_644_ = file_change_event
-      if (nil ~= t_644_) then
-        t_644_ = t_644_["event-data"]
+      local t_647_ = file_change_event
+      if (nil ~= t_647_) then
+        t_647_ = t_647_["event-data"]
       else
       end
-      if (nil ~= t_644_) then
-        t_644_ = t_644_["file-path"]
+      if (nil ~= t_647_) then
+        t_647_ = t_647_["file-path"]
       else
       end
-      path = t_644_
+      path = t_647_
     end
     local target = candidates.compile[1]
     if (target and (nil ~= path) and (".fnl" == path:sub(-4))) then
@@ -4728,26 +4747,26 @@ package.preload["behaviors.compile-fennel"] = package.preload["behaviors.compile
       return nil
     end
   end
-  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {compile = "compile-fennel.commands/compile"}, fn = _643_})
+  compile_fennel_behavior = make_behavior({name = "compile-fennel.behaviors/compile-fennel", description = "Watch fennel files in hammerspoon folder and recompile them.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {compile = "compile-fennel.commands/compile"}, fn = _646_})
   return {["compile-fennel-behavior"] = compile_fennel_behavior}
 end
 package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.reload-hammerspoon"] or function(...)
-  local _local_649_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_649_["make-behavior"]
+  local _local_652_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_652_["make-behavior"]
   local reload_hammerspoon_behavior
-  local function _650_(file_change_event, candidates, send_cmd)
+  local function _653_(file_change_event, candidates, send_cmd)
     local path
     do
-      local t_651_ = file_change_event
-      if (nil ~= t_651_) then
-        t_651_ = t_651_["event-data"]
+      local t_654_ = file_change_event
+      if (nil ~= t_654_) then
+        t_654_ = t_654_["event-data"]
       else
       end
-      if (nil ~= t_651_) then
-        t_651_ = t_651_["file-path"]
+      if (nil ~= t_654_) then
+        t_654_ = t_654_["file-path"]
       else
       end
-      path = t_651_
+      path = t_654_
     end
     local target = candidates.reload[1]
     if (target and (nil ~= path) and ("/init.lua" == path:sub(-9))) then
@@ -4756,14 +4775,14 @@ package.preload["behaviors.reload-hammerspoon"] = package.preload["behaviors.rel
       return nil
     end
   end
-  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {reload = "reload-hammerspoon.commands/reload"}, fn = _650_})
+  reload_hammerspoon_behavior = make_behavior({name = "reload-hammerspoon.behaviors/reload-hammerspoon", description = "When init.lua changes, reload hammerspoon.", ["respond-to"] = {"event.kind.fs/file-change"}, commands = {reload = "reload-hammerspoon.commands/reload"}, fn = _653_})
   return {["reload-hammerspoon-behavior"] = reload_hammerspoon_behavior}
 end
 package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-expose"] or function(...)
-  local _local_656_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_656_["make-behavior"]
+  local _local_659_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_659_["make-behavior"]
   local toggle_expose_behavior
-  local function _657_(event, candidates, send_cmd)
+  local function _660_(event, candidates, send_cmd)
     local target = candidates["toggle-show"][1]
     if target then
       return send_cmd(target, "toggle-show", {})
@@ -4771,12 +4790,12 @@ package.preload["behaviors.toggle-expose"] = package.preload["behaviors.toggle-e
       return nil
     end
   end
-  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _657_})
+  toggle_expose_behavior = make_behavior({name = "expose.behaviors/toggle-expose", description = "Toggle the Hammerspoon Expose window picker", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["toggle-show"] = "expose.commands/toggle-show"}, fn = _660_})
   return {["toggle-expose-behavior"] = toggle_expose_behavior}
 end
 package.preload["behaviors.update-space-indicator"] = package.preload["behaviors.update-space-indicator"] or function(...)
-  local _local_660_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_660_["make-behavior"]
+  local _local_663_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_663_["make-behavior"]
   local function compute_active_space_indices(all_spaces, active_spaces)
     local result = {}
     local offset = 0
@@ -4795,7 +4814,7 @@ package.preload["behaviors.update-space-indicator"] = package.preload["behaviors
     return result
   end
   local update_space_indicator_behavior
-  local function _662_(event, candidates, send_cmd)
+  local function _665_(event, candidates, send_cmd)
     local target = candidates["update-menubar"][1]
     if target then
       local indices = compute_active_space_indices(event["event-data"]["all-spaces"], event["event-data"]["active-spaces"])
@@ -4804,12 +4823,12 @@ package.preload["behaviors.update-space-indicator"] = package.preload["behaviors
       return nil
     end
   end
-  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _662_})
+  update_space_indicator_behavior = make_behavior({name = "space-indicator.behaviors/update-on-change", description = "Update space indicator menubar when spaces or screens change", ["respond-to"] = {"event.kind.space/changed", "event.kind.screen/any"}, commands = {["update-menubar"] = "space-indicator.commands/update-menubar"}, fn = _665_})
   return {["update-space-indicator-behavior"] = update_space_indicator_behavior}
 end
 package.preload["behaviors.desktop-layout"] = package.preload["behaviors.desktop-layout"] or function(...)
-  local _local_665_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_665_["make-behavior"]
+  local _local_668_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_668_["make-behavior"]
   local function space_id_set(all_spaces)
     local ids = {}
     for _, entry in ipairs((all_spaces or {})) do
@@ -4838,35 +4857,22 @@ package.preload["behaviors.desktop-layout"] = package.preload["behaviors.desktop
     return {destroyed = missing_spaces(previous, current_ids), created = missing_spaces(current, previous_ids)}
   end
   local reconcile_spaces_behavior
-  local function _667_(event, candidates, send_cmd, inputs)
+  local function _670_(event, candidates, send_cmd, inputs)
     local target = candidates.reconcile[1]
     local previous
     do
-      local t_668_ = inputs
-      if (nil ~= t_668_) then
-        t_668_ = t_668_.layout
-      else
-      end
-      if (nil ~= t_668_) then
-        t_668_ = t_668_["all-spaces"]
-      else
-      end
-      previous = t_668_
-    end
-    local current
-    do
-      local t_671_ = event
+      local t_671_ = inputs
       if (nil ~= t_671_) then
-        t_671_ = t_671_["event-data"]
+        t_671_ = t_671_.layout
       else
       end
       if (nil ~= t_671_) then
         t_671_ = t_671_["all-spaces"]
       else
       end
-      current = t_671_
+      previous = t_671_
     end
-    local active
+    local current
     do
       local t_674_ = event
       if (nil ~= t_674_) then
@@ -4874,10 +4880,23 @@ package.preload["behaviors.desktop-layout"] = package.preload["behaviors.desktop
       else
       end
       if (nil ~= t_674_) then
-        t_674_ = t_674_["active-spaces"]
+        t_674_ = t_674_["all-spaces"]
       else
       end
-      active = t_674_
+      current = t_674_
+    end
+    local active
+    do
+      local t_677_ = event
+      if (nil ~= t_677_) then
+        t_677_ = t_677_["event-data"]
+      else
+      end
+      if (nil ~= t_677_) then
+        t_677_ = t_677_["active-spaces"]
+      else
+      end
+      active = t_677_
     end
     if (target and previous and current and active) then
       local diff = reconcile_spaces(previous, current)
@@ -4886,40 +4905,40 @@ package.preload["behaviors.desktop-layout"] = package.preload["behaviors.desktop
       return nil
     end
   end
-  reconcile_spaces_behavior = make_behavior({name = "desktop-layout.behaviors/reconcile-spaces", description = "Derive space creation and destruction from consecutive snapshots", ["respond-to"] = {"space-watcher.events/space-changed", "screen-watcher.events/screen-changed"}, commands = {reconcile = "desktop-layout.commands/reconcile-spaces"}, inputs = {layout = "shape/desktop-layout"}, fn = _667_})
+  reconcile_spaces_behavior = make_behavior({name = "desktop-layout.behaviors/reconcile-spaces", description = "Derive space creation and destruction from consecutive snapshots", ["respond-to"] = {"space-watcher.events/space-changed", "screen-watcher.events/screen-changed"}, commands = {reconcile = "desktop-layout.commands/reconcile-spaces"}, inputs = {layout = "shape/desktop-layout"}, fn = _670_})
   return {["reconcile-spaces-behavior"] = reconcile_spaces_behavior}
 end
 package.preload["behaviors.mouse-window-management"] = package.preload["behaviors.mouse-window-management"] or function(...)
-  local _local_679_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_679_["make-behavior"]
+  local _local_682_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_682_["make-behavior"]
   local function should_focus_hovered_3f(window_id, window_state)
     local window
-    do
-      local t_680_ = window_state
-      if (nil ~= t_680_) then
-        t_680_ = t_680_.windows
-      else
-      end
-      if (nil ~= t_680_) then
-        t_680_ = t_680_[window_id]
-      else
-      end
-      window = t_680_
-    end
-    return (window and not window.fullscreen and (window_id ~= window_state["focused-window-id"]))
-  end
-  local function likely_new_window_3f(window_id, window_state)
-    local windows
-    local _684_
     do
       local t_683_ = window_state
       if (nil ~= t_683_) then
         t_683_ = t_683_.windows
       else
       end
-      _684_ = t_683_
+      if (nil ~= t_683_) then
+        t_683_ = t_683_[window_id]
+      else
+      end
+      window = t_683_
     end
-    windows = (_684_ or {})
+    return (window and not window.fullscreen and (window_id ~= window_state["focused-window-id"]))
+  end
+  local function likely_new_window_3f(window_id, window_state)
+    local windows
+    local _687_
+    do
+      local t_686_ = window_state
+      if (nil ~= t_686_) then
+        t_686_ = t_686_.windows
+      else
+      end
+      _687_ = t_686_
+    end
+    windows = (_687_ or {})
     if windows[window_id] then
       return false
     else
@@ -4936,39 +4955,39 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
   local function placement_allowed_after_space_change_3f(created_at, mouse_state, cooldown)
     local last_change
     do
-      local t_688_ = mouse_state
-      if (nil ~= t_688_) then
-        t_688_ = t_688_["last-space-change-at"]
+      local t_691_ = mouse_state
+      if (nil ~= t_691_) then
+        t_691_ = t_691_["last-space-change-at"]
       else
       end
-      last_change = t_688_
+      last_change = t_691_
     end
     return ((last_change == nil) or (created_at > (last_change + cooldown)))
   end
   local focus_hovered_window_behavior
-  local function _690_(event, candidates, send_cmd, inputs)
+  local function _693_(event, candidates, send_cmd, inputs)
     local target = candidates.focus[1]
     local window_id
     do
-      local t_691_ = event
-      if (nil ~= t_691_) then
-        t_691_ = t_691_["event-data"]
+      local t_694_ = event
+      if (nil ~= t_694_) then
+        t_694_ = t_694_["event-data"]
       else
       end
-      if (nil ~= t_691_) then
-        t_691_ = t_691_["window-id"]
+      if (nil ~= t_694_) then
+        t_694_ = t_694_["window-id"]
       else
       end
-      window_id = t_691_
+      window_id = t_694_
     end
     local window_state
     do
-      local t_694_ = inputs
-      if (nil ~= t_694_) then
-        t_694_ = t_694_["window-state"]
+      local t_697_ = inputs
+      if (nil ~= t_697_) then
+        t_697_ = t_697_["window-state"]
       else
       end
-      window_state = t_694_
+      window_state = t_697_
     end
     if (target and window_id and window_state and should_focus_hovered_3f(window_id, window_state)) then
       return send_cmd(target, "focus", {["window-id"] = window_id})
@@ -4976,25 +4995,12 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       return nil
     end
   end
-  focus_hovered_window_behavior = make_behavior({name = "mouse-window-management.behaviors/focus-hovered-window", description = "Focus a non-focused, non-fullscreen window after mouse dwell", ["respond-to"] = {"event.kind.mouse/window-hovered"}, commands = {focus = "mouse-window-management.commands/focus-hovered-window"}, inputs = {["window-state"] = "shape/window-state"}, fn = _690_})
+  focus_hovered_window_behavior = make_behavior({name = "mouse-window-management.behaviors/focus-hovered-window", description = "Focus a non-focused, non-fullscreen window after mouse dwell", ["respond-to"] = {"event.kind.mouse/window-hovered"}, commands = {focus = "mouse-window-management.commands/focus-hovered-window"}, inputs = {["window-state"] = "shape/window-state"}, fn = _693_})
   local center_cursor_on_focus_behavior
-  local function _697_(event, candidates, send_cmd, inputs)
+  local function _700_(event, candidates, send_cmd, inputs)
     local center_target = candidates.center[1]
     local consume_target = candidates["consume-hover-focus"][1]
     local window_id
-    do
-      local t_698_ = event
-      if (nil ~= t_698_) then
-        t_698_ = t_698_["event-data"]
-      else
-      end
-      if (nil ~= t_698_) then
-        t_698_ = t_698_["window-id"]
-      else
-      end
-      window_id = t_698_
-    end
-    local frame
     do
       local t_701_ = event
       if (nil ~= t_701_) then
@@ -5002,23 +5008,36 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       else
       end
       if (nil ~= t_701_) then
-        t_701_ = t_701_.frame
+        t_701_ = t_701_["window-id"]
       else
       end
-      frame = t_701_
+      window_id = t_701_
+    end
+    local frame
+    do
+      local t_704_ = event
+      if (nil ~= t_704_) then
+        t_704_ = t_704_["event-data"]
+      else
+      end
+      if (nil ~= t_704_) then
+        t_704_ = t_704_.frame
+      else
+      end
+      frame = t_704_
     end
     local hover_focus_window_ids
     do
-      local t_704_ = inputs
-      if (nil ~= t_704_) then
-        t_704_ = t_704_["mouse-state"]
+      local t_707_ = inputs
+      if (nil ~= t_707_) then
+        t_707_ = t_707_["mouse-state"]
       else
       end
-      if (nil ~= t_704_) then
-        t_704_ = t_704_["hover-focus-window-ids"]
+      if (nil ~= t_707_) then
+        t_707_ = t_707_["hover-focus-window-ids"]
       else
       end
-      hover_focus_window_ids = t_704_
+      hover_focus_window_ids = t_707_
     end
     if (consume_target and (hover_focus_window_ids or {})[window_id]) then
       return send_cmd(consume_target, "consume-hover-focus", {["window-id"] = window_id})
@@ -5030,31 +5049,31 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       end
     end
   end
-  center_cursor_on_focus_behavior = make_behavior({name = "mouse-window-management.behaviors/center-cursor-on-focus", description = "Center the cursor for focus changes not initiated by hover", ["respond-to"] = {"event.kind.window/focused"}, commands = {center = "mouse-window-management.commands/center-cursor", ["consume-hover-focus"] = "mouse-window-management.commands/consume-hover-focus"}, inputs = {["mouse-state"] = "shape/mouse-window-management-state"}, fn = _697_})
+  center_cursor_on_focus_behavior = make_behavior({name = "mouse-window-management.behaviors/center-cursor-on-focus", description = "Center the cursor for focus changes not initiated by hover", ["respond-to"] = {"event.kind.window/focused"}, commands = {center = "mouse-window-management.commands/center-cursor", ["consume-hover-focus"] = "mouse-window-management.commands/consume-hover-focus"}, inputs = {["mouse-state"] = "shape/mouse-window-management-state"}, fn = _700_})
   local schedule_created_window_behavior
-  local function _709_(event, candidates, send_cmd, inputs)
+  local function _712_(event, candidates, send_cmd, inputs)
     local target = candidates.schedule[1]
     local window_id
     do
-      local t_710_ = event
-      if (nil ~= t_710_) then
-        t_710_ = t_710_["event-data"]
+      local t_713_ = event
+      if (nil ~= t_713_) then
+        t_713_ = t_713_["event-data"]
       else
       end
-      if (nil ~= t_710_) then
-        t_710_ = t_710_["window-id"]
+      if (nil ~= t_713_) then
+        t_713_ = t_713_["window-id"]
       else
       end
-      window_id = t_710_
+      window_id = t_713_
     end
     local window_state
     do
-      local t_713_ = inputs
-      if (nil ~= t_713_) then
-        t_713_ = t_713_["window-state"]
+      local t_716_ = inputs
+      if (nil ~= t_716_) then
+        t_716_ = t_716_["window-state"]
       else
       end
-      window_state = t_713_
+      window_state = t_716_
     end
     if (target and window_id and window_state and likely_new_window_3f(window_id, window_state)) then
       return send_cmd(target, "schedule", {["window-id"] = window_id, ["created-at"] = event.timestamp})
@@ -5062,9 +5081,9 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       return nil
     end
   end
-  schedule_created_window_behavior = make_behavior({name = "mouse-window-management.behaviors/schedule-created-window", description = "Delay placement of a likely-new window until discovery settles", ["respond-to"] = {"event.kind.window/created"}, commands = {schedule = "mouse-window-management.commands/schedule-window-placement"}, inputs = {["window-state"] = "shape/window-state"}, fn = _709_})
+  schedule_created_window_behavior = make_behavior({name = "mouse-window-management.behaviors/schedule-created-window", description = "Delay placement of a likely-new window until discovery settles", ["respond-to"] = {"event.kind.window/created"}, commands = {schedule = "mouse-window-management.commands/schedule-window-placement"}, inputs = {["window-state"] = "shape/window-state"}, fn = _712_})
   local note_space_change_behavior
-  local function _716_(event, candidates, send_cmd)
+  local function _719_(event, candidates, send_cmd)
     local target = candidates.note[1]
     if target then
       return send_cmd(target, "note", {timestamp = event.timestamp})
@@ -5072,24 +5091,11 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       return nil
     end
   end
-  note_space_change_behavior = make_behavior({name = "mouse-window-management.behaviors/note-space-change", description = "Record active Space changes for placement suppression", ["respond-to"] = {"event.kind.space/changed"}, commands = {note = "mouse-window-management.commands/note-space-change"}, fn = _716_})
+  note_space_change_behavior = make_behavior({name = "mouse-window-management.behaviors/note-space-change", description = "Record active Space changes for placement suppression", ["respond-to"] = {"event.kind.space/changed"}, commands = {note = "mouse-window-management.commands/note-space-change"}, fn = _719_})
   local place_created_window_behavior
-  local function _718_(event, candidates, send_cmd, inputs)
+  local function _721_(event, candidates, send_cmd, inputs)
     local target = candidates.place[1]
     local window_id
-    do
-      local t_719_ = event
-      if (nil ~= t_719_) then
-        t_719_ = t_719_["event-data"]
-      else
-      end
-      if (nil ~= t_719_) then
-        t_719_ = t_719_["window-id"]
-      else
-      end
-      window_id = t_719_
-    end
-    local created_at
     do
       local t_722_ = event
       if (nil ~= t_722_) then
@@ -5097,12 +5103,12 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       else
       end
       if (nil ~= t_722_) then
-        t_722_ = t_722_["created-at"]
+        t_722_ = t_722_["window-id"]
       else
       end
-      created_at = t_722_
+      window_id = t_722_
     end
-    local cursor_screen_uuid
+    local created_at
     do
       local t_725_ = event
       if (nil ~= t_725_) then
@@ -5110,19 +5116,32 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       else
       end
       if (nil ~= t_725_) then
-        t_725_ = t_725_["cursor-screen-uuid"]
+        t_725_ = t_725_["created-at"]
       else
       end
-      cursor_screen_uuid = t_725_
+      created_at = t_725_
+    end
+    local cursor_screen_uuid
+    do
+      local t_728_ = event
+      if (nil ~= t_728_) then
+        t_728_ = t_728_["event-data"]
+      else
+      end
+      if (nil ~= t_728_) then
+        t_728_ = t_728_["cursor-screen-uuid"]
+      else
+      end
+      cursor_screen_uuid = t_728_
     end
     local mouse_state
     do
-      local t_728_ = inputs
-      if (nil ~= t_728_) then
-        t_728_ = t_728_["mouse-state"]
+      local t_731_ = inputs
+      if (nil ~= t_731_) then
+        t_731_ = t_731_["mouse-state"]
       else
       end
-      mouse_state = t_728_
+      mouse_state = t_731_
     end
     if (target and window_id and created_at and cursor_screen_uuid and mouse_state and placement_allowed_after_space_change_3f(created_at, mouse_state, 1.0)) then
       return send_cmd(target, "place", {["window-id"] = window_id, ["cursor-screen-uuid"] = cursor_screen_uuid})
@@ -5130,14 +5149,14 @@ package.preload["behaviors.mouse-window-management"] = package.preload["behavior
       return nil
     end
   end
-  place_created_window_behavior = make_behavior({name = "mouse-window-management.behaviors/place-created-window", description = "Place a settled likely-new window on the cursor's screen", ["respond-to"] = {"event.kind.window/placement-ready"}, commands = {place = "mouse-window-management.commands/place-window-on-cursor-screen"}, inputs = {["mouse-state"] = "shape/mouse-window-management-state"}, fn = _718_})
+  place_created_window_behavior = make_behavior({name = "mouse-window-management.behaviors/place-created-window", description = "Place a settled likely-new window on the cursor's screen", ["respond-to"] = {"event.kind.window/placement-ready"}, commands = {place = "mouse-window-management.commands/place-window-on-cursor-screen"}, inputs = {["mouse-state"] = "shape/mouse-window-management-state"}, fn = _721_})
   return {["focus-hovered-window-behavior"] = focus_hovered_window_behavior, ["center-cursor-on-focus-behavior"] = center_cursor_on_focus_behavior, ["schedule-created-window-behavior"] = schedule_created_window_behavior, ["note-space-change-behavior"] = note_space_change_behavior, ["place-created-window-behavior"] = place_created_window_behavior, ["should-focus-hovered?"] = should_focus_hovered_3f, ["likely-new-window?"] = likely_new_window_3f, ["placement-allowed-after-space-change?"] = placement_allowed_after_space_change_3f}
 end
 package.preload["behaviors.open-emacs"] = package.preload["behaviors.open-emacs"] or function(...)
-  local _local_732_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_732_["make-behavior"]
+  local _local_735_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_735_["make-behavior"]
   local open_emacs_behavior
-  local function _733_(event, candidates, send_cmd)
+  local function _736_(event, candidates, send_cmd)
     local target = candidates["open-emacs"][1]
     if target then
       return send_cmd(target, "open-emacs", {})
@@ -5145,14 +5164,14 @@ package.preload["behaviors.open-emacs"] = package.preload["behaviors.open-emacs"
       return nil
     end
   end
-  open_emacs_behavior = make_behavior({name = "emacs.behaviors/open-emacs", description = "Open a new emacsclient frame on hotkey press", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["open-emacs"] = "emacs.commands/open-emacs"}, fn = _733_})
+  open_emacs_behavior = make_behavior({name = "emacs.behaviors/open-emacs", description = "Open a new emacsclient frame on hotkey press", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["open-emacs"] = "emacs.commands/open-emacs"}, fn = _736_})
   return {["open-emacs-behavior"] = open_emacs_behavior}
 end
 package.preload["behaviors.window-border"] = package.preload["behaviors.window-border"] or function(...)
-  local _local_736_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_736_["make-behavior"]
+  local _local_739_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_739_["make-behavior"]
   local update_on_focus_behavior
-  local function _737_(event, candidates, send_cmd)
+  local function _740_(event, candidates, send_cmd)
     local target = candidates["show-active"][1]
     if target then
       return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame})
@@ -5160,9 +5179,9 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  update_on_focus_behavior = make_behavior({name = "window-border.behaviors/update-on-focus", description = "Show active border around the newly focused window", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible"}, commands = {["show-active"] = "window-border.commands/show-active-border", ["show-inactive"] = "window-border.commands/show-inactive-border"}, fn = _737_})
+  update_on_focus_behavior = make_behavior({name = "window-border.behaviors/update-on-focus", description = "Show active border around the newly focused window", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible"}, commands = {["show-active"] = "window-border.commands/show-active-border", ["show-inactive"] = "window-border.commands/show-inactive-border"}, fn = _740_})
   local update_on_move_behavior
-  local function _739_(event, candidates, send_cmd)
+  local function _742_(event, candidates, send_cmd)
     local target = candidates["show-active"][1]
     if target then
       return send_cmd(target, "show-active", {["window-id"] = event["event-data"]["window-id"], frame = event["event-data"].frame, ["only-if-active"] = true})
@@ -5170,9 +5189,9 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  update_on_move_behavior = make_behavior({name = "window-border.behaviors/update-on-move", description = "Reposition active border when a window moves or resizes", ["respond-to"] = {"event.kind.window/moved"}, commands = {["show-active"] = "window-border.commands/show-active-border"}, fn = _739_})
+  update_on_move_behavior = make_behavior({name = "window-border.behaviors/update-on-move", description = "Reposition active border when a window moves or resizes", ["respond-to"] = {"event.kind.window/moved"}, commands = {["show-active"] = "window-border.commands/show-active-border"}, fn = _742_})
   local hide_on_disappear_behavior
-  local function _741_(event, candidates, send_cmd)
+  local function _744_(event, candidates, send_cmd)
     local target = candidates.hide[1]
     if target then
       return send_cmd(target, "hide", {["window-id"] = event["event-data"]["window-id"], ["only-if-active"] = true})
@@ -5180,20 +5199,20 @@ package.preload["behaviors.window-border"] = package.preload["behaviors.window-b
       return nil
     end
   end
-  hide_on_disappear_behavior = make_behavior({name = "window-border.behaviors/hide-on-disappear", description = "Hide active border when the focused window disappears", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {hide = "window-border.commands/hide-borders"}, fn = _741_})
+  hide_on_disappear_behavior = make_behavior({name = "window-border.behaviors/hide-on-disappear", description = "Hide active border when the focused window disappears", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {hide = "window-border.commands/hide-borders"}, fn = _744_})
   return {["update-on-focus-behavior"] = update_on_focus_behavior, ["update-on-move-behavior"] = update_on_move_behavior, ["hide-on-disappear-behavior"] = hide_on_disappear_behavior}
 end
 package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routing"] or function(...)
-  local _local_744_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_744_["make-behavior"]
-  local _local_783_ = require("lib.url-routing")
-  local build_browser_lookup = _local_783_["build-browser-lookup"]
-  local resolve_browser = _local_783_["resolve-browser"]
-  local resolve_browsers = _local_783_["resolve-browsers"]
-  local make_chooser_choices = _local_783_["make-chooser-choices"]
-  local parse_url = _local_783_["parse-url"]
-  local match_rule_3f = _local_783_["match-rule?"]
-  local find_matching_rule = _local_783_["find-matching-rule"]
+  local _local_747_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_747_["make-behavior"]
+  local _local_786_ = require("lib.url-routing")
+  local build_browser_lookup = _local_786_["build-browser-lookup"]
+  local resolve_browser = _local_786_["resolve-browser"]
+  local resolve_browsers = _local_786_["resolve-browsers"]
+  local make_chooser_choices = _local_786_["make-chooser-choices"]
+  local parse_url = _local_786_["parse-url"]
+  local match_rule_3f = _local_786_["match-rule?"]
+  local find_matching_rule = _local_786_["find-matching-rule"]
   local function dispatch_open_in_app(action, url, lookup, target, send_cmd)
     print(("[DEBUG] url-routing: dispatch-open-in-app browser-id=" .. tostring(action["browser-id"])))
     local browser = resolve_browser(action["browser-id"], lookup)
@@ -5270,22 +5289,9 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
     end
   end
   local route_url_behavior
-  local function _794_(event, candidates, send_cmd, inputs)
+  local function _797_(event, candidates, send_cmd, inputs)
     print("[DEBUG] url-routing: behavior invoked")
     local url
-    do
-      local t_795_ = event
-      if (nil ~= t_795_) then
-        t_795_ = t_795_["event-data"]
-      else
-      end
-      if (nil ~= t_795_) then
-        t_795_ = t_795_.url
-      else
-      end
-      url = t_795_
-    end
-    local sender_bundle_id
     do
       local t_798_ = event
       if (nil ~= t_798_) then
@@ -5293,10 +5299,23 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
       else
       end
       if (nil ~= t_798_) then
-        t_798_ = t_798_["sender-bundle-id"]
+        t_798_ = t_798_.url
       else
       end
-      sender_bundle_id = t_798_
+      url = t_798_
+    end
+    local sender_bundle_id
+    do
+      local t_801_ = event
+      if (nil ~= t_801_) then
+        t_801_ = t_801_["event-data"]
+      else
+      end
+      if (nil ~= t_801_) then
+        t_801_ = t_801_["sender-bundle-id"]
+      else
+      end
+      sender_bundle_id = t_801_
     end
     print(("[DEBUG] url-routing: url=" .. tostring(url) .. " sender=" .. tostring(sender_bundle_id)))
     if (nil == url) then
@@ -5304,102 +5323,102 @@ package.preload["behaviors.url-routing"] = package.preload["behaviors.url-routin
       return nil
     else
     end
-    local function _804_()
+    local function _807_()
       if inputs then
-        local t_802_ = inputs
-        if (nil ~= t_802_) then
-          t_802_ = t_802_.rules
+        local t_805_ = inputs
+        if (nil ~= t_805_) then
+          t_805_ = t_805_.rules
         else
         end
-        return t_802_
+        return t_805_
       else
         return nil
       end
     end
-    print(("[DEBUG] url-routing: inputs=" .. tostring(inputs) .. " inputs.rules=" .. tostring(_804_())))
+    print(("[DEBUG] url-routing: inputs=" .. tostring(inputs) .. " inputs.rules=" .. tostring(_807_())))
     local rules_state
     if inputs then
-      local t_805_ = inputs
-      if (nil ~= t_805_) then
-        t_805_ = t_805_.rules
+      local t_808_ = inputs
+      if (nil ~= t_808_) then
+        t_808_ = t_808_.rules
       else
       end
-      rules_state = t_805_
+      rules_state = t_808_
     else
       rules_state = nil
     end
     local browsers
-    local _809_
-    do
-      local t_808_ = rules_state
-      if (nil ~= t_808_) then
-        t_808_ = t_808_.browsers
-      else
-      end
-      _809_ = t_808_
-    end
-    browsers = (_809_ or {})
-    local rules
     local _812_
     do
       local t_811_ = rules_state
       if (nil ~= t_811_) then
-        t_811_ = t_811_.rules
+        t_811_ = t_811_.browsers
       else
       end
       _812_ = t_811_
     end
-    rules = (_812_ or {})
-    local fallback
+    browsers = (_812_ or {})
+    local rules
+    local _815_
     do
       local t_814_ = rules_state
       if (nil ~= t_814_) then
-        t_814_ = t_814_.fallback
+        t_814_ = t_814_.rules
       else
       end
-      fallback = t_814_
+      _815_ = t_814_
+    end
+    rules = (_815_ or {})
+    local fallback
+    do
+      local t_817_ = rules_state
+      if (nil ~= t_817_) then
+        t_817_ = t_817_.fallback
+      else
+      end
+      fallback = t_817_
     end
     local lookup = build_browser_lookup(browsers)
     local parsed = parse_url(url)
     local matched_rule = find_matching_rule(parsed, sender_bundle_id, rules)
     local action
-    local _816_
+    local _819_
     if matched_rule then
-      _816_ = matched_rule.action
+      _819_ = matched_rule.action
     else
-      _816_ = nil
+      _819_ = nil
     end
-    action = (_816_ or fallback or {type = "choose", ["browser-ids"] = "all"})
+    action = (_819_ or fallback or {type = "choose", ["browser-ids"] = "all"})
     if not (matched_rule or fallback) then
       print(("[WARN] url-routing: no matching rule and no fallback configured" .. " \226\128\148 using safety-net chooser for URL '" .. tostring(url) .. "'"))
     else
     end
-    local function _819_()
+    local function _822_()
       if matched_rule then
         return matched_rule.id
       else
         return nil
       end
     end
-    local function _821_()
-      local t_820_ = action
-      if (nil ~= t_820_) then
-        t_820_ = t_820_.type
+    local function _824_()
+      local t_823_ = action
+      if (nil ~= t_823_) then
+        t_823_ = t_823_.type
       else
       end
-      return t_820_
+      return t_823_
     end
-    print(("[DEBUG] url-routing: browsers=" .. tostring(#browsers) .. " matched-rule=" .. tostring(_819_()) .. " action.type=" .. tostring(_821_())))
+    print(("[DEBUG] url-routing: browsers=" .. tostring(#browsers) .. " matched-rule=" .. tostring(_822_()) .. " action.type=" .. tostring(_824_())))
     return dispatch_action(action, url, browsers, lookup, candidates, send_cmd)
   end
-  route_url_behavior = make_behavior({name = "url-dispatch.behaviors/route-url", description = "Route opened URLs to browsers based on structured routing rules", ["respond-to"] = {"event.kind.url/opened"}, commands = {["open-in-app"] = "url-dispatch.commands/open-in-app", ["show-chooser"] = "url-dispatch.commands/show-chooser"}, inputs = {rules = "shape/url-routing-rules"}, fn = _794_})
+  route_url_behavior = make_behavior({name = "url-dispatch.behaviors/route-url", description = "Route opened URLs to browsers based on structured routing rules", ["respond-to"] = {"event.kind.url/opened"}, commands = {["open-in-app"] = "url-dispatch.commands/open-in-app", ["show-chooser"] = "url-dispatch.commands/show-chooser"}, inputs = {rules = "shape/url-routing-rules"}, fn = _797_})
   return {["route-url-behavior"] = route_url_behavior}
 end
 package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or function(...)
-  local _local_745_ = require("lib.cljlib-shim")
-  local some = _local_745_.some
-  local seq = _local_745_.seq
-  local empty_3f = _local_745_["empty?"]
+  local _local_748_ = require("lib.cljlib-shim")
+  local some = _local_748_.some
+  local seq = _local_748_.seq
+  local empty_3f = _local_748_["empty?"]
   local function build_browser_lookup(browsers)
     local lookup = {}
     for _, browser in ipairs((browsers or {})) do
@@ -5656,13 +5675,13 @@ package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or funct
       return true
     else
     end
-    local _780_
+    local _783_
     if match_spec.urls then
-      _780_ = match_urls_3f(parsed_url, match_spec.urls)
+      _783_ = match_urls_3f(parsed_url, match_spec.urls)
     else
-      _780_ = true
+      _783_ = true
     end
-    return (_780_ and match_sender_3f(sender_bundle_id, match_spec["sender-bundle-ids"]))
+    return (_783_ and match_sender_3f(sender_bundle_id, match_spec["sender-bundle-ids"]))
   end
   local function find_matching_rule(parsed_url, sender_bundle_id, rules)
     local result = nil
@@ -5677,51 +5696,51 @@ package.preload["lib.url-routing"] = package.preload["lib.url-routing"] or funct
   return {["build-browser-lookup"] = build_browser_lookup, ["resolve-browser"] = resolve_browser, ["resolve-browsers"] = resolve_browsers, ["make-chooser-choices"] = make_chooser_choices, ["parse-url"] = parse_url, ["escape-lua-pattern"] = escape_lua_pattern, ["match-scheme?"] = match_scheme_3f, ["match-host?"] = match_host_3f, ["match-path?"] = match_path_3f, ["match-url-pattern?"] = match_url_pattern_3f, ["match-urls?"] = match_urls_3f, ["match-sender?"] = match_sender_3f, ["match-rule?"] = match_rule_3f, ["find-matching-rule"] = find_matching_rule}
 end
 package.preload["behaviors.record-url"] = package.preload["behaviors.record-url"] or function(...)
-  local _local_824_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_824_["make-behavior"]
+  local _local_827_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_827_["make-behavior"]
   local record_url_behavior
-  local function _825_(event, candidates, send_cmd)
+  local function _828_(event, candidates, send_cmd)
     local url
     do
-      local t_826_ = event
-      if (nil ~= t_826_) then
-        t_826_ = t_826_["event-data"]
+      local t_829_ = event
+      if (nil ~= t_829_) then
+        t_829_ = t_829_["event-data"]
       else
       end
-      if (nil ~= t_826_) then
-        t_826_ = t_826_.url
+      if (nil ~= t_829_) then
+        t_829_ = t_829_.url
       else
       end
-      url = t_826_
+      url = t_829_
     end
     local target = candidates.record[1]
     if (target and url) then
-      local _830_
+      local _833_
       do
-        local t_829_ = event
-        if (nil ~= t_829_) then
-          t_829_ = t_829_["event-data"]
+        local t_832_ = event
+        if (nil ~= t_832_) then
+          t_832_ = t_832_["event-data"]
         else
         end
-        if (nil ~= t_829_) then
-          t_829_ = t_829_["sender-bundle-id"]
+        if (nil ~= t_832_) then
+          t_832_ = t_832_["sender-bundle-id"]
         else
         end
-        _830_ = t_829_
+        _833_ = t_832_
       end
-      return send_cmd(target, "record", {url = url, ["sender-bundle-id"] = _830_, timestamp = event.timestamp})
+      return send_cmd(target, "record", {url = url, ["sender-bundle-id"] = _833_, timestamp = event.timestamp})
     else
       return nil
     end
   end
-  record_url_behavior = make_behavior({name = "url-history.behaviors/record-on-dispatch", description = "Record dispatched URLs into history for later browsing", ["respond-to"] = {"event.kind.url/opened"}, commands = {record = "url-history.commands/record-url"}, fn = _825_})
+  record_url_behavior = make_behavior({name = "url-history.behaviors/record-on-dispatch", description = "Record dispatched URLs into history for later browsing", ["respond-to"] = {"event.kind.url/opened"}, commands = {record = "url-history.commands/record-url"}, fn = _828_})
   return {["record-url-behavior"] = record_url_behavior}
 end
 package.preload["behaviors.show-history"] = package.preload["behaviors.show-history"] or function(...)
-  local _local_835_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_835_["make-behavior"]
+  local _local_838_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_838_["make-behavior"]
   local show_history_behavior
-  local function _836_(event, candidates, send_cmd)
+  local function _839_(event, candidates, send_cmd)
     local target = candidates["show-history"][1]
     if target then
       return send_cmd(target, "show-history", {})
@@ -5729,48 +5748,48 @@ package.preload["behaviors.show-history"] = package.preload["behaviors.show-hist
       return nil
     end
   end
-  show_history_behavior = make_behavior({name = "url-history.behaviors/show-history", description = "Show URL history browser when hotkey is pressed", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["show-history"] = "url-history.commands/show-history"}, fn = _836_})
+  show_history_behavior = make_behavior({name = "url-history.behaviors/show-history", description = "Show URL history browser when hotkey is pressed", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["show-history"] = "url-history.commands/show-history"}, fn = _839_})
   return {["show-history-behavior"] = show_history_behavior}
 end
 package.preload["behaviors.window-state"] = package.preload["behaviors.window-state"] or function(...)
-  local _local_839_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_839_["make-behavior"]
+  local _local_842_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_842_["make-behavior"]
   local initialize_behavior
-  local function _840_(event, candidates, send_cmd)
+  local function _843_(event, candidates, send_cmd)
     local target = candidates.initialize[1]
-    local and_841_ = target
-    if and_841_ then
-      local t_842_ = event
-      if (nil ~= t_842_) then
-        t_842_ = t_842_["event-data"]
+    local and_844_ = target
+    if and_844_ then
+      local t_845_ = event
+      if (nil ~= t_845_) then
+        t_845_ = t_845_["event-data"]
       else
       end
-      if (nil ~= t_842_) then
-        t_842_ = t_842_.windows
+      if (nil ~= t_845_) then
+        t_845_ = t_845_.windows
       else
       end
-      and_841_ = t_842_
+      and_844_ = t_845_
     end
-    if and_841_ then
+    if and_844_ then
       return send_cmd(target, "initialize", {windows = event["event-data"].windows})
     else
       return nil
     end
   end
-  initialize_behavior = make_behavior({name = "window-state.behaviors/initialize", description = "Populate window state from initial snapshot", ["respond-to"] = {"event.kind.window/initial"}, commands = {initialize = "window-state.commands/initialize-windows"}, fn = _840_})
+  initialize_behavior = make_behavior({name = "window-state.behaviors/initialize", description = "Populate window state from initial snapshot", ["respond-to"] = {"event.kind.window/initial"}, commands = {initialize = "window-state.commands/initialize-windows"}, fn = _843_})
   local track_on_change_behavior
-  local function _846_(event, candidates, send_cmd)
+  local function _849_(event, candidates, send_cmd)
     local d = event["event-data"]
     local target = candidates.upsert[1]
     local fullscreen
     do
-      local case_847_ = event["event-name"]
-      if (case_847_ == "window-watcher.events/fullscreened") then
+      local case_850_ = event["event-name"]
+      if (case_850_ == "window-watcher.events/fullscreened") then
         fullscreen = true
-      elseif (case_847_ == "window-watcher.events/unfullscreened") then
+      elseif (case_850_ == "window-watcher.events/unfullscreened") then
         fullscreen = false
       else
-        local _ = case_847_
+        local _ = case_850_
         fullscreen = nil
       end
     end
@@ -5780,9 +5799,9 @@ package.preload["behaviors.window-state"] = package.preload["behaviors.window-st
       return nil
     end
   end
-  track_on_change_behavior = make_behavior({name = "window-state.behaviors/track-on-change", description = "Track window on focus, visible, or fullscreen change", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened"}, commands = {upsert = "window-state.commands/upsert-window"}, fn = _846_})
+  track_on_change_behavior = make_behavior({name = "window-state.behaviors/track-on-change", description = "Track window on focus, visible, or fullscreen change", ["respond-to"] = {"event.kind.window/focused", "event.kind.window/visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened"}, commands = {upsert = "window-state.commands/upsert-window"}, fn = _849_})
   local track_on_move_behavior
-  local function _850_(event, candidates, send_cmd)
+  local function _853_(event, candidates, send_cmd)
     local d = event["event-data"]
     local target = candidates.upsert[1]
     if (target and d["window-id"]) then
@@ -5791,45 +5810,45 @@ package.preload["behaviors.window-state"] = package.preload["behaviors.window-st
       return nil
     end
   end
-  track_on_move_behavior = make_behavior({name = "window-state.behaviors/track-on-move", description = "Track window frame on move or resize", ["respond-to"] = {"event.kind.window/moved"}, commands = {upsert = "window-state.commands/upsert-window"}, fn = _850_})
+  track_on_move_behavior = make_behavior({name = "window-state.behaviors/track-on-move", description = "Track window frame on move or resize", ["respond-to"] = {"event.kind.window/moved"}, commands = {upsert = "window-state.commands/upsert-window"}, fn = _853_})
   local untrack_on_disappear_behavior
-  local function _852_(event, candidates, send_cmd)
+  local function _855_(event, candidates, send_cmd)
     local target = candidates.remove[1]
-    local and_853_ = target
-    if and_853_ then
-      local t_854_ = event
-      if (nil ~= t_854_) then
-        t_854_ = t_854_["event-data"]
+    local and_856_ = target
+    if and_856_ then
+      local t_857_ = event
+      if (nil ~= t_857_) then
+        t_857_ = t_857_["event-data"]
       else
       end
-      if (nil ~= t_854_) then
-        t_854_ = t_854_["window-id"]
+      if (nil ~= t_857_) then
+        t_857_ = t_857_["window-id"]
       else
       end
-      and_853_ = t_854_
+      and_856_ = t_857_
     end
-    if and_853_ then
+    if and_856_ then
       return send_cmd(target, "remove", {["window-id"] = event["event-data"]["window-id"]})
     else
       return nil
     end
   end
-  untrack_on_disappear_behavior = make_behavior({name = "window-state.behaviors/untrack-on-disappear", description = "Remove window from tracking on disappear", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {remove = "window-state.commands/remove-window"}, fn = _852_})
+  untrack_on_disappear_behavior = make_behavior({name = "window-state.behaviors/untrack-on-disappear", description = "Remove window from tracking on disappear", ["respond-to"] = {"event.kind.window/not-visible"}, commands = {remove = "window-state.commands/remove-window"}, fn = _855_})
   local track_focus_behavior
-  local function _858_(event, candidates, send_cmd)
+  local function _861_(event, candidates, send_cmd)
     local target = candidates["set-focused"][1]
     local window_id
     do
-      local t_859_ = event
-      if (nil ~= t_859_) then
-        t_859_ = t_859_["event-data"]
+      local t_862_ = event
+      if (nil ~= t_862_) then
+        t_862_ = t_862_["event-data"]
       else
       end
-      if (nil ~= t_859_) then
-        t_859_ = t_859_["window-id"]
+      if (nil ~= t_862_) then
+        t_862_ = t_862_["window-id"]
       else
       end
-      window_id = t_859_
+      window_id = t_862_
     end
     if (target and window_id) then
       return send_cmd(target, "set-focused", {["window-id"] = window_id})
@@ -5837,14 +5856,14 @@ package.preload["behaviors.window-state"] = package.preload["behaviors.window-st
       return nil
     end
   end
-  track_focus_behavior = make_behavior({name = "window-state.behaviors/track-focus", description = "Track which window is currently focused", ["respond-to"] = {"event.kind.window/focused"}, commands = {["set-focused"] = "window-state.commands/set-focused-window"}, fn = _858_})
+  track_focus_behavior = make_behavior({name = "window-state.behaviors/track-focus", description = "Track which window is currently focused", ["respond-to"] = {"event.kind.window/focused"}, commands = {["set-focused"] = "window-state.commands/set-focused-window"}, fn = _861_})
   return {["initialize-behavior"] = initialize_behavior, ["track-on-change-behavior"] = track_on_change_behavior, ["track-on-move-behavior"] = track_on_move_behavior, ["untrack-on-disappear-behavior"] = untrack_on_disappear_behavior, ["track-focus-behavior"] = track_focus_behavior}
 end
 package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or function(...)
-  local _local_864_ = require("sheaf.behavior-registry")
-  local make_behavior = _local_864_["make-behavior"]
+  local _local_867_ = require("sheaf.behavior-registry")
+  local make_behavior = _local_867_["make-behavior"]
   local function make_hotkey_behavior(name, description, cmd_alias, cmd_name)
-    local function _865_(event, candidates, send_cmd, inputs, params)
+    local function _868_(event, candidates, send_cmd, inputs, params)
       local target = candidates[cmd_alias][1]
       if target then
         return send_cmd(target, cmd_alias, (params or {}))
@@ -5852,7 +5871,7 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
         return nil
       end
     end
-    return make_behavior({name = name, description = description, ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {[cmd_alias] = cmd_name}, fn = _865_})
+    return make_behavior({name = name, description = description, ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {[cmd_alias] = cmd_name}, fn = _868_})
   end
   local focus_behavior = make_hotkey_behavior("paper-wm.behaviors/focus", "Focus window in a direction", "focus", "paper-wm.commands/focus")
   local swap_behavior = make_hotkey_behavior("paper-wm.behaviors/swap", "Swap focused window in a direction", "swap", "paper-wm.commands/swap")
@@ -5863,7 +5882,7 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
   local barf_window_behavior = make_hotkey_behavior("paper-wm.behaviors/barf-window", "Barf window out of column", "barf-window", "paper-wm.commands/barf-window")
   local increment_space_behavior = make_hotkey_behavior("paper-wm.behaviors/increment-space", "Switch to an adjacent space", "increment-space", "paper-wm.commands/increment-space")
   local switch_to_space_behavior
-  local function _867_(event, candidates, send_cmd, inputs, params)
+  local function _870_(event, candidates, send_cmd, inputs, params)
     local target = candidates["switch-to-space"][1]
     if target then
       return send_cmd(target, "switch-to-space", {index = params.index})
@@ -5871,22 +5890,22 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  switch_to_space_behavior = make_behavior({name = "paper-wm.behaviors/switch-to-space", description = "Switch to a specific space", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["switch-to-space"] = "paper-wm.commands/switch-to-space"}, fn = _867_})
+  switch_to_space_behavior = make_behavior({name = "paper-wm.behaviors/switch-to-space", description = "Switch to a specific space", ["respond-to"] = {"event.kind.hotkey/pressed"}, commands = {["switch-to-space"] = "paper-wm.commands/switch-to-space"}, fn = _870_})
   local initialize_layout_behavior
-  local function _869_(event, candidates, send_cmd)
+  local function _872_(event, candidates, send_cmd)
     local target = candidates["initialize-layout"][1]
     local windows
     do
-      local t_870_ = event
-      if (nil ~= t_870_) then
-        t_870_ = t_870_["event-data"]
+      local t_873_ = event
+      if (nil ~= t_873_) then
+        t_873_ = t_873_["event-data"]
       else
       end
-      if (nil ~= t_870_) then
-        t_870_ = t_870_.windows
+      if (nil ~= t_873_) then
+        t_873_ = t_873_.windows
       else
       end
-      windows = t_870_
+      windows = t_873_
     end
     if (target and windows) then
       return send_cmd(target, "initialize-layout", {windows = windows, ["observed-spaces"] = (event["event-data"]["observed-spaces"] or {})})
@@ -5894,9 +5913,9 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  initialize_layout_behavior = make_behavior({name = "paper-wm.behaviors/initialize-layout", description = "Initialize PaperWM from the shared window snapshot", ["respond-to"] = {"event.kind.window/initial"}, commands = {["initialize-layout"] = "paper-wm.commands/initialize-layout"}, fn = _869_})
+  initialize_layout_behavior = make_behavior({name = "paper-wm.behaviors/initialize-layout", description = "Initialize PaperWM from the shared window snapshot", ["respond-to"] = {"event.kind.window/initial"}, commands = {["initialize-layout"] = "paper-wm.commands/initialize-layout"}, fn = _872_})
   local reconcile_membership_behavior
-  local function _874_(event, candidates, send_cmd)
+  local function _877_(event, candidates, send_cmd)
     local target = candidates["reconcile-window"][1]
     local fact = event["event-data"]
     if (target and fact) then
@@ -5905,9 +5924,9 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  reconcile_membership_behavior = make_behavior({name = "paper-wm.behaviors/reconcile-membership", description = "Reconcile PaperWM membership from shared window facts", ["respond-to"] = {"event.kind.window/visible", "event.kind.window/not-visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened", "event.kind.window/destroyed", "event.kind.window/minimized", "event.kind.window/deminimized"}, commands = {["reconcile-window"] = "paper-wm.commands/reconcile-window"}, fn = _874_})
+  reconcile_membership_behavior = make_behavior({name = "paper-wm.behaviors/reconcile-membership", description = "Reconcile PaperWM membership from shared window facts", ["respond-to"] = {"event.kind.window/visible", "event.kind.window/not-visible", "event.kind.window/fullscreened", "event.kind.window/unfullscreened", "event.kind.window/destroyed", "event.kind.window/minimized", "event.kind.window/deminimized"}, commands = {["reconcile-window"] = "paper-wm.commands/reconcile-window"}, fn = _877_})
   local record_focus_behavior
-  local function _876_(event, candidates, send_cmd)
+  local function _879_(event, candidates, send_cmd)
     local target = candidates["record-focus"][1]
     local fact = event["event-data"]
     if (target and fact and fact["window-id"]) then
@@ -5916,9 +5935,9 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  record_focus_behavior = make_behavior({name = "paper-wm.behaviors/record-focus", description = "Reconcile the focused window's fact and record PaperWM focus", ["respond-to"] = {"event.kind.window/focused"}, commands = {["record-focus"] = "paper-wm.commands/record-focus"}, fn = _876_})
+  record_focus_behavior = make_behavior({name = "paper-wm.behaviors/record-focus", description = "Reconcile the focused window's fact and record PaperWM focus", ["respond-to"] = {"event.kind.window/focused"}, commands = {["record-focus"] = "paper-wm.commands/record-focus"}, fn = _879_})
   local retile_observed_frame_behavior
-  local function _878_(event, candidates, send_cmd)
+  local function _881_(event, candidates, send_cmd)
     local target = candidates.retile[1]
     if target then
       return send_cmd(target, "retile", event["event-data"])
@@ -5926,22 +5945,22 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  retile_observed_frame_behavior = make_behavior({name = "paper-wm.behaviors/retile-observed-frame", description = "Retile from the latest coalesced PaperWM frame", ["respond-to"] = {"paper-wm.events/frame-observed"}, commands = {retile = "paper-wm.commands/retile-observed-frame"}, fn = _878_})
+  retile_observed_frame_behavior = make_behavior({name = "paper-wm.behaviors/retile-observed-frame", description = "Retile from the latest coalesced PaperWM frame", ["respond-to"] = {"paper-wm.events/frame-observed"}, commands = {retile = "paper-wm.commands/retile-observed-frame"}, fn = _881_})
   local retry_space_focus_behavior
-  local function _880_(event, candidates, send_cmd)
+  local function _883_(event, candidates, send_cmd)
     local target = candidates.retry[1]
     local generation
     do
-      local t_881_ = event
-      if (nil ~= t_881_) then
-        t_881_ = t_881_["event-data"]
+      local t_884_ = event
+      if (nil ~= t_884_) then
+        t_884_ = t_884_["event-data"]
       else
       end
-      if (nil ~= t_881_) then
-        t_881_ = t_881_.generation
+      if (nil ~= t_884_) then
+        t_884_ = t_884_.generation
       else
       end
-      generation = t_881_
+      generation = t_884_
     end
     if (target and generation) then
       return send_cmd(target, "retry", {generation = generation})
@@ -5949,22 +5968,22 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  retry_space_focus_behavior = make_behavior({name = "paper-wm.behaviors/retry-space-focus", description = "Advance a PaperWM Space focus conversation", ["respond-to"] = {"paper-wm.events/space-focus-retry"}, commands = {retry = "paper-wm.commands/retry-space-focus"}, fn = _880_})
+  retry_space_focus_behavior = make_behavior({name = "paper-wm.behaviors/retry-space-focus", description = "Advance a PaperWM Space focus conversation", ["respond-to"] = {"paper-wm.events/space-focus-retry"}, commands = {retry = "paper-wm.commands/retry-space-focus"}, fn = _883_})
   local refresh_on_screen_change_behavior
-  local function _885_(event, candidates, send_cmd)
+  local function _888_(event, candidates, send_cmd)
     local target = candidates["refresh-windows"][1]
     local windows
     do
-      local t_886_ = event
-      if (nil ~= t_886_) then
-        t_886_ = t_886_["event-data"]
+      local t_889_ = event
+      if (nil ~= t_889_) then
+        t_889_ = t_889_["event-data"]
       else
       end
-      if (nil ~= t_886_) then
-        t_886_ = t_886_.windows
+      if (nil ~= t_889_) then
+        t_889_ = t_889_.windows
       else
       end
-      windows = t_886_
+      windows = t_889_
     end
     if (target and windows) then
       return send_cmd(target, "refresh-windows", {windows = windows, ["observed-spaces"] = (event["event-data"]["observed-spaces"] or {})})
@@ -5972,22 +5991,22 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  refresh_on_screen_change_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-screen-change", description = "Reconcile PaperWM when screen layout changes", ["respond-to"] = {"event.kind.screen/layout-changed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _885_})
+  refresh_on_screen_change_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-screen-change", description = "Reconcile PaperWM when screen layout changes", ["respond-to"] = {"event.kind.screen/layout-changed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _888_})
   local refresh_on_window_placed_behavior
-  local function _890_(event, candidates, send_cmd)
+  local function _893_(event, candidates, send_cmd)
     local target = candidates["refresh-windows"][1]
     local windows
     do
-      local t_891_ = event
-      if (nil ~= t_891_) then
-        t_891_ = t_891_["event-data"]
+      local t_894_ = event
+      if (nil ~= t_894_) then
+        t_894_ = t_894_["event-data"]
       else
       end
-      if (nil ~= t_891_) then
-        t_891_ = t_891_.windows
+      if (nil ~= t_894_) then
+        t_894_ = t_894_.windows
       else
       end
-      windows = t_891_
+      windows = t_894_
     end
     if (target and windows) then
       return send_cmd(target, "refresh-windows", {windows = windows, ["observed-spaces"] = (event["event-data"]["observed-spaces"] or {})})
@@ -5995,20 +6014,20 @@ package.preload["behaviors.paper-wm"] = package.preload["behaviors.paper-wm"] or
       return nil
     end
   end
-  refresh_on_window_placed_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-window-placed", description = "Reconcile PaperWM after cross-screen window placement", ["respond-to"] = {"event.kind.window/placed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _890_})
+  refresh_on_window_placed_behavior = make_behavior({name = "paper-wm.behaviors/refresh-on-window-placed", description = "Reconcile PaperWM after cross-screen window placement", ["respond-to"] = {"event.kind.window/placed"}, commands = {["refresh-windows"] = "paper-wm.commands/refresh-windows"}, fn = _893_})
   return {["initialize-layout-behavior"] = initialize_layout_behavior, ["reconcile-membership-behavior"] = reconcile_membership_behavior, ["record-focus-behavior"] = record_focus_behavior, ["retile-observed-frame-behavior"] = retile_observed_frame_behavior, ["retry-space-focus-behavior"] = retry_space_focus_behavior, ["focus-behavior"] = focus_behavior, ["swap-behavior"] = swap_behavior, ["center-window-behavior"] = center_window_behavior, ["set-full-width-behavior"] = set_full_width_behavior, ["cycle-window-size-behavior"] = cycle_window_size_behavior, ["slurp-window-behavior"] = slurp_window_behavior, ["barf-window-behavior"] = barf_window_behavior, ["increment-space-behavior"] = increment_space_behavior, ["switch-to-space-behavior"] = switch_to_space_behavior, ["refresh-on-screen-change-behavior"] = refresh_on_screen_change_behavior, ["refresh-on-window-placed-behavior"] = refresh_on_window_placed_behavior}
 end
 require("behaviors")
 package.preload["subscriptions"] = package.preload["subscriptions"] or function(...)
-  local _local_922_ = require("sheaf.subscription-registry")
-  local make_subscription_registry = _local_922_["make-subscription-registry"]
-  local define_subscription_21 = _local_922_["define-subscription!"]
-  local _local_923_ = require("events")
-  local event_registry = _local_923_["event-registry"]
-  local _local_924_ = require("behaviors")
-  local behavior_registry = _local_924_["behavior-registry"]
-  local _local_925_ = require("components")
-  local tag_registry = _local_925_["tag-registry"]
+  local _local_925_ = require("sheaf.subscription-registry")
+  local make_subscription_registry = _local_925_["make-subscription-registry"]
+  local define_subscription_21 = _local_925_["define-subscription!"]
+  local _local_926_ = require("events")
+  local event_registry = _local_926_["event-registry"]
+  local _local_927_ = require("behaviors")
+  local behavior_registry = _local_927_["behavior-registry"]
+  local _local_928_ = require("components")
+  local tag_registry = _local_928_["tag-registry"]
   local subscription_registry = make_subscription_registry({["event-registry"] = event_registry, ["behavior-registry"] = behavior_registry, ["tag-registry"] = tag_registry})
   define_subscription_21(subscription_registry, "sub/reload-on-config-change", {description = "Reload Hammerspoon when init.lua changes", behavior = "reload-hammerspoon.behaviors/reload-hammerspoon", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/reload-hammerspoon", ["event-selector"] = "event.kind.fs/file-change"})
   define_subscription_21(subscription_registry, "sub/compile-on-fnl-change", {description = "Recompile Fennel when .fnl files change", behavior = "compile-fennel.behaviors/compile-fennel", ["source-tag"] = "tag/config-watcher", ["target-tag"] = "tag/compile-fennel", ["event-selector"] = "event.kind.fs/file-change"})
@@ -6071,20 +6090,20 @@ package.preload["subscriptions"] = package.preload["subscriptions"] or function(
   return {["subscription-registry"] = subscription_registry}
 end
 package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscription-registry"] or function(...)
-  local _local_896_ = require("lib.cljlib-shim")
-  local hash_set = _local_896_["hash-set"]
-  local conj = _local_896_.conj
-  local disj = _local_896_.disj
-  local into = _local_896_.into
-  local seq = _local_896_.seq
-  local _local_897_ = require("sheaf.event-registry")
-  local valid_event_selector_3f = _local_897_["valid-event-selector?"]
-  local _local_898_ = require("sheaf.behavior-registry")
-  local behavior_defined_3f = _local_898_["behavior-defined?"]
-  local _local_899_ = require("sheaf.tag-registry")
-  local get_tags = _local_899_["get-tags"]
-  local _local_900_ = require("lib.hierarchy")
-  local ancestors = _local_900_.ancestors
+  local _local_899_ = require("lib.cljlib-shim")
+  local hash_set = _local_899_["hash-set"]
+  local conj = _local_899_.conj
+  local disj = _local_899_.disj
+  local into = _local_899_.into
+  local seq = _local_899_.seq
+  local _local_900_ = require("sheaf.event-registry")
+  local valid_event_selector_3f = _local_900_["valid-event-selector?"]
+  local _local_901_ = require("sheaf.behavior-registry")
+  local behavior_defined_3f = _local_901_["behavior-defined?"]
+  local _local_902_ = require("sheaf.tag-registry")
+  local get_tags = _local_902_["get-tags"]
+  local _local_903_ = require("lib.hierarchy")
+  local ancestors = _local_903_.ancestors
   local function make_subscription_registry(opts)
     if (nil == opts["event-registry"]) then
       error("make-subscription-registry: :event-registry is required")
@@ -6121,27 +6140,27 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
     local sub_name = subscription.name
     local sub_set
     do
-      local t_906_ = registry.index
-      if (nil ~= t_906_) then
-        t_906_ = t_906_[tag]
+      local t_909_ = registry.index
+      if (nil ~= t_909_) then
+        t_909_ = t_909_[tag]
       else
       end
-      if (nil ~= t_906_) then
-        t_906_ = t_906_[event]
+      if (nil ~= t_909_) then
+        t_909_ = t_909_[event]
       else
       end
-      sub_set = t_906_
+      sub_set = t_909_
     end
     if sub_set then
       do
         local new_set = disj(sub_set, sub_name)
-        local _909_
+        local _912_
         if seq(new_set) then
-          _909_ = new_set
+          _912_ = new_set
         else
-          _909_ = nil
+          _912_ = nil
         end
-        registry.index[tag][event] = _909_
+        registry.index[tag][event] = _912_
       end
       if (nil == registry.index[tag][event]) then
         if (nil == next(registry.index[tag])) then
@@ -6257,42 +6276,42 @@ package.preload["sheaf.subscription-registry"] = package.preload["sheaf.subscrip
   end
   return {["make-subscription-registry"] = make_subscription_registry, ["define-subscription!"] = define_subscription_21, ["remove-subscription!"] = remove_subscription_21, ["get-subscription"] = get_subscription, ["list-subscriptions"] = list_subscriptions, ["subscription-defined?"] = subscription_defined_3f, ["get-matching-subscriptions"] = get_matching_subscriptions}
 end
-local _local_926_ = require("subscriptions")
-local subscription_registry = _local_926_["subscription-registry"]
+local _local_929_ = require("subscriptions")
+local subscription_registry = _local_929_["subscription-registry"]
 package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or function(...)
-  local _local_927_ = require("sheaf.event-registry")
-  local add_event_handler_21 = _local_927_["add-event-handler!"]
-  local _local_928_ = require("sheaf.behavior-registry")
-  local behavior_responds_to_3f = _local_928_["behavior-responds-to?"]
-  local get_behavior = _local_928_["get-behavior"]
-  local _local_929_ = require("sheaf.subscription-registry")
-  local get_matching_subscriptions = _local_929_["get-matching-subscriptions"]
-  local _local_930_ = require("sheaf.command-registry")
-  local get_command = _local_930_["get-command"]
-  local _local_931_ = require("sheaf.tag-registry")
-  local components_with_tag = _local_931_["components-with-tag"]
-  local _local_932_ = require("sheaf.component-registry")
-  local get_component_instance = _local_932_["get-component-instance"]
-  local _local_933_ = require("sheaf.trait-registry")
-  local satisfies_all_3f = _local_933_["satisfies-all?"]
-  local _local_934_ = require("sheaf.shape-registry")
-  local conforms_3f = _local_934_["conforms?"]
+  local _local_930_ = require("sheaf.event-registry")
+  local add_event_handler_21 = _local_930_["add-event-handler!"]
+  local _local_931_ = require("sheaf.behavior-registry")
+  local behavior_responds_to_3f = _local_931_["behavior-responds-to?"]
+  local get_behavior = _local_931_["get-behavior"]
+  local _local_932_ = require("sheaf.subscription-registry")
+  local get_matching_subscriptions = _local_932_["get-matching-subscriptions"]
+  local _local_933_ = require("sheaf.command-registry")
+  local get_command = _local_933_["get-command"]
+  local _local_934_ = require("sheaf.tag-registry")
+  local components_with_tag = _local_934_["components-with-tag"]
+  local _local_935_ = require("sheaf.component-registry")
+  local get_component_instance = _local_935_["get-component-instance"]
+  local _local_936_ = require("sheaf.trait-registry")
+  local satisfies_all_3f = _local_936_["satisfies-all?"]
+  local _local_937_ = require("sheaf.shape-registry")
+  local conforms_3f = _local_937_["conforms?"]
   local function build_candidates(behavior, command_registry, component_registry, trait_registry, tag_registry, target_tag)
     local candidates = {}
     local target_instances = components_with_tag(tag_registry, target_tag)
     for alias, cmd_name in pairs((behavior.commands or {})) do
       local command = get_command(command_registry, cmd_name)
       local required_traits
-      local _936_
+      local _939_
       do
-        local t_935_ = command
-        if (nil ~= t_935_) then
-          t_935_ = t_935_["requires-traits"]
+        local t_938_ = command
+        if (nil ~= t_938_) then
+          t_938_ = t_938_["requires-traits"]
         else
         end
-        _936_ = t_935_
+        _939_ = t_938_
       end
-      required_traits = (_936_ or {})
+      required_traits = (_939_ or {})
       local matching = {}
       for instance_name, _ in pairs(target_instances) do
         local instance = get_component_instance(component_registry, instance_name)
@@ -6306,7 +6325,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
     return candidates
   end
   local function make_send_cmd(behavior, command_registry, component_registry, trait_registry)
-    local function _939_(instance_name, cmd_alias, params)
+    local function _942_(instance_name, cmd_alias, params)
       local cmd_name = behavior.commands[cmd_alias]
       if (nil == cmd_name) then
         print(("[WARN] send-cmd: unknown alias '" .. tostring(cmd_alias) .. "' in behavior '" .. tostring(behavior.name) .. "'"))
@@ -6337,7 +6356,7 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
         return print(("[WARN] send-cmd: instance '" .. tostring(instance_name) .. "' does not satisfy traits for command '" .. tostring(cmd_name) .. "'"))
       end
     end
-    return _939_
+    return _942_
   end
   local function build_inputs(behavior, shape_registry, component_registry, tag_registry, input_tag)
     local inputs = (behavior.inputs or {})
@@ -6405,27 +6424,27 @@ package.preload["sheaf.dispatcher"] = package.preload["sheaf.dispatcher"] or fun
   end
   local function start_dispatcher_21(subscription_registry, component_registry, _3fshape_registry)
     local event_registry = subscription_registry["event-registry"]
-    local function _952_(event)
+    local function _955_(event)
       local sub_matches = get_matching_subscriptions(subscription_registry, event["event-source"], event["event-name"])
       for _, sub_match in ipairs((sub_matches or {})) do
         dispatch_to_behavior(subscription_registry, component_registry, _3fshape_registry, event, sub_match.behavior, sub_match["target-tag"], sub_match["input-tag"], sub_match.params)
       end
       return nil
     end
-    add_event_handler_21(event_registry, "dispatcher/behavior-router", _952_)
-    local function _953_(event)
+    add_event_handler_21(event_registry, "dispatcher/behavior-router", _955_)
+    local function _956_(event)
       if _G["event-bus.debug-mode?"] then
         return print("got event", hs.inspect(event))
       else
         return nil
       end
     end
-    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _953_)
+    return add_event_handler_21(event_registry, "dispatcher/debug-handler", _956_)
   end
   return {["start-dispatcher!"] = start_dispatcher_21}
 end
-local _local_955_ = require("sheaf.dispatcher")
-local start_dispatcher_21 = _local_955_["start-dispatcher!"]
+local _local_958_ = require("sheaf.dispatcher")
+local start_dispatcher_21 = _local_958_["start-dispatcher!"]
 package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or function(...)
   local function make_event_loop(event_registry)
     if (nil == event_registry) then
@@ -6456,12 +6475,12 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
     else
     end
     local timer
-    local function _960_()
+    local function _963_()
       while process_event_21(event_loop) do
       end
       return nil
     end
-    timer = hs.timer.new(0.01, _960_)
+    timer = hs.timer.new(0.01, _963_)
     event_loop["timer"] = timer
     timer:start()
     return print("[INFO] Event loop started")
@@ -6477,9 +6496,9 @@ package.preload["sheaf.event-loop"] = package.preload["sheaf.event-loop"] or fun
   end
   return {["make-event-loop"] = make_event_loop, ["process-event!"] = process_event_21, ["start-event-loop!"] = start_event_loop_21, ["stop-event-loop!"] = stop_event_loop_21}
 end
-local _local_962_ = require("sheaf.event-loop")
-local make_event_loop = _local_962_["make-event-loop"]
-local start_event_loop_21 = _local_962_["start-event-loop!"]
+local _local_965_ = require("sheaf.event-loop")
+local make_event_loop = _local_965_["make-event-loop"]
+local start_event_loop_21 = _local_965_["start-event-loop!"]
 start_dispatcher_21(subscription_registry, component_registry, shape_registry)
 local event_loop = make_event_loop(event_registry)
 start_event_loop_21(event_loop)

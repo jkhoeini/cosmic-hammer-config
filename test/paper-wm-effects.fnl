@@ -179,4 +179,34 @@
   ((. timers (length timers) :callback))
   (assert (= 1 (length emitted)) "stopped runtime published an observation"))
 
+;; Window actions follow PaperWM's recorded focus, not a racing live query, and
+;; focusing an untracked window (dialog) clears it so actions become no-ops.
+(let [(runtime first second) (make-two-column-runtime)]
+  (paper-wm.record-focus! runtime (focus-fact 1 7 (rect 40 35 300 700)))
+  (set focused second)
+  (paper-wm.swap-windows! runtime :right)
+  (assert (= 2 (. runtime.tiling-state.index 1 :col))
+          "swap acted on the live-focused window instead of the recorded one")
+  (paper-wm.record-focus! runtime {:window-id 50 :space-id 7 :frame (rect 0 0 50 50)})
+  (assert (= nil runtime.tiling-state.focused-window-id)
+          "focusing an untracked window kept stale recorded focus")
+  (paper-wm.swap-windows! runtime :left)
+  (assert (= 2 (. runtime.tiling-state.index 1 :col))
+          "action ran with no recorded focus"))
+
+;; A second focus hotkey before the window/focused fact arrives still advances.
+(let [(runtime first second) (make-two-column-runtime)
+      third (make-window 3 (rect 720 35 300 700))]
+  (tset runtime :tiling-state (layout.add-window runtime.tiling-state 3 7 3))
+  (tset runtime.resources.windows 3 third)
+  (tset runtime.resources.ui-watchers 3 (make-watcher))
+  (local focus-calls [])
+  (each [_ window (ipairs [first second third])]
+    (tset window :focus (fn [self] (table.insert focus-calls (self:id)))))
+  (paper-wm.record-focus! runtime (focus-fact 1 7 (rect 40 35 300 700)))
+  (paper-wm.focus-window! runtime :right)
+  (paper-wm.focus-window! runtime :right)
+  (assert (and (= 2 (. focus-calls 1)) (= 3 (. focus-calls 2)))
+          "queued focus hotkey acted on stale focus"))
+
 (print "PaperWM effects passed")

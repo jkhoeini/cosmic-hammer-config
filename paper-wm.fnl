@@ -214,14 +214,20 @@
 (fn resolve-anchor [runtime space screen ?anchor]
   "Return the anchor window and a private copy of the frame to tile around.
    An explicit {:window-id :frame} anchor wins only when that window is live
-   and tracked on this Space; otherwise the live tracked focused window, then
-   the first visible column head."
+   and tracked on this Space; otherwise the recorded focused window when it is
+   live on this Space, then the first visible column head. Only when no focus
+   is recorded (the focused member just closed, before its successor's focus
+   fact arrives) is the live focused window consulted, so the successor stays
+   in place."
   (let [explicit (and ?anchor ?anchor.frame
                       (live-tracked-window runtime ?anchor.window-id space))
-        focused (Window.focusedWindow)
+        recorded-id runtime.tiling-state.focused-window-id
+        live-focused (when (and (not explicit) (= nil recorded-id))
+                       (Window.focusedWindow))
+        focused-id (or recorded-id (and live-focused (live-focused:id)))
         (focused-window focused-frame)
-        (when (and (not explicit) focused)
-          (live-tracked-window runtime (focused:id) space))]
+        (when (not explicit)
+          (live-tracked-window runtime focused-id space))]
     (if explicit (values explicit (copy-frame ?anchor.frame))
         focused-window (values focused-window (copy-frame focused-frame))
         (let [(window frame) (get-first-visible-window
@@ -357,19 +363,20 @@
     (values runtime plan.report)))
 
 (fn record-focus! [runtime fact]
-  "Reconcile the focused window's fact (joins, Space moves), then record focus
-   and tile its Space around the focused frame. A fact without a Space ID is a
+  "Reconcile the focused window's fact (joins, Space moves), then record it as
+   PaperWM's focus and tile its Space around the focused frame. Focusing an
+   untracked window clears recorded focus. A fact without a Space ID is a
    transient lookup failure, not ineligibility, so it skips reconciliation."
   (let [anchor {:window-id fact.window-id :frame fact.frame}
         plan (if fact.space-id
                  (apply-membership! runtime [fact] {: anchor})
                  {:touched-spaces []})
-        entry (. runtime.tiling-state.index fact.window-id)]
-    (when entry
-      (commit-state! runtime
-                     (set-focused-window runtime.tiling-state fact.window-id))
-      (when (not (some #(= $ entry.space) plan.touched-spaces))
-        (tile-space! runtime entry.space anchor))))
+        entry (. runtime.tiling-state.index fact.window-id)
+        focused-id (when entry fact.window-id)]
+    (when (not= focused-id runtime.tiling-state.focused-window-id)
+      (commit-state! runtime (set-focused-window runtime.tiling-state focused-id)))
+    (when (and entry (not (some #(= $ entry.space) plan.touched-spaces)))
+      (tile-space! runtime entry.space anchor)))
   runtime)
 
 (fn retile-observed-frame! [runtime params]
@@ -385,20 +392,26 @@
   runtime)
 
 (fn focused-window [runtime]
-  "Return the live focused window and its index entry when PaperWM tracks it."
-  (let [focused (Window.focusedWindow)
-        entry (and focused (. runtime.tiling-state.index (focused:id)))]
-    (when entry (values focused entry))))
+  "Return the recorded focused window's live handle and index entry."
+  (let [window-id runtime.tiling-state.focused-window-id
+        window (and window-id (. runtime.resources.windows window-id))
+        entry (and window-id (. runtime.tiling-state.index window-id))]
+    (when (and window entry (live-frame window)) (values window entry))))
 
 (fn retile-around! [runtime focused entry frame]
   (tile-space! runtime entry.space {:window-id (focused:id) :frame frame}))
 
 (fn focus-window! [runtime direction]
+  "Focus the neighbor in direction and record it as PaperWM's intended focus,
+   so a hotkey queued before the window/focused fact acts on the new window;
+   that fact then confirms or corrects it."
   (let [focused (focused-window runtime)]
     (when (= nil focused) (lua "return runtime"))
     (let [target-id (focus-target runtime.tiling-state (focused:id) direction)
           target (. runtime.resources.windows target-id)]
-      (when target (target:focus)))
+      (when target
+        (target:focus)
+        (commit-state! runtime (set-focused-window runtime.tiling-state target-id))))
     runtime))
 
 (fn swap-windows! [runtime direction]
