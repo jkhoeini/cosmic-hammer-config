@@ -29,7 +29,8 @@
 ;; │
 ;; ├── :trait.kind/windowing                 ;; Window management capabilities
 ;; │   ├── :trait/has-window-filter
-;; │   └── :trait/has-layout
+;; │   ├── :trait/has-paper-wm-runtime
+;; │   └── :trait/has-tiling-state
 ;; │
 ;; ├── :trait.kind/scheduling                ;; Timer-based operations
 ;; │   └── :trait/has-delayed-timer
@@ -56,7 +57,6 @@
 
 ;; --- Windowing ---
 (derive! trait-hierarchy :trait/has-window-filter :trait.kind/windowing)
-(derive! trait-hierarchy :trait/has-layout :trait.kind/windowing)
 (derive! trait-hierarchy :trait/has-paper-wm-runtime :trait.kind/windowing)
 (derive! trait-hierarchy :trait/has-tiling-state :trait.kind/windowing)
 
@@ -111,15 +111,9 @@
               {:window-filter non-nil?}))
 
 (add-trait! trait-registry
-  (make-trait :trait/has-layout
-              "Component state includes window layout tables"
-              {:window-list non-nil? :index-table non-nil?}))
-
-(add-trait! trait-registry
   (make-trait :trait/has-paper-wm-runtime
-              "Component state owns PaperWM resources during migration"
+              "Component state owns PaperWM resources: handles, watchers, timers"
               {:active? boolean?
-               :epoch number?
                :config table?
                :tiling-state table?
                :resources table?}

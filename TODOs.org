@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [51/165]
+* Projects [52/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1816,7 +1816,7 @@ cutovers in one commit.
     - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
       REPL/visualization inspection without exposing handles.
 
-*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [9/11] :refactor:
+*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [10/11] :refactor:
     - [X] Extend shared window payloads with guarded role/subrole, titlebar,
       visibility, fullscreen, tab count, Space ID, frame, and app facts. Torn-down
       handles are skipped rather than escaping the watcher callback.
@@ -1833,11 +1833,13 @@ cutovers in one commit.
       Fixed: snapshots carry =:observed-spaces= and removal is scoped to them.
     - [X] Route visible, deminimized, and unfullscreened facts through eligibility;
       not-visible, minimized, destroyed, and fullscreened facts remove membership.
-    - [ ] Cover duplicate, stale-epoch, and reordered membership delivery in the
+    - [X] Cover duplicate, stale-epoch, and reordered membership delivery in the
       deterministic membership/layout harnesses.
-      REVIEW (2026-10-01): the harness passes =:runtime-epoch= directly, but
-      =reconcile-membership= never sends it, so the stale-epoch guard is
-      unreachable in production.
+      REVIEW (2026-10-01): the stale-epoch guard was unreachable (no behavior
+      sent =:runtime-epoch=). Resolved by deleting the epoch: deferred callbacks
+      close over their own runtime and gate on =active?= and watcher generation,
+      and a restarted component gets a fresh runtime. Duplicate and conflicting
+      (add-then-remove) facts are covered in =test/paper-wm-membership-plan.fnl=.
     - [X] Eliminate the scalar pending membership retry and private recursive timer;
       shared watcher occurrences now carry authoritative Space facts. No keyed retry
       map is needed at this seam; missing Space facts are ineligible and converge on
@@ -1955,7 +1957,7 @@ Migration-enabled follow-ups, deliberately deferred:
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [21/24]
+** PROJ PaperWM Review Fixes [22/24]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2186,7 +2188,7 @@ close when their matching fix here lands with a live receipt. Should land before
       documented source for both lookups, and a display missing from
       =allSpaces= no longer throws. Cases in =test/paper-wm-space-focus.fnl=
 
-*** LATER [#C] Remove dead PaperWM code and duplicates :refactor:
+*** DONE [#C] Remove dead PaperWM code and duplicates :refactor:
     - Nonexistent =initialize-layout!= import (=commands/paper-wm.fnl:7=)
     - Identical =initialize-layout= / =refresh-windows= commands; identical
       screen-change / window-placed refresh behaviors; =switch-to-space=
@@ -2195,6 +2197,12 @@ close when their matching fix here lands with a live receipt. Should land before
     - Leftover =:trait/has-layout= and =window-list= / =index-table= names in
       =diagnostic-snapshot=
     - Stale "legacy runtime… during the migration" comments
+    - Done: one =reconcile-snapshot= command and behavior serve startup,
+      screen-change, and placement subscriptions; =switch-to-space= uses
+      =make-hotkey-behavior=; epoch, =:trait/has-layout=, and legacy names are
+      gone (=diagnostic-snapshot= reports =:spaces= / =:index=). Deleted the
+      mock-forwarding membership harness and the export-pinning final-seam
+      harness; their behavior is covered by the planner and effects harnesses
 
 *** DONE [#C] Make PaperWM harnesses runnable :tooling:
     - =test/= has no runner and contradicts AGENTS.md ("No test framework")

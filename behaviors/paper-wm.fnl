@@ -81,36 +81,28 @@
                         "Switch to an adjacent space"
                         :increment-space :paper-wm.commands/increment-space))
 
-;; ============================================================================
-;; Switch-to-space
-;; ============================================================================
-
 (local switch-to-space-behavior
-  (make-behavior
-   {:name :paper-wm.behaviors/switch-to-space
-    :description "Switch to a specific space"
-    :respond-to [:event.kind.hotkey/pressed]
-    :commands {:switch-to-space :paper-wm.commands/switch-to-space}
-    :fn (fn [event candidates send-cmd inputs params]
-          (let [target (. candidates.switch-to-space 1)]
-            (when target
-              (send-cmd target :switch-to-space {:index params.index}))))}))
+  (make-hotkey-behavior :paper-wm.behaviors/switch-to-space
+                        "Switch to a specific space"
+                        :switch-to-space :paper-wm.commands/switch-to-space))
 
 ;; ============================================================================
 ;; Shared window membership
 ;; ============================================================================
 
-(local initialize-layout-behavior
+(local reconcile-snapshot-behavior
   (make-behavior
-   {:name :paper-wm.behaviors/initialize-layout
-    :description "Initialize PaperWM from the shared window snapshot"
-    :respond-to [:event.kind.window/initial]
-    :commands {:initialize-layout :paper-wm.commands/initialize-layout}
+   {:name :paper-wm.behaviors/reconcile-snapshot
+    :description "Reconcile PaperWM from a shared window snapshot (startup, screen change, placement)"
+    :respond-to [:event.kind.window/initial
+                 :event.kind.screen/layout-changed
+                 :event.kind.window/placed]
+    :commands {:reconcile-snapshot :paper-wm.commands/reconcile-snapshot}
     :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.initialize-layout 1)
+          (let [target (. candidates.reconcile-snapshot 1)
                 windows (?. event :event-data :windows)]
             (when (and target windows)
-              (send-cmd target :initialize-layout
+              (send-cmd target :reconcile-snapshot
                         {:windows windows
                          :observed-spaces (or event.event-data.observed-spaces [])}))))}))
 
@@ -167,39 +159,7 @@
             (when (and target generation)
               (send-cmd target :retry {:generation generation}))))}))
 
-;; ============================================================================
-;; Screen change
-;; ============================================================================
-
-(local refresh-on-screen-change-behavior
-  (make-behavior
-   {:name :paper-wm.behaviors/refresh-on-screen-change
-    :description "Reconcile PaperWM when screen layout changes"
-    :respond-to [:event.kind.screen/layout-changed]
-    :commands {:refresh-windows :paper-wm.commands/refresh-windows}
-    :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.refresh-windows 1)
-                windows (?. event :event-data :windows)]
-            (when (and target windows)
-              (send-cmd target :refresh-windows
-                        {:windows windows
-                         :observed-spaces (or event.event-data.observed-spaces [])}))))}))
-
-(local refresh-on-window-placed-behavior
-  (make-behavior
-   {:name :paper-wm.behaviors/refresh-on-window-placed
-    :description "Reconcile PaperWM after cross-screen window placement"
-    :respond-to [:event.kind.window/placed]
-    :commands {:refresh-windows :paper-wm.commands/refresh-windows}
-    :fn (fn [event candidates send-cmd]
-          (let [target (. candidates.refresh-windows 1)
-                windows (?. event :event-data :windows)]
-            (when (and target windows)
-              (send-cmd target :refresh-windows
-                        {:windows windows
-                         :observed-spaces (or event.event-data.observed-spaces [])}))))}))
-
-{: initialize-layout-behavior
+{: reconcile-snapshot-behavior
  : reconcile-membership-behavior
  : record-focus-behavior
  : retile-observed-frame-behavior
@@ -212,6 +172,4 @@
  : slurp-window-behavior
  : barf-window-behavior
  : increment-space-behavior
- : switch-to-space-behavior
- : refresh-on-screen-change-behavior
- : refresh-on-window-placed-behavior}
+ : switch-to-space-behavior}

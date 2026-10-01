@@ -30,17 +30,10 @@
 ;; (animationDuration 0) this floor keeps them from becoming a busy loop.
 (local space-retry-min-delay 0.05)
 
-
-(fn runtime-epoch [config]
-  (or config.epoch
-      (and Timer.absoluteTime (Timer.absoluteTime))
-      (* 1000000 (Timer.secondsSinceEpoch))))
-
 (fn make-runtime [config]
   "Create independent PaperWM component state."
   (let [config (or config {})]
     {:active? true
-     :epoch (runtime-epoch config)
      :config {:window-gap (or config.window-gap default-config.window-gap)
               :screen-margin (or config.screen-margin default-config.screen-margin)
               :window-ratios (or config.window-ratios default-config.window-ratios)
@@ -71,9 +64,8 @@
 (fn diagnostic-snapshot [runtime]
   "Return logical state and bounded resource counts without handles."
   {:active? runtime.active?
-   :epoch runtime.epoch
-   :window-list (copy-table runtime.tiling-state.spaces)
-   :index-table (copy-table runtime.tiling-state.index)
+   :spaces (copy-table runtime.tiling-state.spaces)
+   :index (copy-table runtime.tiling-state.index)
    :focused-window-id runtime.tiling-state.focused-window-id
    :last-reconcile-report (copy-table (or runtime.last-reconcile-report {}))
    :resources {:ui-watcher-count (table-count runtime.resources.ui-watchers)
@@ -86,7 +78,7 @@
 (fn invariant-report [runtime]
   "Return the logical layout invariant status."
   (let [(ok reason) (layout-valid? runtime.tiling-state)]
-    {:ok? ok :reason reason :epoch runtime.epoch}))
+    {:ok? ok :reason reason}))
 
 (fn commit-state! [runtime next-state]
   (let [(ok reason) (layout-valid? next-state)]
@@ -348,10 +340,9 @@
         (tile-space! runtime space opts.anchor)))
     plan))
 
-(fn reconcile-window-fact! [runtime fact opts]
-  "Reconcile one shared fact; stale runtime epochs are inert."
-  (when (or (= nil opts.runtime-epoch) (= opts.runtime-epoch runtime.epoch))
-    (apply-membership! runtime [fact] {}))
+(fn reconcile-window-fact! [runtime fact]
+  "Reconcile one shared window fact into membership."
+  (apply-membership! runtime [fact] {})
   runtime)
 
 (fn reconcile-layout! [runtime window-facts observed-spaces]

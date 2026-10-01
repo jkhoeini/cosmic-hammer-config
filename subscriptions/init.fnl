@@ -209,7 +209,7 @@
 (define-subscription! subscription-registry
  :sub/paper-wm-initialize-layout
  {:description "Initialize PaperWM from shared window facts"
-  :behavior :paper-wm.behaviors/initialize-layout
+  :behavior :paper-wm.behaviors/reconcile-snapshot
   :source-tag :tag/window-watcher
   :target-tag :tag/paper-wm
   :event-selector :event.kind.window/initial})
@@ -302,7 +302,7 @@
 (define-subscription! subscription-registry
  :sub/refresh-paper-wm-after-window-placement
  {:description "Re-index PaperWM after cross-screen window placement"
-  :behavior :paper-wm.behaviors/refresh-on-window-placed
+  :behavior :paper-wm.behaviors/reconcile-snapshot
   :source-tag :tag/mouse-window-management
   :target-tag :tag/paper-wm
   :event-selector :event.kind.window/placed})
@@ -482,7 +482,7 @@
 (define-subscription! subscription-registry
  :sub/paper-wm-refresh-on-screen-change
  {:description "Refresh PaperWM tiling when screen layout changes"
-  :behavior :paper-wm.behaviors/refresh-on-screen-change
+  :behavior :paper-wm.behaviors/reconcile-snapshot
   :source-tag :tag/screen-watcher
   :target-tag :tag/paper-wm
   :event-selector :event.kind.screen/layout-changed})

@@ -28,7 +28,7 @@
         : upsert-window-command
         : remove-window-command
         : set-focused-window-command} (require :commands.window-state))
-(local {: initialize-layout-command
+(local {: reconcile-snapshot-command
         : reconcile-window-command
         : record-focus-command
         : retile-observed-frame-command
@@ -41,8 +41,7 @@
         : slurp-window-command
         : barf-window-command
         : switch-to-space-command
-        : increment-space-command
-        : refresh-windows-command} (require :commands.paper-wm))
+        : increment-space-command} (require :commands.paper-wm))
 
 ;; Create and populate registry
 (local command-registry (make-command-registry {:trait-registry trait-registry}))
@@ -69,7 +68,7 @@
 (add-command! command-registry upsert-window-command)
 (add-command! command-registry remove-window-command)
 (add-command! command-registry set-focused-window-command)
-(add-command! command-registry initialize-layout-command)
+(add-command! command-registry reconcile-snapshot-command)
 (add-command! command-registry reconcile-window-command)
 (add-command! command-registry record-focus-command)
 (add-command! command-registry retile-observed-frame-command)
@@ -83,6 +82,5 @@
 (add-command! command-registry barf-window-command)
 (add-command! command-registry switch-to-space-command)
 (add-command! command-registry increment-space-command)
-(add-command! command-registry refresh-windows-command)
 
 {: command-registry}

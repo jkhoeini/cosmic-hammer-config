@@ -2,8 +2,7 @@
 ;; Commands: Sheaf wrappers for paper-wm user-facing functions
 
 (local {: make-command} (require :sheaf.command-registry))
-(local {: initialize-layout!
-        : reconcile-layout!
+(local {: reconcile-layout!
         : reconcile-window-fact!
         : record-focus!
         : retile-observed-frame!
@@ -21,10 +20,10 @@
 (local number? #(= (type $) :number))
 (local table? #(= (type $) :table))
 
-(local initialize-layout-command
+(local reconcile-snapshot-command
   (make-command
-   :paper-wm.commands/initialize-layout
-   "Initialize PaperWM membership from a shared window snapshot"
+   :paper-wm.commands/reconcile-snapshot
+   "Reconcile PaperWM membership from a window snapshot of the observed Spaces"
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :schema {:windows table? :observed-spaces table?}
     :fn (fn [component params]
@@ -38,8 +37,7 @@
    {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :schema {:window table?}
     :fn (fn [component params]
-          (reconcile-window-fact! component.state params.window
-                                  {:runtime-epoch params.runtime-epoch}))}))
+          (reconcile-window-fact! component.state params.window))}))
 
 (local record-focus-command
   (make-command
@@ -173,22 +171,7 @@
     :fn (fn [component params]
           (retry-space-focus! component.state params.generation))}))
 
-;; ============================================================================
-;; Refresh
-;; ============================================================================
-
-(local refresh-windows-command
-  (make-command
-   :paper-wm.commands/refresh-windows
-   "Reconcile PaperWM from an explicit window snapshot"
-   {:requires-traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
-    :schema {:windows table? :observed-spaces table?}
-    :fn (fn [component params]
-          (reconcile-layout! component.state params.windows params.observed-spaces)
-          component.state)}))
-
-
-{: initialize-layout-command
+{: reconcile-snapshot-command
  : reconcile-window-command
  : record-focus-command
  : retile-observed-frame-command
@@ -201,5 +184,4 @@
  : slurp-window-command
  : barf-window-command
  : switch-to-space-command
- : increment-space-command
- : refresh-windows-command}
+ : increment-space-command}

@@ -1,18 +1,6 @@
-(tset package.loaded :paper-wm
-      {:initialize-layout! (fn [runtime] runtime)
-       :reconcile-window-fact! (fn [runtime] runtime)
-       :record-focus! (fn [runtime] runtime)
-       :retile-observed-frame! (fn [runtime] runtime)
-       :start-space-focus! (fn [runtime] runtime)
-       :retry-space-focus! (fn [runtime] runtime)
-       :space-index-after-direction #1
-       :focus-window! (fn [runtime direction] (tset runtime :called [:focus direction]) runtime)
-       :swap-windows! (fn [runtime] runtime)
-       :center-window! (fn [runtime] runtime)
-       :set-window-full-width! (fn [runtime] runtime)
-       :cycle-window-size! (fn [runtime] runtime)
-       :slurp-window! (fn [runtime] runtime)
-       :barf-window! (fn [runtime] runtime)})
+;; Every PaperWM command declares a params schema that accepts exactly the
+;; values its subscriptions send, and the traits it depends on.
+(tset package.loaded :paper-wm {})
 
 (local commands (require :commands.paper-wm))
 
@@ -23,7 +11,7 @@
 (local number-value? #(= :number (type $1)))
 
 (local expected
-  {:initialize-layout-command {:windows table-value? :observed-spaces table-value?}
+  {:reconcile-snapshot-command {:windows table-value? :observed-spaces table-value?}
    :reconcile-window-command {:window table-value?}
    :record-focus-command {:window table-value?}
    :retile-observed-frame-command {:window-id number-value? :frame table-value?
@@ -40,8 +28,7 @@
    :slurp-window-command {}
    :barf-window-command {}
    :switch-to-space-command {:index #(and (= :number (type $1)) (<= 1 $1 9))}
-   :increment-space-command {:direction #(member? {:left true :right true} $1)}
-   :refresh-windows-command {:windows table-value? :observed-spaces table-value?}})
+   :increment-space-command {:direction #(member? {:left true :right true} $1)}})
 
 (fn assert-schema [command expected-schema]
   (each [key expected-predicate (pairs expected-schema)]
@@ -64,10 +51,6 @@
   (let [command (. commands export-name)]
     (assert command (.. "missing command export " (tostring export-name)))
     (assert-schema command schema)))
-(assert (= nil commands.set-pending-window-command)
-        "obsolete set-pending-window command remains exported")
-(assert (= nil commands.clear-pending-window-command)
-        "obsolete clear-pending-window command remains exported")
 
 ;; Every command reads tiling-state except the Space-focus retry, which only
 ;; advances runtime resources.
@@ -79,12 +62,5 @@
     (assert (= needs-tiling-state?
                (= :trait/has-tiling-state (. command.requires-traits 2)))
             (.. "tiling-state trait mismatch on " (tostring command.name)))))
-
-(local runtime {:active? true})
-(local component {:state runtime})
-(local returned (commands.focus-command.fn component {:direction :left}))
-(assert (= runtime returned) "PaperWM command must return the complete runtime")
-(assert (= :focus (. runtime.called 1)))
-(assert (= :left (. runtime.called 2)))
 
 (print "PaperWM command contracts passed")

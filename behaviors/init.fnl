@@ -28,7 +28,7 @@
         : track-on-move-behavior
         : untrack-on-disappear-behavior
         : track-focus-behavior} (require :behaviors.window-state))
-(local {: initialize-layout-behavior
+(local {: reconcile-snapshot-behavior
         : reconcile-membership-behavior
         : record-focus-behavior
         : retile-observed-frame-behavior
@@ -41,9 +41,7 @@
         : slurp-window-behavior
         : barf-window-behavior
         : increment-space-behavior
-        : switch-to-space-behavior
-        : refresh-on-screen-change-behavior
-        : refresh-on-window-placed-behavior} (require :behaviors.paper-wm))
+        : switch-to-space-behavior} (require :behaviors.paper-wm))
 
 ;; Create and populate registry
 (local behavior-registry (make-behavior-registry {:event-registry event-registry
@@ -71,7 +69,7 @@
 (add-behavior! behavior-registry track-on-move-behavior)
 (add-behavior! behavior-registry untrack-on-disappear-behavior)
 (add-behavior! behavior-registry track-focus-behavior)
-(add-behavior! behavior-registry initialize-layout-behavior)
+(add-behavior! behavior-registry reconcile-snapshot-behavior)
 (add-behavior! behavior-registry reconcile-membership-behavior)
 (add-behavior! behavior-registry record-focus-behavior)
 (add-behavior! behavior-registry retile-observed-frame-behavior)
@@ -85,8 +83,6 @@
 (add-behavior! behavior-registry barf-window-behavior)
 (add-behavior! behavior-registry increment-space-behavior)
 (add-behavior! behavior-registry switch-to-space-behavior)
-(add-behavior! behavior-registry refresh-on-screen-change-behavior)
-(add-behavior! behavior-registry refresh-on-window-placed-behavior)
 
 ;; Export registry for other modules
 {: behavior-registry}

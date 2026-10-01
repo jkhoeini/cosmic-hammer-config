@@ -50,7 +50,7 @@
     emitted))
 
 ;; Window target: one focus attempt, then stable observations do not re-focus.
-(let [runtime (paper-wm.make-runtime {:epoch 1})
+(let [runtime (paper-wm.make-runtime {})
       emitted (capture-outbox runtime)
       target (make-window 1)]
   (tset runtime :tiling-state (layout.add-window runtime.tiling-state 1 6 1))
@@ -77,7 +77,7 @@
 (set focused-space 5)
 (set focused-window nil)
 (set clicks 0)
-(let [runtime (paper-wm.make-runtime {:epoch 2})]
+(let [runtime (paper-wm.make-runtime {})]
   (paper-wm.start-space-focus! runtime 2)
   (assert (= 1 clicks))
   (local generation runtime.resources.space-focus.active.generation)
@@ -88,7 +88,7 @@
 ;; A window-targeted operation whose window vanished never falls back to clicks.
 (set focused-space 5)
 (set clicks 0)
-(let [runtime (paper-wm.make-runtime {:epoch 3})
+(let [runtime (paper-wm.make-runtime {})
       target (make-window 1)]
   (tset runtime :tiling-state (layout.add-window runtime.tiling-state 1 6 1))
   (tset runtime.resources :windows {1 target})

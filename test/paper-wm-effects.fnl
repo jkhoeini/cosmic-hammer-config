@@ -56,7 +56,7 @@
 (local {: next-observation} (require :paper-wm.observations))
 
 (fn make-two-column-runtime []
-  (let [runtime (paper-wm.make-runtime {:epoch 1})
+  (let [runtime (paper-wm.make-runtime {})
         first (make-window 1 (rect 40 35 300 700))
         second (make-window 2 (rect 380 35 300 700))]
     (tset runtime :tiling-state
@@ -113,13 +113,13 @@
   (paper-wm.record-focus! runtime (focus-fact 1 7 (rect 40 35 300 700)))
   (assert first.applied "live window was not tiled next to a dead handle")
   (assert (= nil second.applied) "dead handle was laid out")
-  (paper-wm.reconcile-window-fact! runtime {:window-id 2 :frame (rect 0 0 0 0)} {})
+  (paper-wm.reconcile-window-fact! runtime {:window-id 2 :frame (rect 0 0 0 0)})
   (assert (= nil (. runtime.tiling-state.index 2)) "dead window snapshot did not remove it"))
 
 ;; Removing a member while an untracked panel has focus still retiles.
 (let [(runtime first) (make-two-column-runtime)]
   (set focused (make-window 99 (rect 0 0 10 10)))
-  (paper-wm.reconcile-window-fact! runtime {:window-id 2 :fullscreen true} {})
+  (paper-wm.reconcile-window-fact! runtime {:window-id 2 :fullscreen true})
   (assert (= nil (. runtime.tiling-state.index 2)))
   (assert first.applied "untracked focus prevented retiling the remaining member"))
 
