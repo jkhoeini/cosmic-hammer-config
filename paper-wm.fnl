@@ -331,6 +331,10 @@
    Returns the plan."
   (let [plan (plan-membership runtime.tiling-state facts
                               {:live? #(not= nil (resolve-window $1))
+                               :center-x (fn [window-id]
+                                           (let [window (. runtime.resources.windows window-id)
+                                                 frame (and window (live-frame window))]
+                                             (when frame (+ frame.x (/ frame.w 2)))))
                                :observed-spaces opts.observed-spaces})]
     (commit-state! runtime plan.state)
     (each [_ window-id (ipairs plan.detach)] (detach-window! runtime window-id))

@@ -65,4 +65,21 @@
   (assert (not (contains? snapshot.report.removed 9)))
   (assert (layout.valid? snapshot.state)))
 
+;; New windows join right of the recorded focused column (upstream PaperWM);
+;; without focus on that Space, by horizontal position among column heads.
+(fn framed [window-id space-id x]
+  (fact window-id space-id {:frame {:x x :y 0 :w 100 :h 100}}))
+(let [three (layout.add-window tracked 3 7 3)
+      focused (layout.set-focused-window three 1)
+      plan (plan-membership focused [(framed 4 7 900)] live-all)]
+  (assert (= 2 (. plan.state.index 4 :col)) "new window not inserted right of focus"))
+(let [centers {1 50 2 450}
+      plan (plan-membership tracked [(framed 5 7 200)]
+                            {:live? #true :center-x #(. centers $1)})]
+  (assert (= 2 (. plan.state.index 5 :col)) "new window not placed by position")
+  (assert (= 3 (. plan.state.index 2 :col))))
+(let [plan (plan-membership tracked [(framed 6 7 2000)]
+                            {:live? #true :center-x #(. {1 50 2 450} $1)})]
+  (assert (= 3 (. plan.state.index 6 :col)) "rightmost window not appended"))
+
 (print "PaperWM membership plan passed")
