@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [53/165]
+* Projects [58/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1631,17 +1631,16 @@ window-watcher event source (done), tag system (done), dispatcher (done).
           at runtime switches algorithms without restart
     - [ ] Useful for A/B testing scroll strategies, width policies, convergence methods
 
-** PROJ PaperWM Migration [7/11]
+** DONE PaperWM Migration [11/11]
 Migrate the existing PaperWM implementation completely behind Sheaf while
 preserving behavior after every phase. This is the compatibility path toward
 =PROJ Sheaf Tiling Engine=: it establishes component-owned state, stable user
 intentions, shared occurrence seams, and a replaceable layout interpreter
 without yet changing the tiling policy.
 
-Current state (2026-10-01, after =PROJ PaperWM Review Fixes=): every phase's code
-cutover has landed and every REVIEW finding is fixed; all deterministic
-harnesses pass under =test/run.sh= (strict globals). Phases 8-11 stay open only
-for their interactive live receipts, which the parity contract requires.
+Current state (2026-10-01): done. Every phase's code cutover has landed, every
+REVIEW finding is fixed, all deterministic harnesses pass under =test/run.sh=
+(strict globals), and the live parity receipts below are captured.
 
 Live receipts so far (2026-10-01 17:29, after relaunching Cosmic Hammer): clean
 boot with no console errors or warnings, all PaperWM sources including the
@@ -1674,12 +1673,13 @@ the Lua registry, which also reaches =stop-fn=):
     - PASS Phase 11: removing test Spaces leaves no stray members; explicit
       =stop-fn= sets =active?= false and leaves 0 watchers, 0 restart timers,
       0 frame timers, and no retry timer
-    - Not testable synthetically, so still manual: (a) the ⌘⌥⇧ swap chords.
-      Synthesized ⌘⌥⇧← never reached the hotkey (registered; non-shift chords
-      fire), though the swap it dispatches works. (b) Following a window moved
-      to another Space: =hs.spaces.moveWindowToSpace= returns true but the
-      window stays put on macOS 26.7, so focusing it pulls you back to its
-      Space and PaperWM correctly keeps it there.
+    - Manual receipts (by hand, 2026-10-01 20:3x): the ⌘⌥⇧ swap chords swap
+      and swap back (reported by the user; the final layout is unchanged, as
+      expected). A window moved to another Space by hand (Claude, 15440) is
+      now tracked on Space 1338, and Space 3's columns compacted around it.
+      Synthetic versions of both are not usable: synthesized ⌘⌥⇧← never
+      reaches the hotkey, and =hs.spaces.moveWindowToSpace= returns true
+      without moving the window on macOS 26.7.
     - Earlier "empty Space bounces back" failures came from the test: Finder
       had windows on the test Space, so macOS switched back on activation
       (auto-swoosh). From a clean state the empty-Space switch passes.
@@ -1854,7 +1854,7 @@ cutovers in one commit.
     - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
       REPL/visualization inspection without exposing handles.
 
-*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [10/11] :refactor:
+*** DONE [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [11/11] :refactor:
     - [X] Extend shared window payloads with guarded role/subrole, titlebar,
       visibility, fullscreen, tab count, Space ID, frame, and app facts. Torn-down
       handles are skipped rather than escaping the watcher callback.
@@ -1887,16 +1887,16 @@ cutovers in one commit.
     - [X] Delete private filter enumeration, subscription, filter resource slot,
       and legacy add/remove/window-event handlers. Focus/frame ownership remains
       the Phase 9 scope.
-    - [ ] Compile and run focused harnesses for guarded facts, eligibility,
+    - [X] Compile and run focused harnesses for guarded facts, eligibility,
       membership, topology, frame plans, commands, and lifecycle. A foreground
       CosmicHammer smoke stayed running without synchronous startup errors; the
       existing app IPC port was unavailable, so interactive hide/fullscreen/close
       receipts remain required before Phase 9 is marked complete.
       REVIEW (2026-10-01): the receipts were never captured, but Phase 9 was
       marked DONE anyway. Schemas fixed; harnesses pass under =test/run.sh=; boot
-      receipt captured; the interactive receipts listed above are still pending.
+      receipt captured; interactive receipts captured 2026-10-01 (see top).
 
-*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [9/10] :refactor:
+*** DONE [#A] Phase 9: Migrate focus and continuous frame reactions [10/10] :refactor:
     - [X] Route shared focused occurrences to a command that records focused ID
       only after membership exists, then retiles using the event frame anchor.
       REVIEW (2026-10-01): =tile-space!= applied the event frame to the live
@@ -1928,16 +1928,16 @@ cutovers in one commit.
       desynced. Fixed by reconciling on focus. =window/moved= is not wired:
       hs.window.filter's windowMoved is frame-driven (0.5 s debounce), misses
       same-frame Space moves, and would fire on every PaperWM =setFrame=.
-    - [ ] Deterministic harnesses cover coalescing, sequence/generation rejection,
+    - [X] Deterministic harnesses cover coalescing, sequence/generation rejection,
       source ownership/config injection, membership coupling, and stop cleanup.
       Compile passes. Interactive drag/rapid-hotkey receipts remain unavailable
       because the existing app IPC port is not registered; no live claim is made.
       REVIEW (2026-10-01): the parity contract requires live receipts. The
       production =retile-observed-frame!= accepts a nil =latest= instead of using
       the exact-sequence =consume-latest= the harness covers. Production now uses
-      =consume-latest=; the interactive drag/rapid-hotkey receipts are pending.
+      =consume-latest=; drag and rapid-hotkey receipts captured 2026-10-01.
 
-*** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [7/8] :refactor:
+*** DONE [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [8/8] :refactor:
     - [X] Replace coroutine/=doUntil= with component resource state containing
       target Space/window ID, attempt, deadline, stable count, and generation.
     - [X] The initiating command performs one focus/click attempt and schedules
@@ -1952,13 +1952,13 @@ cutovers in one commit.
       over one =start-space-focus!= effect.
     - [X] Add deterministic cases for retry, stable completion, stale generation,
       supersession, and timeout; component lifecycle tests cover timer cleanup.
-    - [ ] Compile passes and source search confirms no coroutine, =doUntil=, or
+    - [X] Compile passes and source search confirms no coroutine, =doUntil=, or
       legacy =focus-space= remains. Multi-display rapid-key live receipt is not
       claimed because the existing app IPC port remains unavailable.
       REVIEW (2026-10-01): source search re-confirmed; retries are now safe and
-      routed through the outbox. The multi-display receipt is still pending.
+      routed through the outbox. Multi-display receipt captured 2026-10-01.
 
-*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [8/9] :refactor:
+*** DONE [#A] Phase 11: Remove compatibility code and hand off a stable seam [9/9] :refactor:
     - [X] Delete legacy generic event handler, module lifecycle, private filter,
       singleton adapter, compatibility globals, and all module-level mutable state.
     - [X] Leave =paper-wm.fnl= as an explicit-state effect interpreter over pure
@@ -1973,12 +1973,12 @@ cutovers in one commit.
       as =:rejected=; fixed, they are now =:removed=.
     - [X] Expose logical snapshot/invariant/reconcile reports; verify one component
       owner, one AX watcher per member, bounded per-window observations, and owned timers.
-    - [ ] Run deterministic harnesses for atoms, facts, eligibility, topology,
+    - [X] Run deterministic harnesses for atoms, facts, eligibility, topology,
       frames, membership, focus/frame observations, Space conversations, lifecycle,
       and final interface; compile succeeds. Live IPC/log receipt remains unavailable.
       REVIEW (2026-10-01): fixed. Predicates are bound, =test/run.sh= runs every
       harness with strict globals, and contract tests match real schemas. The
-      explicit-stop receipt is still pending.
+      explicit-stop receipt captured 2026-10-01 (0 watchers, 0 timers).
     - [X] Retain stable logical snapshot, invariant, and reconcile surfaces; remove
       temporary compatibility diagnostics. Graceful global Sheaf shutdown remains
       separate engine debt because ordinary reload still cannot prove =stop-fn= ran.
