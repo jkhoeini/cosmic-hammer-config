@@ -26,7 +26,9 @@
                :spaceDisplay #"screen-1"
                :focusedSpace #focused-space
                :gotoSpace #nil}
-      :timer {:doAfter (fn [delay] (table.insert delays delay) {:stop #nil})
+      :timer {:doAfter (fn [delay callback]
+                         (table.insert delays {: delay : callback})
+                         {:stop #nil})
               :secondsSinceEpoch #100}
       :uielement {:watcher {}}
       :window {:animationDuration 0 :focusedWindow #focused-window}})
@@ -41,22 +43,32 @@
     (tset window :focus (fn [self] (set self.focus-count (+ 1 self.focus-count))))
     window))
 
-(fn emit-retry [] nil)
+(fn capture-outbox [runtime]
+  (let [emitted []]
+    (tset runtime.resources :outbox
+          (fn [event-name data] (table.insert emitted [event-name data])))
+    emitted))
 
 ;; Window target: one focus attempt, then stable observations do not re-focus.
 (let [runtime (paper-wm.make-runtime {:epoch 1})
+      emitted (capture-outbox runtime)
       target (make-window 1)]
   (tset runtime :tiling-state (layout.add-window runtime.tiling-state 1 6 1))
   (tset runtime.resources :windows {1 target})
-  (paper-wm.start-space-focus! runtime 2 emit-retry)
+  (paper-wm.start-space-focus! runtime 2)
   (assert (= 1 target.focus-count))
-  (assert (<= 0.05 (. delays 1)) "zero animation duration made retries a busy loop")
+  (local retry (. delays (length delays)))
+  (assert (<= 0.05 retry.delay) "zero animation duration made retries a busy loop")
   (local generation runtime.resources.space-focus.active.generation)
-  (paper-wm.retry-space-focus! runtime generation emit-retry)
+  (retry.callback)
+  (assert (= :paper-wm.events/space-focus-retry (. emitted 1 1))
+          "retry timer did not publish through the component outbox")
+  (assert (= generation (. emitted 1 2 :generation)))
+  (paper-wm.retry-space-focus! runtime generation)
   (assert (= 2 target.focus-count) "unstable observation did not re-focus")
   (set focused-space 6)
   (set focused-window target)
-  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation emit-retry))
+  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation))
   (assert (= 2 target.focus-count) "stable observations re-focused the target")
   (assert (= nil runtime.resources.space-focus.active) "conversation did not complete")
   (assert centered "cursor was not centered on completion"))
@@ -66,11 +78,11 @@
 (set focused-window nil)
 (set clicks 0)
 (let [runtime (paper-wm.make-runtime {:epoch 2})]
-  (paper-wm.start-space-focus! runtime 2 emit-retry)
+  (paper-wm.start-space-focus! runtime 2)
   (assert (= 1 clicks))
   (local generation runtime.resources.space-focus.active.generation)
   (set focused-space 6)
-  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation emit-retry))
+  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation))
   (assert (= 1 clicks) "clicked again after the Space was focused"))
 
 ;; A window-targeted operation whose window vanished never falls back to clicks.
@@ -80,10 +92,10 @@
       target (make-window 1)]
   (tset runtime :tiling-state (layout.add-window runtime.tiling-state 1 6 1))
   (tset runtime.resources :windows {1 target})
-  (paper-wm.start-space-focus! runtime 2 emit-retry)
+  (paper-wm.start-space-focus! runtime 2)
   (tset runtime.resources :windows {})
   (local generation runtime.resources.space-focus.active.generation)
-  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation emit-retry))
+  (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation))
   (assert (= 0 clicks) "lost target window turned retries into menu-bar clicks"))
 
 (print "PaperWM Space focus passed")

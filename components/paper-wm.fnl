@@ -106,9 +106,9 @@
    {:traits [:trait/has-paper-wm-runtime :trait/has-tiling-state]
     :sources (doto sources
                (table.insert
-                {:type :event-source.type/paper-wm-frame-watcher
-                 :instance-name "frames"
-                 :tags [:tag/paper-wm-frame-watcher]
+                {:type :event-source.type/paper-wm-outbox
+                 :instance-name "outbox"
+                 :tags [:tag/paper-wm-outbox]
                  :config-fn (fn [state config instance-name]
                               {:runtime state})}))
     :start-fn make-runtime

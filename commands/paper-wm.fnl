@@ -2,8 +2,6 @@
 ;; Commands: Sheaf wrappers for paper-wm user-facing functions
 
 (local {: make-command} (require :sheaf.command-registry))
-(local {: dispatch-event!} (require :sheaf.event-registry))
-(local {: event-registry} (require :events))
 (local {: initialize-layout!
         : reconcile-layout!
         : reconcile-window-fact!
@@ -145,11 +143,6 @@
 ;; Space navigation
 ;; ============================================================================
 
-(fn emit-space-retry [component-name]
-  (fn [generation]
-    (dispatch-event! event-registry :paper-wm.events/space-focus-retry
-                     component-name {:generation generation})))
-
 (local switch-to-space-command
   (make-command
    :paper-wm.commands/switch-to-space
@@ -157,8 +150,7 @@
    {:schema {:index #(and (= :number (type $1)) (<= 1 $1 9))}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (start-space-focus! component.state params.index
-                              (emit-space-retry component.name)))}))
+          (start-space-focus! component.state params.index))}))
 
 (local increment-space-command
   (make-command
@@ -169,8 +161,7 @@
     :fn (fn [component params]
           (let [index (space-index-after-direction params.direction)]
             (if index
-                (start-space-focus! component.state index
-                                    (emit-space-retry component.name))
+                (start-space-focus! component.state index)
                 component.state)))}))
 
 (local retry-space-focus-command
@@ -180,8 +171,7 @@
    {:schema {:generation number?}
     :requires-traits [:trait/has-paper-wm-runtime]
     :fn (fn [component params]
-          (retry-space-focus! component.state params.generation
-                              (emit-space-retry component.name)))}))
+          (retry-space-focus! component.state params.generation))}))
 
 ;; ============================================================================
 ;; Refresh

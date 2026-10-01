@@ -9,8 +9,7 @@
         : set-focused-window} (require :paper-wm.layout))
 (local {: plan-membership} (require :paper-wm.membership))
 (local {: plan-column} (require :paper-wm.frames))
-(local {: observe!} (require :event_sources.paper-wm-frame-watcher))
-(local {: consume-latest} (require :paper-wm.observations))
+(local {: next-observation : consume-latest} (require :paper-wm.observations))
 (local {:start start-space-operation
         :advance advance-space-operation} (require :paper-wm.space-conversation))
 (local {: some} (require :lib.cljlib-shim))
@@ -50,7 +49,7 @@
                  :watcher-generations {}
                  :watcher-restart-timers {}
                  :frame-observations {:sequences {} :latest {} :timers {}}
-                 :frame-source nil
+                 :outbox nil
                  :space-focus {:next-generation 0 :active nil}
                  :space-focus-timer nil}
      :last-reconcile-report nil}))
@@ -277,6 +276,26 @@
                 (set x2 (math.max (- x2 width runtime.config.window-gap)
                                   left-margin))))))))))
 
+(fn emit! [runtime event-name data]
+  "Publish an asynchronous outcome through the component-owned outbox source."
+  (let [emit runtime.resources.outbox]
+    (when (and runtime.active? emit) (emit event-name data))))
+
+(fn observe-frame! [runtime window-id event-kind frame generation]
+  "Coalesce one window's AX frame changes to the latest observation and publish
+   it at display cadence."
+  (let [observations runtime.resources.frame-observations]
+    (next-observation observations window-id event-kind frame generation)
+    (when (= nil (. observations.timers window-id))
+      (tset observations.timers window-id
+            (Timer.doAfter
+             (/ 1 60)
+             (fn []
+               (tset observations.timers window-id nil)
+               (let [latest (. observations.latest window-id)]
+                 (when latest
+                   (emit! runtime :paper-wm.events/frame-observed latest)))))))))
+
 (fn attach-window! [runtime window-id]
   (let [window (resolve-window window-id)]
     (when window
@@ -285,24 +304,27 @@
         (let [generation (+ 1 (or (. runtime.resources.watcher-generations window-id) 0))
               watcher (window:newWatcher
                        (fn [observed-window event-kind]
-                         (let [source runtime.resources.frame-source
-                               (ok frame) (pcall #(: observed-window :frame))]
-                           (when (and runtime.active? source ok)
-                             (observe! source window-id (tostring event-kind)
-                                       frame generation)))))]
+                         (let [(ok frame) (pcall #(: observed-window :frame))]
+                           (when (and runtime.active? ok)
+                             (observe-frame! runtime window-id (tostring event-kind)
+                                             frame generation)))))]
           (tset runtime.resources.watcher-generations window-id generation)
           (watcher:start [Watcher.windowMoved Watcher.windowResized])
           (tset runtime.resources.ui-watchers window-id watcher))))))
 
+(fn stop-handle! [handle]
+  (when handle (handle:stop)))
+
 (fn detach-window! [runtime window-id]
-  (let [watcher (. runtime.resources.ui-watchers window-id)
-        timer (. runtime.resources.watcher-restart-timers window-id)]
-    (when watcher (watcher:stop))
-    (when timer (timer:stop))
+  (let [observations runtime.resources.frame-observations]
+    (stop-handle! (. runtime.resources.ui-watchers window-id))
+    (stop-handle! (. runtime.resources.watcher-restart-timers window-id))
+    (stop-handle! (. observations.timers window-id))
     (tset runtime.resources.ui-watchers window-id nil)
     (tset runtime.resources.watcher-restart-timers window-id nil)
-    (tset runtime.resources.frame-observations.latest window-id nil)
-    (tset runtime.resources.frame-observations.sequences window-id nil)
+    (tset observations.timers window-id nil)
+    (tset observations.latest window-id nil)
+    (tset observations.sequences window-id nil)
     (tset runtime.resources.windows window-id nil)))
 
 (fn apply-membership! [runtime facts opts]
@@ -458,14 +480,14 @@
         (retile-around! runtime focused entry (focused:frame))))
     runtime))
 
-(fn schedule-space-retry! [runtime generation emit-retry]
-  (when runtime.resources.space-focus-timer
-    (runtime.resources.space-focus-timer:stop))
+(fn schedule-space-retry! [runtime generation]
+  (stop-handle! runtime.resources.space-focus-timer)
   (tset runtime.resources :space-focus-timer
         (Timer.doAfter (math.max Window.animationDuration space-retry-min-delay)
                        (fn []
                          (tset runtime.resources :space-focus-timer nil)
-                         (when runtime.active? (emit-retry generation))))))
+                         (emit! runtime :paper-wm.events/space-focus-retry
+                                {:generation generation})))))
 
 (fn attempt-space-focus! [runtime operation]
   "Focus the target window, or for an empty-Space operation click the target
@@ -481,7 +503,7 @@
             (set point.y (- point.y 4))
             (hs.eventtap.leftClick point))))))
 
-(fn start-space-focus! [runtime index emit-retry]
+(fn start-space-focus! [runtime index]
   (let [space (get-space index)]
     (when (= nil space) (lua "return runtime"))
     (let [screen (Screen (Spaces.spaceDisplay space))
@@ -494,10 +516,10 @@
                                            (Timer.secondsSinceEpoch) 4)]
       (Spaces.gotoSpace space)
       (attempt-space-focus! runtime operation)
-      (schedule-space-retry! runtime operation.generation emit-retry)))
+      (schedule-space-retry! runtime operation.generation)))
   runtime)
 
-(fn retry-space-focus! [runtime generation emit-retry]
+(fn retry-space-focus! [runtime generation]
   (let [operation runtime.resources.space-focus.active]
     (when (= nil operation) (lua "return runtime"))
     (let [target (. runtime.resources.windows operation.target-window-id)
@@ -512,7 +534,7 @@
           (do
             (when (= 0 result.operation.stable-count)
               (attempt-space-focus! runtime result.operation))
-            (schedule-space-retry! runtime generation emit-retry))
+            (schedule-space-retry! runtime generation))
           (= result.outcome :complete)
           (let [screen (Screen (Spaces.spaceDisplay result.operation.target-space))]
             (when screen

@@ -14,13 +14,17 @@
 (var focused nil)
 (var space-type-calls 0)
 (local live-windows {})
+(local timers [])
 
 (set _G.hs
      {:geometry {:rect rect}
       :screen (setmetatable {} {:__call (fn [_ display] (when display screen))})
       :spaces {:spaceType (fn [] (set space-type-calls (+ 1 space-type-calls)) :user)
                :spaceDisplay #"screen-1" :windowSpaces #[7]}
-      :timer {:doAfter (fn [] {:stop #nil}) :secondsSinceEpoch #100}
+      :timer {:doAfter (fn [delay callback]
+                         (table.insert timers {: delay : callback})
+                         {:stop #nil})
+              :secondsSinceEpoch #100}
       :uielement {:watcher {:windowMoved :moved :windowResized :resized}}
       :window {:animationDuration 0
                :focusedWindow #focused
@@ -36,7 +40,9 @@
     (tset window :setFrame (fn [self next-frame]
                              (set self.applied next-frame)
                              (set self.current next-frame)))
-    (tset window :newWatcher make-watcher)
+    (tset window :newWatcher (fn [self callback]
+                               (set self.on-frame-change callback)
+                               (make-watcher)))
     (tset live-windows id window)
     window))
 
@@ -147,4 +153,30 @@
   (tset runtime.resources.watcher-generations 1 2)
   (assert (not (retile 3)) "observation from a replaced watcher retiled"))
 
-(print "PaperWM tile anchor passed")
+;; AX frame changes coalesce per window and publish once through the outbox;
+;; the published observation retiles, and stop cancels pending delivery.
+(let [(runtime) (make-two-column-runtime)
+      third (make-window 3 (rect 0 35 300 700))
+      emitted []]
+  (tset runtime.resources :outbox
+        (fn [event-name data] (table.insert emitted [event-name data])))
+  (set focused third)
+  (paper-wm.record-focus! runtime (focus-fact 3 11 (rect 0 35 300 700)))
+  (local before (length timers))
+  (third:on-frame-change :moved)
+  (third:on-frame-change :resized)
+  (assert (= (+ 1 before) (length timers)) "frame changes were not coalesced to one timer")
+  ((. timers (length timers) :callback))
+  (assert (= 1 (length emitted)))
+  (let [[event-name observation] (. emitted 1)]
+    (assert (= :paper-wm.events/frame-observed event-name))
+    (assert (= 2 observation.sequence) "published a superseded observation")
+    (set third.applied nil)
+    (paper-wm.retile-observed-frame! runtime observation)
+    (assert third.applied "published observation did not retile"))
+  (third:on-frame-change :moved)
+  (paper-wm.stop-runtime! runtime)
+  ((. timers (length timers) :callback))
+  (assert (= 1 (length emitted)) "stopped runtime published an observation"))
+
+(print "PaperWM effects passed")

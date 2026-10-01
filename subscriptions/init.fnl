@@ -241,7 +241,7 @@
  :sub/paper-wm-retile-observed-frame
  {:description "Retile PaperWM from coalesced component-owned frame observations"
   :behavior :paper-wm.behaviors/retile-observed-frame
-  :source-tag :tag/paper-wm-frame-watcher
+  :source-tag :tag/paper-wm-outbox
   :target-tag :tag/paper-wm
   :event-selector :paper-wm.events/frame-observed})
 
@@ -249,7 +249,7 @@
  :sub/paper-wm-retry-space-focus
  {:description "Advance PaperWM Space focus on a retry occurrence"
   :behavior :paper-wm.behaviors/retry-space-focus
-  :source-tag :tag/paper-wm
+  :source-tag :tag/paper-wm-outbox
   :target-tag :tag/paper-wm
   :event-selector :paper-wm.events/space-focus-retry})
 
