@@ -123,20 +123,32 @@
       (when (and (>= focused-index 0) (> count 0))
         (+ (% (+ (- focused-index 1) offset) count) 1)))))
 
+(fn live-frame [window]
+  "Return a window's frame, or nil when its handle is torn down. A dead AX
+   element reports an empty 0x0 frame rather than raising."
+  (let [(ok frame) (pcall #(window:frame))]
+    (when (and ok frame (> frame.w 0) (> frame.h 0)) frame)))
+
 (fn get-first-visible-window [runtime columns screen]
+  "Return the first live column head at or right of the screen's left edge,
+   with its frame."
   (let [left-edge (. (screen:frame) :x)]
-    (var result nil)
+    (var (result result-frame) nil)
     (each [_ window-ids (ipairs (or columns {})) &until result]
-      (let [window (. runtime.resources.windows (. window-ids 1))]
-        (when (and window (>= (. (window:frame) :x) left-edge))
-          (set result window))))
-    result))
+      (let [window (. runtime.resources.windows (. window-ids 1))
+            frame (and window (live-frame window))]
+        (when (and frame (>= frame.x left-edge))
+          (set (result result-frame) (values window frame)))))
+    (values result result-frame)))
 
 (fn get-column [runtime space column]
+  "Return {:window :frame} for the live members of one column; a dead handle
+   is skipped until its ineligible snapshot drops it from the layout."
   (let [result []]
     (each [_ window-id (ipairs (. (or (. runtime.tiling-state.spaces space) {}) column))]
-      (let [window (. runtime.resources.windows window-id)]
-        (when window (table.insert result window))))
+      (let [window (. runtime.resources.windows window-id)
+            frame (and window (live-frame window))]
+        (when frame (table.insert result {: window : frame}))))
     result))
 
 (fn get-canvas [runtime screen]
@@ -145,14 +157,15 @@
     (Rect (+ frame.x gap) (+ frame.y gap)
           (- frame.w (* 2 gap)) (- frame.h (* 2 gap)))))
 
-(fn move-window! [runtime window frame]
+(fn move-window! [runtime window frame ?current]
   (let [id (window:id)
-        watcher (. runtime.resources.ui-watchers id)]
-    (when (or (= nil watcher) (= frame (window:frame))) (lua "return"))
+        watcher (. runtime.resources.ui-watchers id)
+        current (or ?current (live-frame window))]
+    (when (or (= nil watcher) (= nil current) (= frame current)) (lua "return"))
     (let [pending (. runtime.resources.watcher-restart-timers id)]
       (when pending (pending:stop)))
     (watcher:stop)
-    (window:setFrame frame)
+    (pcall #(window:setFrame frame))
     (let [generation (. runtime.resources.watcher-generations id)]
       (tset runtime.resources.watcher-restart-timers id
             (Timer.doAfter
@@ -166,8 +179,9 @@
                    (live-watcher:start [Watcher.windowMoved Watcher.windowResized])))))))))
 
 (fn tile-column! [runtime column bounds height width anchor-id anchor-height]
-  (let [entries (icollect [_ window (ipairs column)]
-                  {:window-id (window:id) :frame (window:frame)})
+  (let [members (collect [_ member (ipairs column)] (member.window:id) member)
+        entries (icollect [_ member (ipairs column)]
+                  {:window-id (member.window:id) :frame member.frame})
         (plan column-width)
         (plan-column entries bounds
                      {:gap runtime.config.window-gap
@@ -176,8 +190,8 @@
                       :anchor-window-id anchor-id
                       :anchor-height anchor-height})]
     (each [_ intent (ipairs plan)]
-      (let [window (. runtime.resources.windows intent.window-id)]
-        (when window (move-window! runtime window intent.frame))))
+      (let [member (. members intent.window-id)]
+        (move-window! runtime member.window intent.frame member.frame)))
     column-width))
 
 (fn tracked-window-on-space [runtime window-id space]
@@ -185,24 +199,31 @@
     (when (and entry (= entry.space space))
       (. runtime.resources.windows window-id))))
 
+(fn live-tracked-window [runtime window-id space]
+  "Return a tracked window on space and its live frame, or nil if dead."
+  (let [window (tracked-window-on-space runtime window-id space)
+        frame (and window (live-frame window))]
+    (when frame (values window frame))))
+
 (fn copy-frame [frame]
   (Rect frame.x frame.y frame.w frame.h))
 
 (fn resolve-anchor [runtime space screen ?anchor]
   "Return the anchor window and a private copy of the frame to tile around.
-   An explicit {:window-id :frame} anchor wins only when that window is tracked
-   on this Space; otherwise the tracked focused window, then the first visible."
+   An explicit {:window-id :frame} anchor wins only when that window is live
+   and tracked on this Space; otherwise the live tracked focused window, then
+   the first visible column head."
   (let [explicit (and ?anchor ?anchor.frame
-                      (tracked-window-on-space runtime ?anchor.window-id space))]
-    (if explicit
-        (values explicit (copy-frame ?anchor.frame))
-        (let [focused (Window.focusedWindow)
-              window (or (and focused
-                              (tracked-window-on-space runtime (focused:id) space))
-                         (get-first-visible-window
-                          runtime (. runtime.tiling-state.spaces space) screen))]
-          (when window
-            (values window (copy-frame (window:frame))))))))
+                      (live-tracked-window runtime ?anchor.window-id space))
+        focused (Window.focusedWindow)
+        (focused-window focused-frame)
+        (when (and (not explicit) focused)
+          (live-tracked-window runtime (focused:id) space))]
+    (if explicit (values explicit (copy-frame ?anchor.frame))
+        focused-window (values focused-window (copy-frame focused-frame))
+        (let [(window frame) (get-first-visible-window
+                              runtime (. runtime.tiling-state.spaces space) screen)]
+          (when window (values window (copy-frame frame)))))))
 
 (fn tile-space! [runtime space ?anchor]
   "Interpret current layout into window frame effects around one anchor."
@@ -241,14 +262,16 @@
             (let [width (tile-column! runtime
                                       (get-column runtime space column-index)
                                       {:x x :x2 nil :y canvas.y :y2 canvas.y2})]
-              (set x (math.min (+ x width runtime.config.window-gap) right-margin))))
+              (when width
+                (set x (math.min (+ x width runtime.config.window-gap) right-margin)))))
           (var x2 (math.max (- frame.x runtime.config.window-gap) left-margin))
           (for [column-index (- anchor-index.col 1) 1 -1]
             (let [width (tile-column! runtime
                                       (get-column runtime space column-index)
                                       {:x nil :x2 x2 :y canvas.y :y2 canvas.y2})]
-              (set x2 (math.max (- x2 width runtime.config.window-gap)
-                                left-margin)))))))))
+              (when width
+                (set x2 (math.max (- x2 width runtime.config.window-gap)
+                                  left-margin))))))))))
 
 (fn attach-window! [runtime window-id]
   (let [window (resolve-window window-id)]

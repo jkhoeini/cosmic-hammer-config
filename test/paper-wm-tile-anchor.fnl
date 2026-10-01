@@ -99,6 +99,17 @@
           "transient missing Space ID evicted a member")
   (assert (= 1 runtime.tiling-state.focused-window-id)))
 
+;; A tracked window whose handle died (CosmicHammer reports a 0x0 frame) is
+;; skipped instead of being laid out, and its ineligible snapshot removes it.
+(let [(runtime first second) (make-two-column-runtime)]
+  (set focused first)
+  (tset second :frame #(rect 0 0 0 0))
+  (paper-wm.record-focus! runtime (focus-fact 1 7 (rect 40 35 300 700)))
+  (assert first.applied "live window was not tiled next to a dead handle")
+  (assert (= nil second.applied) "dead handle was laid out")
+  (paper-wm.reconcile-window-fact! runtime {:window-id 2 :frame (rect 0 0 0 0)} {})
+  (assert (= nil (. runtime.tiling-state.index 2)) "dead window snapshot did not remove it"))
+
 ;; Removing a member while an untracked panel has focus still retiles.
 (let [(runtime first) (make-two-column-runtime)]
   (set focused (make-window 99 (rect 0 0 10 10)))
