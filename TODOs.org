@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [58/165]
+* Projects [58/164]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1989,12 +1989,16 @@ Migration-enabled follow-ups, deliberately deferred:
     - Worth pursuing next: configurable per-app/window eligibility expressed as
       instantiation choices, and an inspect/validate/reconcile REPL view over the
       serializable logical layout.
+    - Move the 27 PaperWM hotkey chords out of =components/paper-wm.fnl= into
+      instance config or wiring (P1 puts choices there). Blocked on P5
+      (modules/layers): moving them sooner would add a second ad-hoc
+      configuration mechanism.
     - Enabled but deferred to the tiling project: dry-run/replay interpreters,
       layout history/undo, persisted restart restoration, width policy, viewport
       strategies, and algorithm swapping. They should reuse the pure transition
       and effect-plan seam rather than expand this parity migration.
 
-** PROJ PaperWM Review Fixes [23/24]
+** PROJ PaperWM Review Fixes [23/23]
 Bugs, logical gaps, and Sheaf deviations found by reviewing the migrated PaperWM
 implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =commands/paper-wm.fnl=, =behaviors/paper-wm.fnl=,
@@ -2198,12 +2202,6 @@ close when their matching fix here lands with a live receipt. Should land before
     - Done: every command that reads =tiling-state= (all but the Space-focus
       retry, which only advances resources) requires both traits; the contract
       harness checks each command's declaration
-
-*** LATER [#C] Move hotkey chords out of the component type :architecture:
-    - All 27 chords are hard-coded in =components/paper-wm.fnl=; P1 puts choices
-      in instance config or wiring. Blocked on P5 per the migration constraints
-    - Not taken in the review-fix pass: still blocked on P5 (modules/layers);
-      moving chords now would bake a second ad-hoc configuration mechanism
 
 *** DONE [#C] Guard column planning against non-positive heights :feature:
     - =plan-column= yields =h <= 0= when earlier windows already fill the column
