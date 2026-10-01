@@ -37,6 +37,7 @@
 
 (local paper-wm (require :paper-wm))
 (local layout (require :paper-wm.layout))
+(local {: next-observation} (require :paper-wm.observations))
 
 (fn make-two-column-runtime []
   (let [runtime (paper-wm.make-runtime {:epoch 1})
@@ -66,5 +67,25 @@
   (paper-wm.reconcile-window-fact! runtime {:window-id 2 :fullscreen true} {})
   (assert (= nil (. runtime.tiling-state.index 2)))
   (assert first.applied "untracked focus prevented retiling the remaining member"))
+
+;; Frame observations retile once, only for the latest sequence of a live watcher.
+(let [(runtime first) (make-two-column-runtime)
+      observations runtime.resources.frame-observations
+      retile (fn [sequence]
+               (set first.applied nil)
+               (paper-wm.retile-observed-frame!
+                runtime {:window-id 1 :frame (rect 60 35 300 700)
+                         :generation 1 :sequence sequence})
+               (not= nil first.applied))]
+  (set focused first)
+  (tset runtime.resources.watcher-generations 1 1)
+  (next-observation observations 1 "moved" (rect 50 35 300 700) 1)
+  (next-observation observations 1 "moved" (rect 60 35 300 700) 1)
+  (assert (not (retile 1)) "superseded observation retiled")
+  (assert (retile 2) "latest observation did not retile")
+  (assert (not (retile 2)) "consumed observation retiled again")
+  (next-observation observations 1 "moved" (rect 70 35 300 700) 1)
+  (tset runtime.resources.watcher-generations 1 2)
+  (assert (not (retile 3)) "observation from a replaced watcher retiled"))
 
 (print "PaperWM tile anchor passed")

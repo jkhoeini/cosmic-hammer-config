@@ -13,6 +13,7 @@
 (local {: eligible?} (require :paper-wm.eligibility))
 (local {: plan-column} (require :paper-wm.frames))
 (local {: observe!} (require :event_sources.paper-wm-frame-watcher))
+(local {: consume-latest} (require :paper-wm.observations))
 (local {:start start-space-operation
         :advance advance-space-operation} (require :paper-wm.space-conversation))
 (local {: some} (require :lib.cljlib-shim))
@@ -352,12 +353,13 @@
   runtime)
 
 (fn retile-observed-frame! [runtime params]
-  (let [generation (. runtime.resources.watcher-generations params.window-id)
-        latest (. runtime.resources.frame-observations.latest params.window-id)
-        entry (. runtime.tiling-state.index params.window-id)]
-    (when (and entry (= generation params.generation)
-               (or (= nil latest) (<= latest.sequence params.sequence)))
-      (tset runtime.resources.frame-observations.latest params.window-id nil)
+  "Retile around a frame observation only if it is the latest one for a live watcher."
+  (let [entry (. runtime.tiling-state.index params.window-id)
+        current? (= params.generation
+                    (. runtime.resources.watcher-generations params.window-id))]
+    (when (and entry current?
+               (consume-latest runtime.resources.frame-observations
+                               params.window-id params.generation params.sequence))
       (tile-space! runtime entry.space
                    {:window-id params.window-id :frame params.frame})))
   runtime)
