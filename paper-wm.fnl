@@ -99,35 +99,30 @@
   (let [(ok window) (pcall Window.get window-id)]
     (when ok window)))
 
-(fn get-space [index]
-  (let [layout (Spaces.allSpaces)]
-    (var remaining index)
-    (var result nil)
-    (each [_ screen (ipairs (Screen.allScreens)) &until result]
-      (let [screen-spaces (. layout (screen:getUUID))]
-        (if (<= remaining (length screen-spaces))
-            (set result (. screen-spaces remaining))
-            (set remaining (- remaining (length screen-spaces))))))
+(fn ordered-space-ids []
+  "Return every user-visible Space ID in absolute-index order: displays in
+   hs.screen.allScreens order, each display's Spaces left to right. This is
+   upstream PaperWM's numbering, so index N and left/right wrap span all
+   displays rather than the focused one."
+  (let [layout (or (Spaces.allSpaces) {})
+        result []]
+    (each [_ screen (ipairs (Screen.allScreens))]
+      (each [_ space-id (ipairs (or (. layout (screen:getUUID)) []))]
+        (table.insert result space-id)))
     result))
+
+(fn get-space [index]
+  (. (ordered-space-ids) index))
 
 (fn space-index-after-direction [direction]
   "Return an absolute Space index for a relative subscription choice."
-  (let [offset (if (= direction :left) -1 (= direction :right) 1 nil)]
-    (when (= nil offset) (lua "return nil"))
-    (let [focused-space (Spaces.focusedSpace)
-          layout (Spaces.allSpaces)]
-      (var focused-index -1)
-      (var count 0)
-      (each [_ screen (ipairs (Screen.allScreens))]
-        (let [screen-spaces (. layout (screen:getUUID))]
-          (when (< focused-index 0)
-            (each [index space-id (ipairs screen-spaces)]
-              (when (= focused-space space-id)
-                (set focused-index (+ count index))
-                (lua :break))))
-          (set count (+ count (length screen-spaces)))))
-      (when (and (>= focused-index 0) (> count 0))
-        (+ (% (+ (- focused-index 1) offset) count) 1)))))
+  (let [offset (if (= direction :left) -1 (= direction :right) 1 nil)
+        spaces (ordered-space-ids)
+        focused-space (Spaces.focusedSpace)]
+    (when offset
+      (accumulate [result nil index space-id (ipairs spaces) &until result]
+        (when (= space-id focused-space)
+          (+ (% (+ (- index 1) offset) (length spaces)) 1))))))
 
 (fn live-frame [window]
   "Return a window's frame, or nil when its handle is torn down. A dead AX

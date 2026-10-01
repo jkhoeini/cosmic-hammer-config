@@ -98,4 +98,18 @@
   (for [_ 1 3] (paper-wm.retry-space-focus! runtime generation))
   (assert (= 0 clicks) "lost target window turned retries into menu-bar clicks"))
 
+;; Absolute indices span displays in allScreens order and relative moves wrap;
+;; a display missing from allSpaces is skipped instead of throwing.
+(let [left {:frame #(rect 0 25 1000 775) :getUUID #"left"}
+      right {:frame #(rect 1000 25 1000 775) :getUUID #"right"}
+      orphan {:frame #(rect 2000 25 1000 775) :getUUID #"orphan"}]
+  (tset hs.screen :allScreens #[left orphan right])
+  (tset hs.spaces :allSpaces #{:left [1 2] :right [7]})
+  (set focused-space 7)
+  (assert (= 1 (paper-wm.space-index-after-direction :right)) "right did not wrap")
+  (assert (= 2 (paper-wm.space-index-after-direction :left)))
+  (set focused-space 99)
+  (assert (= nil (paper-wm.space-index-after-direction :right))
+          "unknown focused Space produced an index"))
+
 (print "PaperWM Space focus passed")
