@@ -22,7 +22,7 @@ The system should be:
 - *Debuggable* - can trace why something did or didn't trigger
 - *Queryable* - can inspect state (via SQLite, REPL, UI)
 
-* Projects [35/165]
+* Projects [30/165]
 ** PROJ Configuration as Data [13/30]
 Users define automations declaratively using data structures, not procedural code.
 Can serialize, validate, and inspect the entire config.
@@ -1631,20 +1631,20 @@ window-watcher event source (done), tag system (done), dispatcher (done).
           at runtime switches algorithms without restart
     - [ ] Useful for A/B testing scroll strategies, width policies, convergence methods
 
-** DONE PaperWM Migration [11/11]
+** PROJ PaperWM Migration [7/11]
 Migrate the existing PaperWM implementation completely behind Sheaf while
 preserving behavior after every phase. This is the compatibility path toward
 =PROJ Sheaf Tiling Engine=: it establishes component-owned state, stable user
 intentions, shared occurrence seams, and a replaceable layout interpreter
 without yet changing the tiling policy.
 
-Current state: commands, component-owned hotkeys, parameterized behaviors and
-subscriptions, screen refresh, and post-placement refresh already use Sheaf.
-The remaining legacy path starts =paper-wm.fnl= directly from =core.fnl=, keeps
-layout and resource handles in module globals, owns a second window filter, and
-lets AX/timer callbacks mutate layout and retile outside the event loop. Its
-component =pending-window-id= and set/clear commands are unused; the real
-pending-window and space-focus operations remain private and partly untracked.
+Current state (2026-10-01 review): every phase's code cutover has landed. There is
+no =paper-wm.start!= in =core.fnl=, no private filter or module globals, and
+membership, focus, frames, and Space focus all go through Sheaf. Phases 8-11
+stay open for two reasons: their live parity receipts were never captured (the
+parity contract requires them), and the review found checked items that the
+code does not satisfy. Those items are unchecked below with a REVIEW note, and
+their fixes are tracked in =PROJ PaperWM Review Fixes=.
 
 State model and Sheaf constraints:
     - *Logical facts*: a serializable per-Space column layout, reverse window
@@ -1816,7 +1816,7 @@ cutovers in one commit.
     - [X] Keep =diagnostic-snapshot= resource-safe and add =invariant-report= for
       REPL/visualization inspection without exposing handles.
 
-*** DONE [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [11/11] :refactor:
+*** LATER [#A] Phase 8: Migrate startup, refresh, and membership to shared facts [8/11] :refactor:
     - [X] Extend shared window payloads with guarded role/subrole, titlebar,
       visibility, fullscreen, tab count, Space ID, frame, and app facts. Torn-down
       handles are skipped rather than escaping the watcher callback.
@@ -1826,12 +1826,19 @@ cutovers in one commit.
       initial snapshot, independent of sibling subscription order.
     - [X] Replace private-filter refresh with explicit window snapshots on screen
       change and WMBB placement occurrences.
-    - [X] Rewire screen-change and WMBB placement through the same initialize/
+    - [ ] Rewire screen-change and WMBB placement through the same initialize/
       reconcile interpreter; unchanged membership remains idempotent.
+      REVIEW (2026-10-01): not idempotent across Spaces. =snapshot-windows= uses
+      =hs.window.allWindows= (current Space only), so every refresh removes
+      off-Space members. The private filter it replaced saw all Spaces, so this
+      is a parity regression.
     - [X] Route visible, deminimized, and unfullscreened facts through eligibility;
       not-visible, minimized, destroyed, and fullscreened facts remove membership.
-    - [X] Cover duplicate, stale-epoch, and reordered membership delivery in the
+    - [ ] Cover duplicate, stale-epoch, and reordered membership delivery in the
       deterministic membership/layout harnesses.
+      REVIEW (2026-10-01): the harness passes =:runtime-epoch= directly, but
+      =reconcile-membership= never sends it, so the stale-epoch guard is
+      unreachable in production.
     - [X] Eliminate the scalar pending membership retry and private recursive timer;
       shared watcher occurrences now carry authoritative Space facts. No keyed retry
       map is needed at this seam; missing Space facts are ineligible and converge on
@@ -1841,15 +1848,21 @@ cutovers in one commit.
     - [X] Delete private filter enumeration, subscription, filter resource slot,
       and legacy add/remove/window-event handlers. Focus/frame ownership remains
       the Phase 9 scope.
-    - [X] Compile and run focused harnesses for guarded facts, eligibility,
+    - [ ] Compile and run focused harnesses for guarded facts, eligibility,
       membership, topology, frame plans, commands, and lifecycle. A foreground
       CosmicHammer smoke stayed running without synchronous startup errors; the
       existing app IPC port was unavailable, so interactive hide/fullscreen/close
       receipts remain required before Phase 9 is marked complete.
+      REVIEW (2026-10-01): the receipts were never captured, but Phase 9 was
+      marked DONE anyway. The new membership command schemas are also nil (see
+      Review Fixes: bind schema predicates).
 
-*** DONE [#A] Phase 9: Migrate focus and continuous frame reactions [10/10] :refactor:
-    - [X] Route shared focused occurrences to a command that records focused ID
+*** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [6/10] :refactor:
+    - [ ] Route shared focused occurrences to a command that records focused ID
       only after membership exists, then retiles using the event frame anchor.
+      REVIEW (2026-10-01): =tile-space!= applies the event frame to the live
+      focused window, which may be a different window, and also mutates the
+      shared event frame. =space-id= comes from the fact rather than the index.
     - [X] Ignore focus-before-add; the later visible/initial membership occurrence
       converges without timing inference or hidden retries.
     - [X] Keep one AX watcher per tracked live window under component resources;
@@ -1860,18 +1873,25 @@ cutovers in one commit.
       not invoke tiling transitions or behaviors directly.
     - [X] Bound drag/resize delivery to one pending timer and latest observation
       per window at approximately 60 Hz; queue contribution is O(tracked windows).
-    - [X] Retile through behavior -> command using the observed frame as anchor.
+    - [ ] Retile through behavior -> command using the observed frame as anchor.
+      REVIEW (2026-10-01): the observed window's frame is applied to whichever
+      window is focused, not to the observed window.
     - [X] Preserve watcher stop/restart suppression around programmatic moves and
       gate restarts/observations by active runtime and watcher generation.
-    - [X] Shared focus now owns the transition; no private WindowFilter focus
+    - [ ] Shared focus now owns the transition; no private WindowFilter focus
       subscription remains. Space-change wiring was not added because no missing
       transition was demonstrated.
-    - [X] Deterministic harnesses cover coalescing, sequence/generation rejection,
+      REVIEW (2026-10-01): a missing transition is now demonstrated. Moving a
+      window to another Space emits no membership fact, so the index desyncs.
+    - [ ] Deterministic harnesses cover coalescing, sequence/generation rejection,
       source ownership/config injection, membership coupling, and stop cleanup.
       Compile passes. Interactive drag/rapid-hotkey receipts remain unavailable
       because the existing app IPC port is not registered; no live claim is made.
+      REVIEW (2026-10-01): the parity contract requires live receipts. The
+      production =retile-observed-frame!= accepts a nil =latest= instead of using
+      the exact-sequence =consume-latest= the harness covers.
 
-*** DONE [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [8/8] :refactor:
+*** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [7/8] :refactor:
     - [X] Replace coroutine/=doUntil= with component resource state containing
       target Space/window ID, attempt, deadline, stable count, and generation.
     - [X] The initiating command performs one focus/click attempt and schedules
@@ -1886,11 +1906,13 @@ cutovers in one commit.
       over one =start-space-focus!= effect.
     - [X] Add deterministic cases for retry, stable completion, stale generation,
       supersession, and timeout; component lifecycle tests cover timer cleanup.
-    - [X] Compile passes and source search confirms no coroutine, =doUntil=, or
+    - [ ] Compile passes and source search confirms no coroutine, =doUntil=, or
       legacy =focus-space= remains. Multi-display rapid-key live receipt is not
       claimed because the existing app IPC port remains unavailable.
+      REVIEW (2026-10-01): source search re-confirmed; the live receipt that the
+      parity contract requires is still missing.
 
-*** DONE [#A] Phase 11: Remove compatibility code and hand off a stable seam [9/9] :refactor:
+*** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [7/9] :refactor:
     - [X] Delete legacy generic event handler, module lifecycle, private filter,
       singleton adapter, compatibility globals, and all module-level mutable state.
     - [X] Leave =paper-wm.fnl= as an explicit-state effect interpreter over pure
@@ -1899,13 +1921,19 @@ cutovers in one commit.
       slurp/barf, and indexed/relative Space choices remain subscription params.
     - [X] Keep commands deep: membership reconcile, focus, frame retile, window
       actions, and Space conversation are capabilities; topology/frame helpers stay private.
-    - [X] Add =reconcile-layout!= over explicit snapshots with stable added,
+    - [ ] Add =reconcile-layout!= over explicit snapshots with stable added,
       removed, moved, and rejected ID reports stored on component state.
+      REVIEW (2026-10-01): tracked windows that become ineligible are removed
+      but reported as =:rejected=, not =:removed=.
     - [X] Expose logical snapshot/invariant/reconcile reports; verify one component
       owner, one AX watcher per member, bounded per-window observations, and owned timers.
-    - [X] Run deterministic harnesses for atoms, facts, eligibility, topology,
+    - [ ] Run deterministic harnesses for atoms, facts, eligibility, topology,
       frames, membership, focus/frame observations, Space conversations, lifecycle,
       and final interface; compile succeeds. Live IPC/log receipt remains unavailable.
+      REVIEW (2026-10-01): the harnesses pass only under =fennel --globals "*"=,
+      which hides the unbound =table?= / =number?=. =command-contracts= also
+      expects =refresh-windows-command= to have an empty schema, so it passes
+      because of the bug. The live receipt is still missing.
     - [X] Retain stable logical snapshot, invariant, and reconcile surfaces; remove
       temporary compatibility diagnostics. Graceful global Sheaf shutdown remains
       separate engine debt because ordinary reload still cannot prove =stop-fn= ran.
@@ -1928,7 +1956,8 @@ implementation (=paper-wm.fnl=, =paper-wm/*=, =components/paper-wm.fnl=,
 =event_sources/paper-wm-frame-watcher.fnl=, =lib/window-facts.fnl=).
 Keeps the =PaperWM Migration= state model and constraints: commands are the only
 logical mutation edge, callbacks publish occurrences, logical state stores IDs.
-Depends on: completed PaperWM Migration. Should land before
+Depends on: PaperWM Migration code cutover (Phases 1-11). Unchecked migration items
+close when their matching fix here lands with a live receipt. Should land before
 =PROJ Sheaf Tiling Engine= replaces the layout policy behind the same seam.
 
 *** LATER [#A] Bind schema predicates in PaperWM commands and frame source :refactor:
