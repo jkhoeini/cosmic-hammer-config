@@ -1638,13 +1638,29 @@ preserving behavior after every phase. This is the compatibility path toward
 intentions, shared occurrence seams, and a replaceable layout interpreter
 without yet changing the tiling policy.
 
-Current state (2026-10-01 review): every phase's code cutover has landed. There is
-no =paper-wm.start!= in =core.fnl=, no private filter or module globals, and
-membership, focus, frames, and Space focus all go through Sheaf. Phases 8-11
-stay open for two reasons: their live parity receipts were never captured (the
-parity contract requires them), and the review found checked items that the
-code does not satisfy. Those items are unchecked below with a REVIEW note, and
-their fixes are tracked in =PROJ PaperWM Review Fixes=.
+Current state (2026-10-01, after =PROJ PaperWM Review Fixes=): every phase's code
+cutover has landed and every REVIEW finding is fixed; all deterministic
+harnesses pass under =test/run.sh= (strict globals). Phases 8-11 stay open only
+for their interactive live receipts, which the parity contract requires.
+
+Live receipts so far (2026-10-01 17:29, after relaunching Cosmic Hammer): clean
+boot with no console errors or warnings, all PaperWM sources including the
+outbox started, the event loop ran, and IPC answered. The screen was locked,
+so nothing interactive was exercised. Still needed, on a live session:
+    - hide, minimize, fullscreen, and close a member; it leaves the layout and
+      its column closes (Phase 8)
+    - focus a window on a not-yet-visited Space; it joins. Move a member to
+      another Space and focus it; it follows (Phase 9)
+    - drag and resize a member; neighbors follow at about 60 Hz and settle
+      (Phase 9)
+    - rapid focus/swap hotkeys; each press advances (Phase 9)
+    - Space switching by index and left/right, including an empty Space and a
+      second display; focus lands and the cursor centers (Phase 10)
+    - explicit =stop-fn= on the component instance, then counts in
+      =diagnostic-snapshot=: zero watchers and timers, =active?= false
+      (Phase 11). Needs a console handle to the component registry, which
+      =core.fnl= keeps local; the deterministic stop path is covered by
+      =test/paper-wm-runtime-diagnostics.fnl= and =test/paper-wm-effects.fnl=
 
 State model and Sheaf constraints:
     - *Logical facts*: a serializable per-Space column layout, reverse window
@@ -1855,8 +1871,8 @@ cutovers in one commit.
       existing app IPC port was unavailable, so interactive hide/fullscreen/close
       receipts remain required before Phase 9 is marked complete.
       REVIEW (2026-10-01): the receipts were never captured, but Phase 9 was
-      marked DONE anyway. The new membership command schemas are also nil (see
-      Review Fixes: bind schema predicates).
+      marked DONE anyway. Schemas fixed; harnesses pass under =test/run.sh=; boot
+      receipt captured; the interactive receipts listed above are still pending.
 
 *** LATER [#A] Phase 9: Migrate focus and continuous frame reactions [9/10] :refactor:
     - [X] Route shared focused occurrences to a command that records focused ID
@@ -1897,7 +1913,7 @@ cutovers in one commit.
       REVIEW (2026-10-01): the parity contract requires live receipts. The
       production =retile-observed-frame!= accepts a nil =latest= instead of using
       the exact-sequence =consume-latest= the harness covers. Production now uses
-      =consume-latest=; the live receipt is still missing.
+      =consume-latest=; the interactive drag/rapid-hotkey receipts are pending.
 
 *** LATER [#A] Phase 10: Replace asynchronous Space focus with a Sheaf conversation [7/8] :refactor:
     - [X] Replace coroutine/=doUntil= with component resource state containing
@@ -1917,8 +1933,8 @@ cutovers in one commit.
     - [ ] Compile passes and source search confirms no coroutine, =doUntil=, or
       legacy =focus-space= remains. Multi-display rapid-key live receipt is not
       claimed because the existing app IPC port remains unavailable.
-      REVIEW (2026-10-01): source search re-confirmed; the live receipt that the
-      parity contract requires is still missing.
+      REVIEW (2026-10-01): source search re-confirmed; retries are now safe and
+      routed through the outbox. The multi-display receipt is still pending.
 
 *** LATER [#A] Phase 11: Remove compatibility code and hand off a stable seam [8/9] :refactor:
     - [X] Delete legacy generic event handler, module lifecycle, private filter,
@@ -1938,10 +1954,9 @@ cutovers in one commit.
     - [ ] Run deterministic harnesses for atoms, facts, eligibility, topology,
       frames, membership, focus/frame observations, Space conversations, lifecycle,
       and final interface; compile succeeds. Live IPC/log receipt remains unavailable.
-      REVIEW (2026-10-01): the harnesses pass only under =fennel --globals "*"=,
-      which hides the unbound =table?= / =number?=. =command-contracts= also
-      expects =refresh-windows-command= to have an empty schema, so it passes
-      because of the bug. The live receipt is still missing.
+      REVIEW (2026-10-01): fixed. Predicates are bound, =test/run.sh= runs every
+      harness with strict globals, and contract tests match real schemas. The
+      explicit-stop receipt is still pending.
     - [X] Retain stable logical snapshot, invariant, and reconcile surfaces; remove
       temporary compatibility diagnostics. Graceful global Sheaf shutdown remains
       separate engine debt because ordinary reload still cannot prove =stop-fn= ran.
@@ -2165,6 +2180,8 @@ close when their matching fix here lands with a live receipt. Should land before
 *** LATER [#C] Move hotkey chords out of the component type :architecture:
     - All 27 chords are hard-coded in =components/paper-wm.fnl=; P1 puts choices
       in instance config or wiring. Blocked on P5 per the migration constraints
+    - Not taken in the review-fix pass: still blocked on P5 (modules/layers);
+      moving chords now would bake a second ad-hoc configuration mechanism
 
 *** DONE [#C] Guard column planning against non-positive heights :feature:
     - =plan-column= yields =h <= 0= when earlier windows already fill the column
